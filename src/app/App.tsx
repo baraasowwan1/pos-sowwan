@@ -177,6 +177,7 @@ interface ReceiptData {
   subtotal: number;
   discountAmt: number;
   taxAmt: number;
+  taxRate: number;   // النسبة الحقيقية من الإعدادات
   total: number;
   payMethod: string;
   change?: number;
@@ -227,7 +228,7 @@ ${it.discount > 0 ? `<div class="inv-no">خصم صنف: ${it.discount}%</div>` :
 <div class="line"></div>
 <div class="row"><span>المجموع الفرعي</span><span>${data.subtotal.toFixed(3)} JOD</span></div>
 ${data.discountAmt > 0 ? `<div class="row"><span>خصم الفاتورة</span><span>-${data.discountAmt.toFixed(3)} JOD</span></div>` : ""}
-<div class="row"><span>ضريبة القيمة المضافة 16%</span><span>${data.taxAmt.toFixed(3)} JOD</span></div>
+${data.taxAmt > 0 ? `<div class="row"><span>ضريبة القيمة المضافة ${(data.taxRate * 100).toFixed(0)}%</span><span>${data.taxAmt.toFixed(3)} JOD</span></div>` : ""}
 <div class="line"></div>
 <div class="row total-row"><span>الإجمالي المستحق</span><span>${data.total.toFixed(3)} JOD</span></div>
 <div class="row"><span>طريقة الدفع: ${data.payMethod}</span></div>
@@ -1798,10 +1799,19 @@ function POSTerm({ store }: { store: StoreData }) {
   const [showPay, setShowPay] = useState(false);
   const [ok, setOk] = useState(false);
   const [vm, setVm] = useLS<"grid"|"list">(sk(sid,"pos_vm"), "grid");
-  const [paper, setPaper] = useState("80mm");
+  // يقرأ إعداد الطابعة من إعدادات المتجر
+  const paper = (() => { try { return localStorage.getItem(sk(sid,"sett_paper")) || "80mm"; } catch { return "80mm"; } })();
   const invNoRef = useRef(`INV-${new Date().getFullYear()}${String(Date.now()).slice(-6)}`);
   const invNo = invNoRef.current;
-  const TAX = 0.16;
+  // يقرأ نسبة الضريبة من إعدادات المتجر المحفوظة
+  const savedTaxRate = (() => {
+    try {
+      const v = localStorage.getItem(sk(sid, "sett_tax"));
+      const num = parseFloat(v || "16");
+      return isNaN(num) ? 0.16 : num / 100;
+    } catch { return 0.16; }
+  })();
+  const TAX = savedTaxRate;
   const sub = cart.reduce((a, i) => a + i.product.sellPrice * i.qty * (1 - i.discount / 100), 0);
   const da = sub * (disc / 100);
   const ta = (sub - da) * TAX;
@@ -1821,7 +1831,7 @@ function POSTerm({ store }: { store: StoreData }) {
     storeName: store.nameAr || 'متجري',
     storePhone: store.phone || '',
     items: cart.map(i => ({ name: i.product.nameAr, qty: i.qty, price: i.product.sellPrice, discount: i.discount })),
-    subtotal: sub, discountAmt: da, taxAmt: ta, total,
+    subtotal: sub, discountAmt: da, taxAmt: ta, taxRate: TAX, total,
     payMethod: pay === "cash" ? "نقدي" : pay === "click" ? "كليك" : "مختلط",
     change: change > 0 ? change : undefined,
     cashIn: pay === "cash" ? parseFloat(cash || "0") : undefined,
@@ -1964,7 +1974,7 @@ function POSTerm({ store }: { store: StoreData }) {
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between text-muted-foreground"><span>المجموع الفرعي</span><span className="font-bold">{sub.toFixed(3)} JOD</span></div>
             {disc > 0 && <div className="flex justify-between text-emerald-600"><span>خصم {disc}%</span><span>-{da.toFixed(3)} JOD</span></div>}
-            <div className="flex justify-between text-muted-foreground"><span>ضريبة المبيعات 16%</span><span>{ta.toFixed(3)} JOD</span></div>
+            <div className="flex justify-between text-muted-foreground"><span>ضريبة المبيعات {(TAX * 100).toFixed(0)}%</span><span>{ta.toFixed(3)} JOD</span></div>
             <div className="flex justify-between items-center font-black border-t border-border pt-1.5">
               <span className="text-sm">الإجمالي</span><span className="text-xl text-primary">{total.toFixed(3)} JOD</span>
             </div>
