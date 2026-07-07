@@ -477,10 +477,32 @@ function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store", id?:
         if (!res?.token) throw { error: "لم يُستلم توكن من الخادم" };
         if (!res?.store?.id) throw { error: "بيانات المتجر غير مكتملة" };
         setToken(res.token);
+        // تطبيع وحفظ بيانات المتجر في localStorage
+        const normalizedStore = {
+          id:       (res.store as {_id?: string; id: string})._id || res.store.id,
+          nameAr:   res.store.nameAr   || "متجري",
+          nameEn:   res.store.nameEn   || "",
+          category: res.store.category || "supermarket",
+          owner:    res.store.owner    || "",
+          email:    res.store.email    || "",
+          phone:    res.store.phone    || "",
+          city:     res.store.city     || "",
+          status:   res.store.status   || "active",
+          plan:     res.store.plan     || "مبتدئ",
+          taxNo:    "",
+          users:    0, products: 0, sales: 0, revenue: 0, branches: 1,
+          createdAt:new Date().toISOString().split("T")[0],
+          expiresAt:res.store.expiresAt
+            ? new Date(res.store.expiresAt).toISOString().split("T")[0]
+            : new Date(Date.now() + 365*86400000).toISOString().split("T")[0],
+        };
         try {
-          localStorage.setItem(`sowwanjo_storeinfo_${res.store.id}`, JSON.stringify(res.store));
+          localStorage.setItem(
+            `sowwanjo_storeinfo_${normalizedStore.id}`,
+            JSON.stringify(normalizedStore)
+          );
         } catch {}
-        onLogin("store", res.store.id);
+        onLogin("store", normalizedStore.id);
       }
     } catch (err: unknown) {
       const e = err as {error?:string; message?:string};
@@ -773,14 +795,14 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SADash({ onNav }: { onNav: (s: string) => void }) {
-  const total = STORES.reduce((a, s) => a + s.revenue, 0);
+  const total = STORES.reduce((a, s) => a + (s.revenue || 0), 0);
   return (
     <div className="p-6 space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI icon={<Store size={20} />} label="إجمالي المتاجر" value={String(STORES.length)} sub={`${STORES.filter(s => s.status === "active").length} نشط`} color="#1D4ED8" trend={14} />
         <KPI icon={<DollarSign size={20} />} label="إجمالي الإيرادات" value={jod(total)} sub="منذ الإطلاق" color="#059669" trend={22} />
-        <KPI icon={<Users size={20} />} label="إجمالي المستخدمين" value={String(STORES.reduce((a, s) => a + s.users, 0))} color="#D97706" trend={9} />
-        <KPI icon={<FileText size={20} />} label="إجمالي الفواتير" value={STORES.reduce((a, s) => a + s.sales, 0).toLocaleString()} color="#7C3AED" trend={18} />
+        <KPI icon={<Users size={20} />} label="إجمالي المستخدمين" value={String(STORES.reduce((a, s) => a + (s.users || 0), 0))} color="#D97706" trend={9} />
+        <KPI icon={<FileText size={20} />} label="إجمالي الفواتير" value={STORES.reduce((a, s) => a + (s.sales || 0), 0).toLocaleString()} color="#7C3AED" trend={18} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -850,7 +872,7 @@ function SADash({ onNav }: { onNav: (s: string) => void }) {
               <div key={s.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/30">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: cat.bg }}><span style={{ color: cat.color }}>{cat.icon}</span></div>
                 <div className="flex-1 min-w-0"><p className="text-sm font-bold text-foreground truncate">{s.nameAr}</p><p className="text-xs text-muted-foreground">{s.owner} • {s.city}</p></div>
-                <div className="hidden sm:block text-right shrink-0"><p className="text-sm font-bold text-foreground">{jod(s.revenue || 0)}</p><p className="text-xs text-muted-foreground">{s.sales.toLocaleString()} فاتورة</p></div>
+                <div className="hidden sm:block text-right shrink-0"><p className="text-sm font-bold text-foreground">{jod(s.revenue || 0)}</p><p className="text-xs text-muted-foreground">{(s.sales || 0).toLocaleString()} فاتورة</p></div>
                 <SBadge status={s.status} />
                 <span className="hidden lg:block text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">{s.plan}</span>
               </div>
@@ -1288,7 +1310,7 @@ function SAStores() {
             </div>
             <div className="p-3 bg-muted rounded-xl border border-border text-center">
               <p className="font-black text-foreground text-lg">{deleteConfirm.nameAr}</p>
-              <p className="text-xs text-muted-foreground">{deleteConfirm.email} • {deleteConfirm.sales.toLocaleString()} فاتورة • {jod(deleteConfirm.revenue || 0)}</p>
+              <p className="text-xs text-muted-foreground">{deleteConfirm.email} • {(deleteConfirm.sales || 0).toLocaleString()} فاتورة • {jod(deleteConfirm.revenue || 0)}</p>
             </div>
             <div className="flex gap-3 justify-end">
               <Btn v="secondary" onClick={() => setDeleteConfirm(null)}>إلغاء</Btn>
@@ -1579,10 +1601,31 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
     } catch {}
     return null;
   })();
-  const store: StoreData = storeFromLS || { id: storeId, nameAr: "متجري", nameEn: "My Store", category: "supermarket" as StoreCategory, owner: "", email: "", phone: "", city: "", status: "active" as const, plan: "مبتدئ", users: 0, products: 0, sales: 0, revenue: 0, createdAt: new Date().toISOString().split("T")[0], expiresAt: new Date(Date.now() + 365*86400000).toISOString().split("T")[0], branches: 1 };
+  // تطبيع بيانات المتجر — تضمن عدم وجود قيم null تسبب crash
+  const rawStore = storeFromLS || null;
+  const store: StoreData = {
+    id: storeId,
+    nameAr:   rawStore?.nameAr   || "متجري",
+    nameEn:   rawStore?.nameEn   || "My Store",
+    category: (rawStore?.category || "supermarket") as StoreCategory,
+    owner:    rawStore?.owner    || "",
+    email:    rawStore?.email    || "",
+    phone:    rawStore?.phone    || "",
+    city:     rawStore?.city     || "",
+    status:   (rawStore?.status  || "active") as StoreData["status"],
+    plan:     rawStore?.plan     || "مبتدئ",
+    taxNo:    rawStore?.taxNo    || "",
+    users:    rawStore?.users    || 0,
+    products: rawStore?.products || 0,
+    sales:    rawStore?.sales    || 0,
+    revenue:  rawStore?.revenue  || 0,
+    branches: rawStore?.branches || 1,
+    createdAt:rawStore?.createdAt|| new Date().toISOString().split("T")[0],
+    expiresAt:rawStore?.expiresAt|| new Date(Date.now() + 365*86400000).toISOString().split("T")[0],
+  };
   const [screen, setScreen] = useState("dashboard");
   const [col, setCol] = useState(false);
-  const cat = CAT[store.category];
+  const cat = CAT[store.category as StoreCategory] || CAT["supermarket"];
   return (
     <div className="flex h-screen overflow-hidden bg-background" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
       <aside className={`${col ? "w-[50px]" : "w-56"} shrink-0 flex flex-col transition-all duration-300`} style={{ background: "#0F172A" }}>
@@ -1656,7 +1699,7 @@ function StoreDash({ store }: { store: StoreData }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI icon={<ShoppingCart size={18} />} label="مبيعات اليوم" value="0.000 JOD" sub="0 فاتورة" color="#1D4ED8" trend={12} />
         <KPI icon={<DollarSign size={18} />} label="إيرادات الشهر" value="0.000 JOD" color="#059669" trend={18} />
-        <KPI icon={<Package size={18} />} label="المنتجات" value={store.products.toString()} sub="5 منخفضة المخزون" color="#D97706" />
+        <KPI icon={<Package size={18} />} label="المنتجات" value={String(store.products || 0)} sub="5 منخفضة المخزون" color="#D97706" />
         <KPI icon={<Users size={18} />} label="العملاء" value="0" sub="لا يوجد عملاء بعد" color="#7C3AED" trend={8} />
       </div>
       <div className="grid grid-cols-3 gap-4">
@@ -1775,8 +1818,8 @@ function POSTerm({ store }: { store: StoreData }) {
 
   const doPrint = () => printReceipt({
     invNo,
-    storeName: store.nameAr,
-    storePhone: store.phone,
+    storeName: store.nameAr || 'متجري',
+    storePhone: store.phone || '',
     items: cart.map(i => ({ name: i.product.nameAr, qty: i.qty, price: i.product.sellPrice, discount: i.discount })),
     subtotal: sub, discountAmt: da, taxAmt: ta, total,
     payMethod: pay === "cash" ? "نقدي" : pay === "click" ? "كليك" : "مختلط",
