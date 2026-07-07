@@ -64,6 +64,42 @@ async function apiDeleteStore(id: string) {
 async function apiResetPass(id: string) {
   return apiFetch(`/stores/${id}/reset-password`, { method: "POST" }, getToken()) as Promise<{newPassword:string}>;
 }
+
+// ── Generic CRUD API helpers (scoped to logged-in store via JWT) ─────────────
+const storeApi = {
+  get:    (path: string)                => apiFetch(path, {}, getToken()),
+  post:   (path: string, data: object) => apiFetch(path, { method: "POST",   body: JSON.stringify(data) }, getToken()),
+  put:    (path: string, data: object) => apiFetch(path, { method: "PUT",    body: JSON.stringify(data) }, getToken()),
+  patch:  (path: string, data: object) => apiFetch(path, { method: "PATCH",  body: JSON.stringify(data) }, getToken()),
+  delete: (path: string)               => apiFetch(path, { method: "DELETE" }, getToken()),
+};
+
+// ── useApi hook — fetch from backend with loading/error state ──────────────
+function useApi<T>(path: string, initial: T): { data: T; loading: boolean; error: string; refresh: () => void } {
+  const [data, setData] = useState<T>(initial);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [tick, setTick] = useState(0);
+  const refresh = useCallback(() => setTick(t => t + 1), []);
+  useEffect(() => {
+    if (!getToken()) { setLoading(false); return; }
+    setLoading(true);
+    storeApi.get(path)
+      .then(d => { setData(d as T); setError(""); })
+      .catch(e => setError((e as {error?:string}).error || "خطأ في جلب البيانات"))
+      .finally(() => setLoading(false));
+  }, [path, tick]);
+  return { data, loading, error, refresh };
+}
+
+// Normalize MongoDB _id to id
+function norm<T extends object>(item: T & { _id?: string; id?: string }): T & { id: string } {
+  return { ...item, id: item._id || item.id || String(Date.now()) };
+}
+function normList<T extends object>(arr: unknown): (T & { id: string })[] {
+  if (!Array.isArray(arr)) return [];
+  return arr.map((item) => norm(item as T & { _id?: string; id?: string }));
+}
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -1788,7 +1824,10 @@ function StoreDash({ store }: { store: StoreData }) {
 function POSTerm({ store }: { store: StoreData }) {
   const sid = useStoreId();
   // نفس مخزن المنتجات المشترك مع ProductsMgr وInvScreen
-  const [allProds, setAllProds] = useLS<Product[]>(sk(sid, "products"), PRODUCTS);
+  // منتجات POS — من Backend مباشرة
+  const { data: prodsApiRaw, refresh: refreshPosProds } = useApi<unknown[]>("/products", []);
+  const [allProds, setAllProds] = useState<Product[]>([]);
+  useEffect(() => { setAllProds(normList<Product>(prodsApiRaw)); }, [prodsApiRaw]);
   const [cart, setCart] = useLS<CartItem[]>(sk(sid,"pos_cart"), []);  // السلة تبقى بعد الـ refresh
   const [holds, setHolds] = useLS<CartItem[][]>(sk(sid,"pos_holds"), []); // الطلبات المعلقة
   const [q, setQ] = useState("");
@@ -1839,12 +1878,28 @@ function POSTerm({ store }: { store: StoreData }) {
     time: new Date().toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" }),
   }, paper);
 
-  const doPay = () => {
-    // Deduct stock
-    setAllProds(prev => prev.map(p => {
-      const item = cart.find(i => i.product.id === p.id);
-      return item ? { ...p, stock: Math.max(0, p.stock - item.qty) } : p;
-    }));
+  const doPay = async () => {
+    // حفظ الفاتورة في Backend + خصم المخزون تلقائياً
+    try {
+      await storeApi.post("/sales", {
+        invoiceNo: invNo,
+        items: cart.map(i => ({
+          productId: i.product.id,
+          nameAr:    i.product.nameAr,
+          qty:       i.qty,
+          unitPrice: i.product.sellPrice,
+          discount:  i.discount,
+          total:     i.product.sellPrice * i.qty * (1 - i.discount / 100),
+        })),
+        subtotal: sub, discountAmt: da, taxAmt: ta, total,
+        payMethod: pay,
+        cashIn:   pay === "cash" ? parseFloat(cash || "0") : undefined,
+        change:   pay === "cash" ? Math.max(0, parseFloat(cash || "0") - total) : undefined,
+        status:   "completed",
+      });
+      // تحديث المنتجات بعد البيع لعرض المخزون الحقيقي
+      setTimeout(() => refreshPosProds(), 500);
+    } catch { /* نكمل بدون خطأ — سيتحدث المخزون عند الـ refresh */ }
     setOk(true);
     invNoRef.current = `INV-${new Date().getFullYear()}${String(Date.now()).slice(-6)}`;
   };
@@ -2076,7 +2131,9 @@ async function fetchOpenFoodFacts(barcode: string): Promise<OFFProduct | null> {
 
 function ProductsMgr() {
   const sid = useStoreId();
-  const [prods, setProds] = useLS<Product[]>(sk(sid, "products"), PRODUCTS);
+  const { data: prodsRaw, loading: prodsLoading, refresh: refreshProds } = useApi<unknown[]>("/products", []);
+  const [prods, setProds] = useState<Product[]>([]);
+  useEffect(() => { setProds(normList<Product>(prodsRaw)); }, [prodsRaw]);
   const [q, setQ] = useState("");
   const [catFilter, setCatFilter] = useState("الكل");
   const [showAdd, setShowAdd] = useState(false);
@@ -2109,25 +2166,31 @@ function ProductsMgr() {
     showToast(`تم جلب بيانات "${nameEn || prod.code}" بنجاح من Open Food Facts ✓`, "success");
   };
 
-  const save = () => {
+  const save = async () => {
     if (!f.nameAr || !f.sellPrice) return;
-    const p: Product = {
-      id: `p${Date.now()}`, ...f,
+    const payload = {
+      ...f,
       costPrice: parseFloat(f.costPrice) || 0,
       sellPrice: parseFloat(f.sellPrice) || 0,
       stock: parseInt(f.stock) || 0,
       minStock: parseInt(f.minStock) || 5,
       image: f.image || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=100&h=100&fit=crop",
     };
-    setProds(prev => [p, ...prev]);
-    showToast(`تم إضافة "${p.nameAr}" بنجاح`);
+    try {
+      await storeApi.post("/products", payload);
+      await refreshProds();
+      showToast(`تم إضافة "${f.nameAr}" وحفظه في قاعدة البيانات ✅`);
+    } catch { showToast("خطأ في الحفظ", "error"); return; }
     setShowAdd(false); setF(emptyF); setOfoResult(null); setOfoError("");
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editProd) return;
-    setProds(prev => prev.map(p => p.id === editProd.id ? editProd : p));
-    showToast(`تم تحديث "${editProd.nameAr}"`);
+    try {
+      await storeApi.put(`/products/${editProd.id}`, editProd);
+      await refreshProds();
+      showToast(`تم تحديث "${editProd.nameAr}"`);
+    } catch { showToast("خطأ في التحديث", "error"); }
     setEditProd(null);
   };
 
@@ -2186,7 +2249,7 @@ function ProductsMgr() {
                       <td className="p-3.5">{p.stock === 0 ? <span className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">نفد</span> : low ? <span className="text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">منخفض</span> : <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">مناسب</span>}</td>
                       <td className="p-3.5"><div className="flex gap-0.5">
                         <button onClick={() => setEditProd({ ...p })} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-100 text-blue-500"><Edit2 size={11} /></button>
-                        <button onClick={() => { setProds(prev => prev.filter(x => x.id !== p.id)); showToast(`تم حذف "${p.nameAr}"`, "warning"); }} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500"><Trash2 size={11} /></button>
+                        <button onClick={async () => { await storeApi.delete(`/products/${p.id}`); await refreshProds(); showToast(`تم حذف "${p.nameAr}"`, "warning"); }} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500"><Trash2 size={11} /></button>
                       </div></td>
                     </tr>
                   );
@@ -2316,7 +2379,9 @@ function ProductsMgr() {
 function InvScreen() {
   // نفس مخزن المنتجات — تغييرات الجرد تنعكس على POS مباشرة
   const sid = useStoreId();
-  const [invProds, setInvProds] = useLS<Product[]>(sk(sid, "products"), PRODUCTS);
+  const { data: invRaw, refresh: refreshInv } = useApi<unknown[]>("/products", []);
+  const [invProds, setInvProds] = useState<Product[]>([]);
+  useEffect(() => { setInvProds(normList<Product>(invRaw)); }, [invRaw]);
   const [adjProd, setAdjProd] = useState<Product | null>(null);
   const [adjQty, setAdjQty] = useState("");
   const [adjType, setAdjType] = useState<"add"|"set"|"remove">("add");
@@ -2326,15 +2391,14 @@ function InvScreen() {
 
   const openAdj = (p: Product) => { setAdjProd(p); setAdjQty(""); setAdjNote(""); setAdjType("add"); };
 
-  const doAdj = () => {
+  const doAdj = async () => {
     if (!adjProd || !adjQty) return;
     const qty = parseInt(adjQty) || 0;
-    setInvProds(prev => prev.map(p => {
-      if (p.id !== adjProd.id) return p;
-      const newStock = adjType === "add" ? p.stock + qty : adjType === "remove" ? Math.max(0, p.stock - qty) : qty;
-      return { ...p, stock: newStock };
-    }));
-    showToast(`تم تعديل مخزون "${adjProd.nameAr}": ${adjType === "add" ? `+${adjQty}` : adjType === "remove" ? `-${adjQty}` : `= ${adjQty}`}`, "success");
+    try {
+      await storeApi.patch(`/products/${adjProd.id}/stock`, { qty, type: adjType });
+      await refreshInv();
+      showToast(`تم تعديل مخزون "${adjProd.nameAr}" ✅`, "success");
+    } catch { showToast("خطأ في تعديل المخزون", "error"); }
     setAdjProd(null);
   };
 
@@ -2345,13 +2409,15 @@ function InvScreen() {
     setShowJard(true);
   };
 
-  const saveJard = () => {
-    setInvProds(prev => prev.map(p => {
-      const counted = jardCounts[p.id];
-      if (counted === "" || counted === undefined) return p;
-      return { ...p, stock: parseInt(counted) || 0 };
-    }));
-    showToast("تم حفظ نتائج الجرد وتحديث المخزون بنجاح ✓", "success");
+  const saveJard = async () => {
+    const counts = Object.entries(jardCounts)
+      .filter(([, v]) => v !== "" && v !== undefined)
+      .map(([productId, actualQty]) => ({ productId, actualQty: parseInt(actualQty) || 0 }));
+    try {
+      await storeApi.post("/inventory/count", { counts });
+      await refreshInv();
+      showToast("تم حفظ نتائج الجرد وتحديث المخزون في قاعدة البيانات ✓", "success");
+    } catch { showToast("خطأ في حفظ الجرد", "error"); }
     setShowJard(false);
   };
 
@@ -2498,14 +2564,19 @@ function InvScreen() {
 function CustScreen() {
   type Cust = { id: number; name: string; phone: string; purchases: number; total: number; points: number; level: string; lastVisit: string };
   const sid = useStoreId();
-  const [custs, setCusts] = useLS<Cust[]>(sk(sid, "customers"), []);
+  const { data: custsRaw, refresh: refreshCusts } = useApi<unknown[]>("/customers", []);
+  const [custs, setCusts] = useState<Cust[]>([]);
+  useEffect(() => { setCusts(normList<Cust>(custsRaw)); }, [custsRaw]);
   const [showNewC, setShowNewC] = useState(false);
   const [nc, setNc] = useState({ name: "", phone: "", level: "عادي" });
   const LV: Record<string, string> = { عادي: "bg-gray-100 text-gray-700", فضي: "bg-slate-200 text-slate-600", ذهبي: "bg-amber-100 text-amber-700", بلاتيني: "bg-purple-100 text-purple-700" };
-  const addCust = () => {
+  const addCust = async () => {
     if (!nc.name) return;
-    setCusts(p => [...p, { id: Date.now(), name: nc.name, phone: nc.phone, purchases: 0, total: 0, points: 0, level: nc.level, lastVisit: new Date().toISOString().split("T")[0] }]);
-    showToast(`تم إضافة العميل "${nc.name}"`);
+    try {
+      await storeApi.post("/customers", { name: nc.name, phone: nc.phone, level: nc.level, loyaltyPoints: 0, totalPurchases: 0 });
+      await refreshCusts();
+      showToast(`تم إضافة "${nc.name}" وحفظه في قاعدة البيانات ✅`);
+    } catch { showToast("خطأ في إضافة العميل", "error"); return; }
     setShowNewC(false); setNc({ name: "", phone: "", level: "عادي" });
   };
   return (
@@ -2536,7 +2607,7 @@ function CustScreen() {
                   <td className="p-3.5 text-xs text-muted-foreground">{c.lastVisit}</td>
                   <td className="p-3.5"><div className="flex gap-1">
                     <Btn v="ghost" s="xs" icon={<Eye size={10} />} onClick={() => showToast(`${c.name}: ${c.purchases} فاتورة، ${c.points} نقطة`, "info")}>تفاصيل</Btn>
-                    <Btn v="ghost" s="xs" icon={<Trash2 size={10} />} onClick={() => { setCusts(p => p.filter(x=>x.id!==c.id)); showToast("تم حذف العميل","warning"); }}>حذف</Btn>
+                    <Btn v="ghost" s="xs" icon={<Trash2 size={10} />} onClick={async () => { await storeApi.delete(`/customers/${c.id}`); await refreshCusts(); showToast("تم حذف العميل","warning"); }}>حذف</Btn>
                   </div></td>
                 </tr>
               ))}
@@ -2560,7 +2631,9 @@ function CustScreen() {
 
 function SuppScreen() {
   const sid = useStoreId();
-  const [sups, setSups] = useLS<{id:number;name:string;phone:string;products:number;lastOrder:string;balance:number}[]>(sk(sid, "suppliers"), []);
+  const { data: supsRaw, refresh: refreshSups } = useApi<unknown[]>("/suppliers", []);
+  const [sups, setSups] = useState<{id:string;name:string;phone:string;products:number;lastOrder:string;balance:number}[]>([]);
+  useEffect(() => { setSups(normList<{id:string;name:string;phone:string;products:number;lastOrder:string;balance:number}>(supsRaw)); }, [supsRaw]);
   return (
     <div className="p-5 space-y-4 overflow-y-auto h-full">
       <Hdr title="إدارة الموردين" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => showToast("فتح نموذج إضافة مورد جديد", "info")}>مورد جديد</Btn>} />
@@ -2619,21 +2692,26 @@ function PurchScreen() {
 
 function ExpScreen() {
   const sid = useStoreId();
-  const [exps, setExps] = useLS<{id:number;desc:string;amount:number;cat:string;date:string;method:string}[]>(sk(sid, "expenses"), []);
+  const { data: expsRaw, refresh: refreshExps } = useApi<unknown[]>("/expenses", []);
+  const [exps, setExps] = useState<{id:string;desc:string;amount:number;cat:string;date:string;method:string}[]>([]);
+  useEffect(() => { setExps(normList<{id:string;desc:string;amount:number;cat:string;date:string;method:string}>(expsRaw)); }, [expsRaw]);
   const [showAdd, setShowAdd] = useState(false);
   const [editExp, setEditExp] = useState<typeof exps[0] | null>(null);
   const [nf, setNf] = useState({ desc: "", amount: "", cat: "ثابت", method: "نقدي" });
   const CE: Record<string, string> = { ثابت: "text-blue-700 bg-blue-100", متغير: "text-purple-700 bg-purple-100", تشغيل: "text-emerald-700 bg-emerald-100", طارئ: "text-red-700 bg-red-100" };
   const total = exps.reduce((a, e) => a + e.amount, 0);
 
-  const addExp = () => {
+  const addExp = async () => {
     if (!nf.desc || !nf.amount) return;
-    setExps(p => [...p, { id: Date.now(), desc: nf.desc, amount: parseFloat(nf.amount), cat: nf.cat, date: new Date().toISOString().split("T")[0], method: nf.method }]);
-    showToast("تم إضافة المصروف بنجاح");
+    try {
+      await storeApi.post("/expenses", { desc: nf.desc, amount: parseFloat(nf.amount), cat: nf.cat, method: nf.method });
+      await refreshExps();
+      showToast("تم إضافة المصروف وحفظه في قاعدة البيانات ✅");
+    } catch { showToast("خطأ في إضافة المصروف", "error"); return; }
     setShowAdd(false); setNf({ desc: "", amount: "", cat: "ثابت", method: "نقدي" });
   };
-  const delExp = (id: number) => { setExps(p => p.filter(e => e.id !== id)); showToast("تم حذف المصروف", "warning"); };
-  const saveEdit = () => { if (!editExp) return; setExps(p => p.map(e => e.id === editExp.id ? editExp : e)); showToast("تم تعديل المصروف"); setEditExp(null); };
+  const delExp = async (id: string) => { await storeApi.delete(`/expenses/${id}`); await refreshExps(); showToast("تم حذف المصروف", "warning"); };
+  const saveEdit = async () => { if (!editExp) return; await storeApi.put(`/expenses/${editExp.id}`, editExp); await refreshExps(); showToast("تم تعديل المصروف"); setEditExp(null); };
 
   return (
     <div className="p-5 space-y-4 overflow-y-auto h-full">
@@ -2684,18 +2762,24 @@ function ExpScreen() {
 
 function ReturnScreen() {
   const sid = useStoreId();
-  const [rets, setRets] = useLS<{id:string;inv:string;cust:string;amount:number;reason:string;date:string;status:string}[]>(sk(sid, "returns"), []);
+  const { data: retsRaw, refresh: refreshRets } = useApi<unknown[]>("/returns", []);
+  const [rets, setRets] = useState<{id:string;inv:string;cust:string;amount:number;reason:string;date:string;status:string}[]>([]);
+  useEffect(() => { setRets(normList<{id:string;inv:string;cust:string;amount:number;reason:string;date:string;status:string}>(retsRaw)); }, [retsRaw]);
   const [viewRet, setViewRet] = useState<typeof rets[0] | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [nf, setNf] = useState({ inv: "", cust: "", amount: "", reason: "" });
   const SC: Record<string, string> = { معتمد: "bg-emerald-100 text-emerald-700", "قيد المراجعة": "bg-amber-100 text-amber-700", مرفوض: "bg-red-100 text-red-700" };
 
-  const approve = (id: string) => { setRets(p => p.map(r => r.id === id ? {...r, status: "معتمد"} : r)); showToast("تم اعتماد المرتجع"); setViewRet(null); };
-  const reject = (id: string) => { setRets(p => p.map(r => r.id === id ? {...r, status: "مرفوض"} : r)); showToast("تم رفض المرتجع", "warning"); setViewRet(null); };
-  const addReturn = () => {
+  const approve = async (id: string) => { await storeApi.put(`/returns/${id}`, { status: "معتمد" }); await refreshRets(); showToast("تم اعتماد المرتجع"); setViewRet(null); };
+  const reject = async (id: string) => { await storeApi.put(`/returns/${id}`, { status: "مرفوض" }); await refreshRets(); showToast("تم رفض المرتجع", "warning"); setViewRet(null); };
+  const addReturn = async () => {
     if (!nf.inv || !nf.amount) return;
-    setRets(p => [...p, { id: `RET-00${p.length+4}`, inv: nf.inv, cust: nf.cust, amount: parseFloat(nf.amount)||0, reason: nf.reason, date: new Date().toISOString().split("T")[0], status: "قيد المراجعة" }]);
-    showToast("تم إنشاء طلب المرتجع"); setShowNew(false); setNf({ inv: "", cust: "", amount: "", reason: "" });
+    try {
+      await storeApi.post("/returns", { inv: nf.inv, cust: nf.cust, amount: parseFloat(nf.amount)||0, reason: nf.reason, status: "قيد المراجعة" });
+      await refreshRets();
+      showToast("تم إنشاء طلب المرتجع في قاعدة البيانات ✅");
+    } catch { showToast("خطأ في إنشاء المرتجع", "error"); return; }
+    setShowNew(false); setNf({ inv: "", cust: "", amount: "", reason: "" });
   };
 
   const total = rets.filter(r=>r.status==="معتمد").reduce((a,r)=>a+r.amount,0);
@@ -2819,19 +2903,24 @@ function StoreReports() {
 
 function EmpScreen() {
   const sid = useStoreId();
-  const [emps, setEmps] = useLS<{id:number;name:string;role:string;phone:string;sales:number;status:string;branch:string}[]>(sk(sid, "employees"), []);
+  const { data: empsRaw, refresh: refreshEmps } = useApi<unknown[]>("/users", []);
+  const [emps, setEmps] = useState<{id:string;name:string;role:string;phone:string;sales:number;status:string;branch:string}[]>([]);
+  useEffect(() => { setEmps(normList<{id:string;name:string;role:string;phone:string;sales:number;status:string;branch:string}>(empsRaw)); }, [empsRaw]);
   const [showNew, setShowNew] = useState(false);
   const [editEmp, setEditEmp] = useState<{id:number;name:string;role:string;phone:string;sales:number;status:string;branch:string}|null>(null);
   const [nf, setNf] = useState({ name: '', role: 'كاشير', phone: '', branch: 'الفرع الرئيسي' });
   const RC: Record<string, { c: string; b: string }> = { مدير: { c: "#1D4ED8", b: "#DBEAFE" }, كاشير: { c: "#059669", b: "#D1FAE5" }, "مسؤول مخزون": { c: "#D97706", b: "#FEF3C7" } };
-  const addEmp = () => {
+  const addEmp = async () => {
     if (!nf.name || !nf.phone) return;
-    setEmps(p => [...p, { id: Date.now(), ...nf, sales: 0, status: "نشط" }]);
-    showToast(`تم إضافة الموظف "${nf.name}" بنجاح`);
+    try {
+      await storeApi.post("/users", { name: nf.name, phone: nf.phone, role: nf.role, email: `${nf.phone.replace(/[^0-9]/g,"")}@store.jo` });
+      await refreshEmps();
+      showToast(`تم إضافة "${nf.name}" وحفظه في قاعدة البيانات ✅`);
+    } catch (e) { showToast((e as {error?:string}).error || "خطأ في إضافة الموظف", "error"); return; }
     setShowNew(false); setNf({ name: '', role: 'كاشير', phone: '', branch: 'الفرع الرئيسي' });
   };
-  const delEmp = (id: number) => { setEmps(p => p.filter(e => e.id !== id)); showToast("تم حذف الموظف", "warning"); };
-  const saveEdit = () => { if (!editEmp) return; setEmps(p => p.map(e => e.id === editEmp.id ? editEmp : e)); showToast("تم حفظ تعديلات الموظف"); setEditEmp(null); };
+  const delEmp = async (id: string) => { await storeApi.delete(`/users/${id}`); await refreshEmps(); showToast("تم حذف الموظف", "warning"); };
+  const saveEdit = async () => { if (!editEmp) return; await storeApi.put(`/users/${editEmp.id}`, { name: editEmp.name, role: editEmp.role, status: editEmp.status }); await refreshEmps(); showToast("تم حفظ تعديلات الموظف"); setEditEmp(null); };
 
   return (
     <div className="p-5 space-y-4 overflow-y-auto h-full">
@@ -2910,18 +2999,22 @@ function EmpScreen() {
 
 function BranchScreen() {
   const sid = useStoreId();
-  const [branches, setBranches] = useLS<{id:number;name:string;city:string;manager:string;terminals:number;employees:number;sales:number;status:string}[]>(sk(sid, "branches"), []);
-  const [terms, setTerms] = useLS<{id:string;name:string;cashier:string;branch:string;status:string;sales:number}[]>(sk(sid, "terminals"), []);
+  const { data: branchesRaw, refresh: refreshBranches } = useApi<unknown[]>("/branches", []);
+  const [branches, setBranches] = useState<{id:string;name:string;city:string;manager:string;terminals:number;employees:number;sales:number;status:string}[]>([]);
+  useEffect(() => { setBranches(normList<{id:string;name:string;city:string;manager:string;terminals:number;employees:number;sales:number;status:string}>(branchesRaw)); }, [branchesRaw]);
+  const { data: termsRaw, refresh: refreshTerms } = useApi<unknown[]>("/branches/terminals", []);
+  const [terms, setTerms] = useState<{id:string;name:string;cashier:string;branch:string;status:string;sales:number}[]>([]);
+  useEffect(() => { setTerms(normList<{id:string;name:string;cashier:string;branch:string;status:string;sales:number}>(termsRaw)); }, [termsRaw]);
   const [showBranch, setShowBranch] = useState(false);
   const [showTerm, setShowTerm] = useState(false);
   const [viewBranch, setViewBranch] = useState<typeof branches[0] | null>(null);
   const [nb, setNb] = useState({ name: "", city: "", manager: "" });
   const [nt, setNt] = useState({ name: "", cashier: "", branch: "الفرع الرئيسي" });
 
-  const toggleBranch = (id: number) => { setBranches(p => p.map(b => b.id === id ? {...b, status: b.status === "نشط" ? "غير نشط" : "نشط"} : b)); showToast("تم تغيير حالة الفرع"); setViewBranch(null); };
-  const toggleTerm = (id: string) => { setTerms(p => p.map(t => t.id === id ? {...t, status: t.status === "نشط" ? "مغلق" : "نشط"} : t)); showToast(terms.find(t=>t.id===id)?.status === "نشط" ? "تم إغلاق الجهاز" : "تم فتح الجهاز"); };
-  const addBranch = () => { if (!nb.name) return; setBranches(p => [...p, { id: Date.now(), ...nb, terminals: 0, employees: 0, sales: 0, status: "نشط" }]); showToast(`تم إنشاء فرع "${nb.name}"`); setShowBranch(false); setNb({name:"",city:"",manager:""}); };
-  const addTerm = () => { if (!nt.name) return; setTerms(p => [...p, { id: `T-00${p.length+4}`, ...nt, status: "مغلق", sales: 0 }]); showToast(`تم إضافة جهاز "${nt.name}"`); setShowTerm(false); setNt({name:"",cashier:"",branch:"الفرع الرئيسي"}); };
+  const toggleBranch = async (id: string) => { const b = branches.find(x=>x.id===id); await storeApi.put(`/branches/${id}`, { status: b?.status === "نشط" ? "غير نشط" : "نشط" }); await refreshBranches(); showToast("تم تغيير حالة الفرع"); setViewBranch(null); };
+  const toggleTerm = async (id: string) => { const t = terms.find(x=>x.id===id); await storeApi.put(`/branches/terminals/${id}`, { status: t?.status === "نشط" ? "مغلق" : "نشط" }); await refreshTerms(); showToast(t?.status === "نشط" ? "تم إغلاق الجهاز" : "تم فتح الجهاز"); };
+  const addBranch = async () => { if (!nb.name) return; try { await storeApi.post("/branches", { ...nb, status: "نشط" }); await refreshBranches(); showToast(`تم إنشاء فرع "${nb.name}" ✅`); } catch { showToast("خطأ في إنشاء الفرع","error"); return; } setShowBranch(false); setNb({name:"",city:"",manager:""}); };
+  const addTerm = async () => { if (!nt.name) return; try { await storeApi.post("/branches/terminals", { ...nt, status: "مغلق" }); await refreshTerms(); showToast(`تم إضافة جهاز "${nt.name}" ✅`); } catch { showToast("خطأ في إضافة الجهاز","error"); return; } setShowTerm(false); setNt({name:"",cashier:"",branch:"الفرع الرئيسي"}); };
 
   return (
     <div className="p-5 space-y-5 overflow-y-auto h-full">
@@ -3069,22 +3162,60 @@ function LoyaltyScreen() {
 
 function StoreSetts({ store }: { store: StoreData }) {
   const sid = useStoreId();
-  // كل إعداد يُحفظ في localStorage لحاله
-  const [sName,        setSName]        = useLS(sk(sid,"sett_name"),   store.nameAr);
-  const [phone,        setPhone]        = useLS(sk(sid,"sett_phone"),  store.phone);
-  const [address,      setAddress]      = useLS(sk(sid,"sett_addr"),   "شارع الثقافة، الجبيهة، عمّان، الأردن");
-  const [lang,         setLang]         = useLS(sk(sid,"sett_lang"),   "ar");
-  const [rl,           setRl]           = useLS(sk(sid,"sett_rl"),     "both");
-  const [tax,          setTax]          = useLS(sk(sid,"sett_tax"),    "16");
-  const [paper,        setPaper]        = useLS(sk(sid,"sett_paper"),  "80mm");
-  const [printCopies,  setPrintCopies]  = useLS(sk(sid,"sett_copies"), "1");
-  const [printLogo,    setPrintLogo]    = useLS(sk(sid,"sett_plogo"),  true);
-  const [printTax,     setPrintTax]     = useLS(sk(sid,"sett_ptax"),   true);
-  const [printPhone,   setPrintPhone]   = useLS(sk(sid,"sett_pphone"), true);
-  const [printBarcode, setPrintBarcode] = useLS(sk(sid,"sett_pbar"),   false);
+  // يجلب الإعدادات من Backend عند الفتح
+  const { data: settingsRaw, refresh: refreshSettings } = useApi<Record<string,unknown>>("/settings", {});
+
+  const [sName,        setSName]        = useState(store.nameAr);
+  const [phone,        setPhone]        = useState(store.phone);
+  const [address,      setAddress]      = useState("شارع الثقافة، الجبيهة، عمّان، الأردن");
+  const [lang,         setLang]         = useState("ar");
+  const [rl,           setRl]           = useState("both");
+  const [tax,          setTax]          = useState("16");
+  const [paper,        setPaper]        = useState("80mm");
+  const [printCopies,  setPrintCopies]  = useState("1");
+  const [printLogo,    setPrintLogo]    = useState(true);
+  const [printTax,     setPrintTax]     = useState(true);
+  const [printPhone,   setPrintPhone]   = useState(true);
+  const [printBarcode, setPrintBarcode] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
 
-  const doSave = () => showToast("تم حفظ إعدادات المتجر بنجاح ✓", "success");
+  // تطبيق الإعدادات المجلوبة من Backend
+  useEffect(() => {
+    if (!settingsRaw || Object.keys(settingsRaw).length === 0) return;
+    if (settingsRaw.storeName) setSName(settingsRaw.storeName as string);
+    if (settingsRaw.phone)     setPhone(settingsRaw.phone as string);
+    if (settingsRaw.address)   setAddress(settingsRaw.address as string);
+    if (settingsRaw.language)  setLang(settingsRaw.language as string);
+    if (settingsRaw.receiptLang) setRl(settingsRaw.receiptLang as string);
+    if (settingsRaw.taxRate !== undefined) {
+      const t = String(settingsRaw.taxRate);
+      setTax(t);
+      // تحديث localStorage حتى POS يقرأ الضريبة الصحيحة فوراً
+      try { localStorage.setItem(sk(sid, "sett_tax"), t); } catch {}
+    }
+    if (settingsRaw.paperSize)    setPaper(settingsRaw.paperSize as string);
+    if (settingsRaw.printCopies)  setPrintCopies(settingsRaw.printCopies as string);
+    if (settingsRaw.printLogo   !== undefined) setPrintLogo(Boolean(settingsRaw.printLogo));
+    if (settingsRaw.printTax    !== undefined) setPrintTax(Boolean(settingsRaw.printTax));
+    if (settingsRaw.printPhone  !== undefined) setPrintPhone(Boolean(settingsRaw.printPhone));
+    if (settingsRaw.printBarcode!== undefined) setPrintBarcode(Boolean(settingsRaw.printBarcode));
+  }, [settingsRaw, sid]);
+
+  const doSave = async () => {
+    try {
+      await storeApi.put("/settings", {
+        storeName: sName, phone, address, language: lang, receiptLang: rl,
+        taxRate: parseFloat(tax) || 0,
+        paperSize: paper, printCopies,
+        printLogo, printTax, printPhone, printBarcode,
+      });
+      // تحديث localStorage للـ POS
+      try { localStorage.setItem(sk(sid, "sett_tax"), String(parseFloat(tax) || 0)); } catch {}
+      try { localStorage.setItem(sk(sid, "sett_paper"), paper); } catch {}
+      await refreshSettings();
+      showToast("تم حفظ إعدادات المتجر في قاعدة البيانات ✅", "success");
+    } catch { showToast("خطأ في حفظ الإعدادات", "error"); }
+  };
 
   return (
     <div className="p-5 space-y-5 overflow-y-auto h-full">
