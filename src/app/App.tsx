@@ -878,6 +878,7 @@ function SAStores() {
   const [renewStore, setRenewStore] = useState<StoreData | null>(null);
   const [renewMonths, setRenewMonths] = useState("1");
   const [deleteConfirm, setDeleteConfirm] = useState<StoreData | null>(null);
+  const [exportData,    setExportData]    = useState<StoreData | null>(null);  // ← كان ناقصاً
   const [nf, setNf] = useState({ nameAr: "", nameEn: "", category: "supermarket" as StoreCategory, owner: "", email: "", phone: "", city: "", plan: "الاحترافي", taxNo: "" });
 
   // جلب المتاجر من Backend عند فتح الشاشة
@@ -1041,8 +1042,9 @@ function SAStores() {
             </tr></thead>
             <tbody className="divide-y divide-border/60">
               {filtered.map(s => {
-                const cat = CAT[s.category];
-                const expired = new Date(s.expiresAt) < new Date();
+                // defensive fallback — يمنع crash إذا كانت الفئة غير موجودة
+                const cat = CAT[s.category as StoreCategory] || CAT["supermarket"];
+                const expired = s.expiresAt ? new Date(s.expiresAt) < new Date() : false;
                 return (
                   <tr key={s.id} className={`hover:bg-muted/20 transition-colors ${s.status === "suspended" ? "opacity-70" : ""}`}>
                     <td className="p-4">
@@ -1152,9 +1154,13 @@ function SAStores() {
 
       {/* ── Store Details Modal ── */}
       {detail && (
-        <Modal title={detail.nameAr} sub={`${CAT[detail.category].label} • ${detail.city} • ${detail.email}`} onClose={() => setDetail(null)} size="lg">
+        <Modal
+          title={detail.nameAr}
+          sub={`${(CAT[detail.category as StoreCategory] || CAT["supermarket"]).label} • ${detail.city} • ${detail.email}`}
+          onClose={() => setDetail(null)}
+          size="lg"
+        >
           <div className="space-y-4">
-            {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[{ l: "مستخدمون", v: detail.users, color: "#1D4ED8" }, { l: "منتجات", v: detail.products, color: "#059669" }, { l: "فواتير", v: detail.sales, color: "#D97706" }, { l: "فروع", v: detail.branches, color: "#7C3AED" }].map(x => (
                 <div key={x.l} className="rounded-xl p-3 text-center border border-border" style={{ backgroundColor: `${x.color}08` }}>
@@ -1163,26 +1169,41 @@ function SAStores() {
                 </div>
               ))}
             </div>
-            {/* Info grid */}
             <div className="grid grid-cols-2 gap-3 text-sm">
-              {[["المالك", detail.owner], ["الهاتف", detail.phone], ["البريد الإلكتروني", detail.email], ["الخطة الحالية", detail.plan], ["إجمالي الإيرادات", jod(detail.revenue)], ["تاريخ الإنشاء", detail.createdAt], ["انتهاء الاشتراك", detail.expiresAt], ["الحالة", ST[detail.status].label], ["الفئة", CAT[detail.category].label], ["الرقم الضريبي", detail.taxNo || "—"]].map(([l, v]) => (
-                <div key={l} className="flex justify-between border-b border-border/60 pb-2 last:border-0">
+              {[
+                ["المالك", detail.owner],
+                ["الهاتف", detail.phone],
+                ["البريد الإلكتروني", detail.email],
+                ["الخطة الحالية", detail.plan],
+                ["إجمالي الإيرادات", jod(detail.revenue || 0)],
+                ["تاريخ الإنشاء", detail.createdAt],
+                ["انتهاء الاشتراك", detail.expiresAt],
+                ["الحالة", (ST[detail.status] || ST["active"]).label],
+                ["الفئة", (CAT[detail.category as StoreCategory] || CAT["supermarket"]).label],
+                ["الرقم الضريبي", detail.taxNo || "—"],
+              ].map(([l, v]) => (
+                <div key={String(l)} className="flex justify-between border-b border-border/60 pb-2 last:border-0">
                   <span className="text-muted-foreground text-xs">{l}</span>
                   <span className="font-bold text-xs text-right">{v}</span>
                 </div>
               ))}
             </div>
-            {/* Subscription status bar */}
-            <div className={`p-3 rounded-xl border text-sm font-semibold flex items-center gap-2 ${new Date(detail.expiresAt) < new Date() ? "bg-red-50 border-red-200 text-red-700" : new Date(detail.expiresAt) < new Date(Date.now() + 7 * 86400000) ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
-              {new Date(detail.expiresAt) < new Date() ? <><XCircle size={16} /> الاشتراك منتهي — يجب التجديد</> : new Date(detail.expiresAt) < new Date(Date.now() + 7 * 86400000) ? <><AlertTriangle size={16} /> ينتهي الاشتراك خلال أقل من أسبوع</> : <><CheckCircle size={16} /> الاشتراك نشط حتى {detail.expiresAt}</>}
-            </div>
-            {/* Action buttons */}
+            {detail.expiresAt && (
+              <div className={`p-3 rounded-xl border text-sm font-semibold flex items-center gap-2 ${new Date(detail.expiresAt) < new Date() ? "bg-red-50 border-red-200 text-red-700" : new Date(detail.expiresAt) < new Date(Date.now() + 7 * 86400000) ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
+                {new Date(detail.expiresAt) < new Date()
+                  ? <>الاشتراك منتهي — يجب التجديد</>
+                  : new Date(detail.expiresAt) < new Date(Date.now() + 7 * 86400000)
+                  ? <>ينتهي الاشتراك خلال أقل من أسبوع</>
+                  : <>الاشتراك نشط حتى {detail.expiresAt}</>}
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 pt-1">
               <Btn v="secondary" s="sm" icon={<Edit2 size={12} />} onClick={() => { setEditStore({ ...detail }); setDetail(null); }}>تعديل البيانات</Btn>
               <Btn v="secondary" s="sm" icon={<CreditCard size={12} />} onClick={() => { setRenewStore(detail); setDetail(null); }}>تجديد الاشتراك</Btn>
               <Btn v="secondary" s="sm" icon={<Key size={12} />} onClick={() => doResetPass(detail)}>إعادة تعيين كلمة المرور</Btn>
               <Btn v="secondary" s="sm" icon={<Download size={12} />} onClick={() => doExport(detail)}>تصدير بيانات المتجر</Btn>
-              <Btn v={detail.status === "active" ? "warning" : "success"} s="sm" icon={detail.status === "active" ? <Lock size={12} /> : <Unlock size={12} />}
+              <Btn v={detail.status === "active" ? "warning" : "success"} s="sm"
+                icon={detail.status === "active" ? <Lock size={12} /> : <Unlock size={12} />}
                 onClick={() => { toggle(detail.id); setDetail({ ...detail, status: detail.status === "active" ? "suspended" : "active" }); }}>
                 {detail.status === "active" ? "إيقاف المتجر" : "تفعيل المتجر"}
               </Btn>
