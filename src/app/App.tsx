@@ -8,9 +8,20 @@ const API = (import.meta as Record<string,Record<string,string>>).env?.VITE_API_
 async function apiFetch(path: string, opts: RequestInit = {}, token?: string): Promise<unknown> {
   const headers: Record<string,string> = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API}${path}`, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw data;
+
+  let res: Response;
+  try {
+    res = await fetch(`${API}${path}`, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
+  } catch {
+    // Network error — CORS, no connection, wrong URL
+    throw { error: `تعذّر الاتصال بالخادم (${API}) — تحقق من VITE_API_URL` };
+  }
+
+  let data: unknown = {};
+  try { data = await res.json(); } catch { data = {}; }
+
+  if (!res.ok) throw data || { error: `خطأ ${res.status}` };
+  if (!data) throw { error: "استجابة فارغة من الخادم" };
   return data;
 }
 
@@ -457,22 +468,23 @@ function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store", id?:
       if (mode === "admin") {
         // ── المدير العام — Backend فقط ───────────────────────────────
         const res = await apiLoginAdmin(email, pass);
+        if (!res?.token) throw { error: "لم يُستلم توكن من الخادم" };
         setToken(res.token);
         onLogin("superadmin");
       } else {
-        // ── المتجر — Backend فقط (MongoDB) ───────────────────────────
-        // يعمل من أي متصفح/جهاز/موقع
+        // ── المتجر — Backend فقط (MongoDB) — يعمل من أي متصفح ────────
         const res = await apiLoginStore(email, pass);
+        if (!res?.token) throw { error: "لم يُستلم توكن من الخادم" };
+        if (!res?.store?.id) throw { error: "بيانات المتجر غير مكتملة" };
         setToken(res.token);
-        // كاش بيانات المتجر محلياً للـ UI فقط (ليس للمصادقة)
         try {
           localStorage.setItem(`sowwanjo_storeinfo_${res.store.id}`, JSON.stringify(res.store));
         } catch {}
         onLogin("store", res.store.id);
       }
     } catch (err: unknown) {
-      const msg = (err as {error?:string}).error;
-      setErr(msg || "حدث خطأ — تحقق من اتصالك بالإنترنت وحاول مرة أخرى");
+      const e = err as {error?:string; message?:string};
+      setErr(e.error || e.message || "حدث خطأ غير متوقع — حاول مرة أخرى");
     } finally {
       setLoading(false);
     }
