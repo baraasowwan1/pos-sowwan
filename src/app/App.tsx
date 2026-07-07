@@ -223,64 +223,173 @@ interface ReceiptData {
 }
 
 function printReceipt(data: ReceiptData, paper: string = "80mm") {
-  const w = paper === "58mm" ? "58mm" : "80mm";
+  const w     = paper === "58mm" ? "58mm" : "80mm";
+  const wPx   = paper === "58mm" ? "219px" : "302px";   // 58mm ≈ 219px, 80mm ≈ 302px @ 96dpi
+  const fontSize = paper === "58mm" ? "11px" : "13px";
+
   const html = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
 <meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width"/>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: 'Cairo', 'Arial', sans-serif; font-size: 12px; width:${w}; }
-  .center { text-align:center; }
-  .bold { font-weight: bold; }
-  .line { border-top: 1px dashed #000; margin: 6px 0; }
-  .row { display:flex; justify-content:space-between; margin:2px 0; }
-  .store-name { font-size:16px; font-weight:900; margin-bottom:4px; }
-  .inv-no { font-size:11px; color:#555; }
-  .item-name { flex:1; }
-  .total-row { font-size:14px; font-weight:900; margin-top:4px; }
-  .footer { font-size:10px; color:#555; margin-top:8px; }
-  @media print { @page { margin:0; size:${w} auto; } body { width:${w}; } }
+
+  html, body {
+    width: ${wPx};
+    max-width: ${wPx};
+    font-family: 'Cairo', 'Tahoma', 'Arial', sans-serif;
+    font-size: ${fontSize};
+    line-height: 1.4;
+    color: #000;
+    background: #fff;
+    direction: rtl;
+  }
+
+  .receipt {
+    width: ${wPx};
+    max-width: ${wPx};
+    padding: 4px 6px;
+  }
+
+  .center  { text-align: center; }
+  .bold    { font-weight: bold; }
+  .right   { text-align: right; }
+
+  .line {
+    border-top: 1px dashed #000;
+    margin: 5px 0;
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 2px 0;
+    gap: 4px;
+  }
+
+  .store-name   { font-size: 15px; font-weight: 900; margin-bottom: 3px; }
+  .inv-no       { font-size: 10px; color: #333; }
+  .item-name    { flex: 1; text-align: right; word-break: break-word; }
+  .item-qty     { white-space: nowrap; text-align: left; font-size: 10px; margin: 0 3px; }
+  .item-total   { white-space: nowrap; font-weight: bold; }
+  .total-row    { font-size: 14px; font-weight: 900; margin-top: 3px; }
+  .footer       { font-size: 10px; color: #555; margin-top: 6px; }
+  .discount-note { font-size: 10px; color: #666; padding-right: 4px; }
+
+  @page {
+    margin: 0;
+    size: ${w} auto;
+  }
+
+  @media print {
+    html, body {
+      width: ${wPx};
+      max-width: ${wPx};
+    }
+    .receipt {
+      width: ${wPx};
+      max-width: ${wPx};
+    }
+  }
 </style>
 </head>
 <body>
-<div class="center">
-  <div class="store-name">${data.storeName}</div>
-  <div class="inv-no">${data.storePhone}</div>
-  <div class="inv-no">pos.sowwanjo.online</div>
+<div class="receipt">
+
+  <div class="center">
+    <div class="store-name">${data.storeName}</div>
+    ${data.storePhone ? `<div class="inv-no">${data.storePhone}</div>` : ""}
+    <div class="inv-no">pos.sowwanjo.online</div>
+  </div>
+
+  <div class="line"></div>
+
+  <div class="row inv-no">
+    <span>فاتورة: ${data.invNo}</span>
+    <span>${data.date}</span>
+  </div>
+  <div class="inv-no center">${data.time}</div>
+
+  <div class="line"></div>
+
+  ${data.items.map(it => `
+  <div class="row">
+    <span class="item-name">${it.name}</span>
+    <span class="item-qty">${it.qty}×${it.price.toFixed(3)}</span>
+    <span class="item-total">${(it.qty * it.price * (1 - it.discount / 100)).toFixed(3)}</span>
+  </div>
+  ${it.discount > 0 ? `<div class="discount-note">خصم صنف: ${it.discount}%</div>` : ""}
+  `).join("")}
+
+  <div class="line"></div>
+
+  <div class="row">
+    <span>المجموع الفرعي</span>
+    <span>${data.subtotal.toFixed(3)} JOD</span>
+  </div>
+
+  ${data.discountAmt > 0 ? `
+  <div class="row">
+    <span>خصم الفاتورة</span>
+    <span>-${data.discountAmt.toFixed(3)} JOD</span>
+  </div>` : ""}
+
+  ${data.taxAmt > 0 ? `
+  <div class="row">
+    <span>ضريبة ${(data.taxRate * 100).toFixed(0)}%</span>
+    <span>${data.taxAmt.toFixed(3)} JOD</span>
+  </div>` : ""}
+
+  <div class="line"></div>
+
+  <div class="row total-row">
+    <span>الإجمالي</span>
+    <span>${data.total.toFixed(3)} JOD</span>
+  </div>
+
+  <div class="row">
+    <span>الدفع</span>
+    <span>${data.payMethod}</span>
+  </div>
+
+  ${data.cashIn != null && data.cashIn > 0 ? `
+  <div class="row">
+    <span>المُستلم</span>
+    <span>${(data.cashIn || 0).toFixed(3)} JOD</span>
+  </div>` : ""}
+
+  ${(data.change || 0) > 0 ? `
+  <div class="row bold">
+    <span>الباقي</span>
+    <span>${(data.change || 0).toFixed(3)} JOD</span>
+  </div>` : ""}
+
+  <div class="line"></div>
+
+  <div class="center footer">
+    شكراً لتعاملكم معنا<br/>
+    pos.sowwanjo.online
+  </div>
+
 </div>
-<div class="line"></div>
-<div class="row inv-no"><span>رقم الفاتورة: ${data.invNo}</span><span>${data.date}</span></div>
-<div class="inv-no center">${data.time}</div>
-<div class="line"></div>
-${data.items.map(it => `
-<div class="row">
-  <span class="item-name">${it.name}</span>
-  <span>${it.qty} × ${it.price.toFixed(3)}</span>
-  <span class="bold">${(it.qty * it.price * (1 - it.discount/100)).toFixed(3)} JOD</span>
-</div>
-${it.discount > 0 ? `<div class="inv-no">خصم صنف: ${it.discount}%</div>` : ""}
-`).join("")}
-<div class="line"></div>
-<div class="row"><span>المجموع الفرعي</span><span>${data.subtotal.toFixed(3)} JOD</span></div>
-${data.discountAmt > 0 ? `<div class="row"><span>خصم الفاتورة</span><span>-${data.discountAmt.toFixed(3)} JOD</span></div>` : ""}
-${data.taxAmt > 0 ? `<div class="row"><span>ضريبة القيمة المضافة ${(data.taxRate * 100).toFixed(0)}%</span><span>${data.taxAmt.toFixed(3)} JOD</span></div>` : ""}
-<div class="line"></div>
-<div class="row total-row"><span>الإجمالي المستحق</span><span>${data.total.toFixed(3)} JOD</span></div>
-<div class="row"><span>طريقة الدفع: ${data.payMethod}</span></div>
-${data.cashIn != null ? `<div class="row"><span>المبلغ المستلم</span><span>${(data.cashIn || 0).toFixed(3)} JOD</span></div>` : ""}
-${(data.change || 0) > 0 ? `<div class="row bold"><span>الباقي</span><span>${(data.change || 0).toFixed(3)} JOD</span></div>` : ""}
-<div class="line"></div>
-<div class="center footer">شكراً لتعاملكم معنا<br/>pos.sowwanjo.online</div>
 </body>
 </html>`;
 
-  const win = window.open("", "_blank", "width=400,height=600");
-  if (!win) { alert("الرجاء السماح بالنوافذ المنبثقة لطباعة الإيصال"); return; }
+  // فتح نافذة بعرض دقيق يتناسب مع الطابعة الحرارية
+  const winW = paper === "58mm" ? 250 : 340;
+  const win = window.open("", "_blank", `width=${winW},height=700,scrollbars=no,toolbar=no,menubar=no`);
+  if (!win) { alert("السماح بالنوافذ المنبثقة مطلوب لطباعة الإيصال"); return; }
+  win.document.open();
   win.document.write(html);
   win.document.close();
   win.focus();
-  setTimeout(() => { win.print(); win.close(); }, 400);
+  setTimeout(() => {
+    win.print();
+    // لا نغلق تلقائياً حتى يتم الطباعة فعلاً
+    setTimeout(() => win.close(), 1500);
+  }, 600);
 }
 
 function SBadge({ status }: { status: StoreData["status"] }) {
