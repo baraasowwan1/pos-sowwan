@@ -1,4 +1,58 @@
 import { useState, useCallback, useRef, useEffect, createContext, useContext } from "react";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API SERVICE — يربط Frontend بـ Backend API (MongoDB)
+// ─────────────────────────────────────────────────────────────────────────────
+const API = (import.meta as Record<string,Record<string,string>>).env?.VITE_API_URL || "http://localhost:5000/api";
+
+async function apiFetch(path: string, opts: RequestInit = {}, token?: string): Promise<unknown> {
+  const headers: Record<string,string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API}${path}`, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw data;
+  return data;
+}
+
+// جلب/حفظ JWT token
+const getToken = () => { try { return localStorage.getItem("sowwanjo_jwt") || ""; } catch { return ""; } };
+const setToken = (t: string) => { try { localStorage.setItem("sowwanjo_jwt", t); } catch {} };
+const clearToken = () => { try { localStorage.removeItem("sowwanjo_jwt"); } catch {} };
+
+// دخول المتجر من Backend
+async function apiLoginStore(email: string, password: string) {
+  return apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }) as Promise<{token:string;store:{id:string;nameAr:string;category:string;plan:string;status:string}}>;
+}
+
+// دخول المدير العام من Backend
+async function apiLoginAdmin(email: string, password: string) {
+  return apiFetch("/auth/admin", { method: "POST", body: JSON.stringify({ email, password }) }) as Promise<{token:string;role:string}>;
+}
+
+// إنشاء متجر من Backend (السوبر أدمن)
+async function apiCreateStore(data: object) {
+  return apiFetch("/stores", { method: "POST", body: JSON.stringify(data) }, getToken()) as Promise<{store:StoreData;generatedPassword:string}>;
+}
+
+// جلب جميع المتاجر من Backend
+async function apiGetStores() {
+  return apiFetch("/stores", {}, getToken()) as Promise<StoreData[]>;
+}
+
+// تحديث متجر
+async function apiUpdateStore(id: string, data: object) {
+  return apiFetch(`/stores/${id}`, { method: "PUT", body: JSON.stringify(data) }, getToken()) as Promise<StoreData>;
+}
+
+// حذف متجر
+async function apiDeleteStore(id: string) {
+  return apiFetch(`/stores/${id}`, { method: "DELETE" }, getToken());
+}
+
+// إعادة تعيين كلمة مرور متجر
+async function apiResetPass(id: string) {
+  return apiFetch(`/stores/${id}/reset-password`, { method: "POST" }, getToken()) as Promise<{newPassword:string}>;
+}
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -396,36 +450,54 @@ function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store", id?:
     }
   };
 
-  const doLogin = () => {
+  const doLogin = async () => {
     setLoading(true); setErr("");
-    setTimeout(() => {
-      setLoading(false);
+    try {
       if (mode === "admin") {
-        // Super admin credentials — not displayed anywhere in the UI
-        if (email === "superadmin" && pass === "SA@Jordan#2025!") onLogin("superadmin");
-        else setErr("بيانات الدخول غير صحيحة");
-      } else {
-        // يقرأ المتاجر من localStorage (المتاجر المضافة من السوبر أدمن)
-        let allStores = STORES;
+        // ── دخول المدير العام عبر Backend API ──────────────────────
         try {
-          const saved = localStorage.getItem("sowwanjo_sa_stores");
-          if (saved) allStores = JSON.parse(saved);
-        } catch {}
-        const store = allStores.find(s => s.email.toLowerCase() === email.toLowerCase());
-        if (store) {
-          // يتحقق من كلمة المرور المخزّنة لهذا المتجر
-          let storedPass = "Store@2025"; // الافتراضية
-          try {
-            const sp = localStorage.getItem(`sowwanjo_pass_${store.id}`);
-            if (sp) storedPass = sp;
-          } catch {}
-          if (pass !== storedPass) { setErr("البريد الإلكتروني أو كلمة المرور غير صحيحة"); return; }
-          if (store.status === "suspended") { setErr("هذا المتجر موقوف — تواصل مع الدعم الفني."); return; }
-          if (store.status === "expired") { setErr("انتهت صلاحية اشتراكك — تواصل مع الدعم لتجديده."); return; }
-          onLogin("store", store.id);
-        } else setErr("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+          const res = await apiLoginAdmin(email, pass);
+          setToken(res.token);
+          onLogin("superadmin");
+        } catch {
+          // Fallback محلي إذا Backend غير متوفر
+          if (email === "superadmin" && pass === "SA@Jordan#2025!") onLogin("superadmin");
+          else setErr("بيانات الدخول غير صحيحة");
+        }
+      } else {
+        // ── دخول المتجر عبر Backend API (يعمل من أي متصفح) ────────
+        try {
+          const res = await apiLoginStore(email, pass);
+          setToken(res.token);
+          // حفظ بيانات المتجر محلياً للسرعة
+          try { localStorage.setItem(`sowwanjo_storeinfo_${res.store.id}`, JSON.stringify(res.store)); } catch {}
+          if (res.store.status === "suspended") { setErr("هذا المتجر موقوف — تواصل مع الدعم الفني."); return; }
+          if (res.store.status === "expired") { setErr("انتهت صلاحية اشتراكك — تواصل مع الدعم لتجديده."); return; }
+          onLogin("store", res.store.id);
+        } catch (apiErr: unknown) {
+          const errMsg = (apiErr as {error?:string}).error;
+          // Fallback: البحث في localStorage فقط إذا Backend غير متوفر
+          if (errMsg && errMsg !== "Failed to fetch") {
+            // Backend رد لكن كلمة المرور خاطئة
+            setErr(errMsg || "البريد الإلكتروني أو كلمة المرور غير صحيحة");
+          } else {
+            // Backend غير متوفر — fallback للـ localStorage
+            let allStores = STORES;
+            try { const s = localStorage.getItem("sowwanjo_sa_stores"); if (s) allStores = JSON.parse(s); } catch {}
+            const store = allStores.find(s => s.email.toLowerCase() === email.toLowerCase());
+            if (store) {
+              let storedPass = "Store@2025";
+              try { const sp = localStorage.getItem(`sowwanjo_pass_${store.id}`); if (sp) storedPass = sp; } catch {}
+              if (pass !== storedPass) { setErr("البريد الإلكتروني أو كلمة المرور غير صحيحة"); return; }
+              if (store.status === "suspended") { setErr("هذا المتجر موقوف."); return; }
+              onLogin("store", store.id);
+            } else setErr("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+          }
+        }
       }
-    }, 900);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -801,12 +873,14 @@ function SADash({ onNav }: { onNav: (s: string) => void }) {
 }
 
 function SAStores() {
-  // Persist stores list — بيانات المتاجر تبقى بعد الـ refresh
+  // قائمة المتاجر — تُجلب من Backend (MongoDB) وتُكاش محلياً
   const [stores, setStores] = useLS<StoreData[]>("sowwanjo_sa_stores", STORES);
+  const [loadingStores, setLoadingStores] = useState(false);
   const [q, setQ] = useState("");
   const [sf, setSf] = useState("all");
   const [catF, setCatF] = useState("all");
   const [showNew, setShowNew] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [detail, setDetail] = useState<StoreData | null>(null);
   const [editStore, setEditStore] = useState<StoreData | null>(null);
   const [creds, setCreds] = useState<{ email: string; pass: string } | null>(null);
@@ -814,8 +888,28 @@ function SAStores() {
   const [renewStore, setRenewStore] = useState<StoreData | null>(null);
   const [renewMonths, setRenewMonths] = useState("1");
   const [deleteConfirm, setDeleteConfirm] = useState<StoreData | null>(null);
-  const [exportData, setExportData] = useState<StoreData | null>(null);
   const [nf, setNf] = useState({ nameAr: "", nameEn: "", category: "supermarket" as StoreCategory, owner: "", email: "", phone: "", city: "", plan: "الاحترافي", taxNo: "" });
+
+  // جلب المتاجر من Backend عند فتح الشاشة
+  useEffect(() => {
+    const fetchStores = async () => {
+      setLoadingStores(true);
+      try {
+        const data = await apiGetStores() as StoreData[];
+        if (data && Array.isArray(data) && data.length > 0) {
+          // تحويل _id من MongoDB إلى id
+          const mapped = data.map((s: StoreData & { _id?: string }) => ({ ...s, id: s._id || s.id }));
+          setStores(mapped);
+        }
+      } catch {
+        // إذا Backend غير متوفر يستمر بالـ localStorage
+      } finally {
+        setLoadingStores(false);
+      }
+    };
+    fetchStores();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = stores.filter(s =>
     (!q || s.nameAr.includes(q) || s.nameEn.toLowerCase().includes(q.toLowerCase()) || s.owner.includes(q) || s.email.includes(q))
@@ -823,51 +917,90 @@ function SAStores() {
     && (catF === "all" || s.category === catF)
   );
 
-  const toggle = (id: string) => {
-    setStores(p => p.map(s => s.id === id ? { ...s, status: s.status === "active" ? "suspended" as const : "active" as const } : s));
+  const toggle = async (id: string) => {
     const store = stores.find(s => s.id === id);
-    showToast(store?.status === "active" ? `تم إيقاف "${store.nameAr}"` : `تم تفعيل "${store?.nameAr}"`, store?.status === "active" ? "warning" : "success");
+    const newStatus = store?.status === "active" ? "suspended" : "active";
+    try {
+      await apiUpdateStore(id, { status: newStatus });
+    } catch { /* fallback */ }
+    setStores(p => p.map(s => s.id === id ? { ...s, status: newStatus as StoreData["status"] } : s));
+    showToast(store?.status === "active" ? `تم إيقاف "${store?.nameAr}"` : `تم تفعيل "${store?.nameAr}"`, store?.status === "active" ? "warning" : "success");
   };
 
-  const doDelete = (id: string) => {
+  const doDelete = async (id: string) => {
     const store = stores.find(s => s.id === id);
+    try {
+      await apiDeleteStore(id);
+    } catch { /* fallback */ }
     setStores(p => p.filter(s => s.id !== id));
     setDeleteConfirm(null); setDetail(null);
     showToast(`تم حذف متجر "${store?.nameAr}"`, "warning");
   };
 
-  const create = () => {
-    const pw = `Store@${Math.floor(Math.random() * 90000) + 10000}!`;
-    const sid = `s${Date.now()}`;
-    const ns: StoreData = { id: sid, ...nf, status: "trial", users: 1, products: 0, sales: 0, revenue: 0, createdAt: new Date().toISOString().split("T")[0], expiresAt: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0], branches: 1 };
-    // حفظ كلمة المرور المولّدة مرتبطة بـ storeId
-    try { localStorage.setItem(`sowwanjo_pass_${sid}`, pw); } catch {}
-    setStores(p => [ns, ...p]);
-    setShowNew(false);
-    setCreds({ email: nf.email, pass: pw });
-    setNf({ nameAr: "", nameEn: "", category: "supermarket", owner: "", email: "", phone: "", city: "", plan: "الاحترافي", taxNo: "" });
+  // إنشاء متجر — يُحفظ في MongoDB أولاً ثم localStorage
+  const create = async () => {
+    setCreating(true);
+    try {
+      // محاولة الحفظ في Backend
+      const res = await apiCreateStore(nf);
+      const newStore: StoreData = { ...(res.store as StoreData), id: (res.store as StoreData & {_id?:string})._id || (res.store as StoreData).id };
+      setStores(p => [newStore, ...p]);
+      setShowNew(false);
+      setCreds({ email: nf.email, pass: res.generatedPassword });
+      setNf({ nameAr: "", nameEn: "", category: "supermarket", owner: "", email: "", phone: "", city: "", plan: "الاحترافي", taxNo: "" });
+      showToast(`تم إنشاء متجر "${nf.nameAr}" وحفظه في قاعدة البيانات ✅`);
+    } catch {
+      // Fallback: حفظ محلي إذا Backend غير متوفر
+      const pw = `Store@${Math.floor(Math.random() * 90000) + 10000}!`;
+      const sid = `s${Date.now()}`;
+      const ns: StoreData = { id: sid, ...nf, status: "trial", users: 1, products: 0, sales: 0, revenue: 0, createdAt: new Date().toISOString().split("T")[0], expiresAt: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0], branches: 1 };
+      try { localStorage.setItem(`sowwanjo_pass_${sid}`, pw); } catch {}
+      setStores(p => [ns, ...p]);
+      setShowNew(false);
+      setCreds({ email: nf.email, pass: pw });
+      setNf({ nameAr: "", nameEn: "", category: "supermarket", owner: "", email: "", phone: "", city: "", plan: "الاحترافي", taxNo: "" });
+      showToast("تم الحفظ محلياً (Backend غير متوفر حالياً)", "warning");
+    } finally {
+      setCreating(false);
+    }
   };
 
-  const doEdit = () => {
+  const doEdit = async () => {
     if (!editStore) return;
+    try {
+      await apiUpdateStore(editStore.id, {
+        nameAr: editStore.nameAr, nameEn: editStore.nameEn, owner: editStore.owner,
+        phone: editStore.phone, city: editStore.city, plan: editStore.plan,
+        status: editStore.status, expiresAt: editStore.expiresAt, taxNo: editStore.taxNo,
+      });
+    } catch { /* fallback */ }
     setStores(p => p.map(s => s.id === editStore.id ? editStore : s));
     if (detail?.id === editStore.id) setDetail(editStore);
     showToast(`تم تحديث بيانات "${editStore.nameAr}" بنجاح`);
     setEditStore(null);
   };
 
-  const doResetPass = (store: StoreData) => {
-    const pw = `Store@${Math.floor(Math.random() * 90000) + 10000}!`;
-    // حفظ كلمة المرور الجديدة في localStorage
-    try { localStorage.setItem(`sowwanjo_pass_${store.id}`, pw); } catch {}
-    setNewPass({ store: store.nameAr, pass: pw });
+  const doResetPass = async (store: StoreData) => {
+    try {
+      // إعادة تعيين من Backend — يحدّث في MongoDB
+      const res = await apiResetPass(store.id);
+      setNewPass({ store: store.nameAr, pass: res.newPassword });
+    } catch {
+      // Fallback محلي
+      const pw = `Store@${Math.floor(Math.random() * 90000) + 10000}!`;
+      try { localStorage.setItem(`sowwanjo_pass_${store.id}`, pw); } catch {}
+      setNewPass({ store: store.nameAr, pass: pw });
+    }
     setDetail(null);
   };
 
-  const doRenew = () => {
+  const doRenew = async () => {
     if (!renewStore) return;
     const months = parseInt(renewMonths);
     const newExpiry = new Date(Date.now() + months * 30 * 86400000).toISOString().split("T")[0];
+    try {
+      await apiUpdateStore(renewStore.id, { status: "active", expiresAt: newExpiry });
+    } catch { /* fallback */ }
     setStores(p => p.map(s => s.id === renewStore.id ? { ...s, status: "active" as const, expiresAt: newExpiry } : s));
     if (detail?.id === renewStore.id) setDetail({ ...detail, status: "active", expiresAt: newExpiry });
     showToast(`تم تجديد اشتراك "${renewStore.nameAr}" لمدة ${months} شهر حتى ${newExpiry}`, "success");
@@ -980,7 +1113,7 @@ function SAStores() {
           </div>
           <div className="flex gap-3 mt-5 justify-end">
             <Btn v="secondary" onClick={() => setShowNew(false)}>إلغاء</Btn>
-            <Btn icon={<Plus size={14} />} onClick={create} disabled={!nf.nameAr || !nf.email || !nf.owner}>إنشاء المتجر</Btn>
+            <Btn icon={creating ? <RefreshCw size={14} className="animate-spin" /> : <Plus size={14} />} onClick={create} disabled={!nf.nameAr || !nf.email || !nf.owner || creating}>{creating ? "جاري الإنشاء..." : "إنشاء المتجر"}</Btn>
           </div>
         </Modal>
       )}
@@ -1401,11 +1534,19 @@ const STORE_NAV = [
 ];
 
 function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => void }) {
-  // يقرأ بيانات المتجر من localStorage (يشمل المتاجر المضافة من السوبر أدمن)
-  const allStores: StoreData[] = (() => {
-    try { const s = localStorage.getItem("sowwanjo_sa_stores"); return s ? JSON.parse(s) : STORES; } catch { return STORES; }
+  // يقرأ بيانات المتجر — أولاً من Backend JWT ثم من localStorage
+  const storeFromLS: StoreData = (() => {
+    try {
+      // بيانات المتجر المحفوظة من JWT login
+      const info = localStorage.getItem(`sowwanjo_storeinfo_${storeId}`);
+      if (info) return JSON.parse(info);
+      // fallback: البحث في قائمة المتاجر المكاشة
+      const all = localStorage.getItem("sowwanjo_sa_stores");
+      if (all) { const arr = JSON.parse(all); return arr.find((s: StoreData) => s.id === storeId) || null; }
+    } catch {}
+    return null;
   })();
-  const store = allStores.find(s => s.id === storeId) || { id: storeId, nameAr: "متجري", nameEn: "My Store", category: "supermarket" as StoreCategory, owner: "", email: "", phone: "", city: "", status: "active" as const, plan: "مبتدئ", users: 0, products: 0, sales: 0, revenue: 0, createdAt: new Date().toISOString().split("T")[0], expiresAt: new Date(Date.now() + 365*86400000).toISOString().split("T")[0], branches: 1 };
+  const store: StoreData = storeFromLS || { id: storeId, nameAr: "متجري", nameEn: "My Store", category: "supermarket" as StoreCategory, owner: "", email: "", phone: "", city: "", status: "active" as const, plan: "مبتدئ", users: 0, products: 0, sales: 0, revenue: 0, createdAt: new Date().toISOString().split("T")[0], expiresAt: new Date(Date.now() + 365*86400000).toISOString().split("T")[0], branches: 1 };
   const [screen, setScreen] = useState("dashboard");
   const [col, setCol] = useState(false);
   const cat = CAT[store.category];
@@ -2972,6 +3113,7 @@ export default function App() {
 
   const logout = useCallback(() => {
     localStorage.removeItem("sowwanjo_session");
+    clearToken(); // مسح JWT token
     setView("login");
     setStoreId("");
   }, []);
