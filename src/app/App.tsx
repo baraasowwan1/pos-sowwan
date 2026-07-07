@@ -451,50 +451,28 @@ function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store", id?:
   };
 
   const doLogin = async () => {
+    if (!email || !pass) { setErr("الرجاء إدخال البريد الإلكتروني وكلمة المرور"); return; }
     setLoading(true); setErr("");
     try {
       if (mode === "admin") {
-        // ── دخول المدير العام عبر Backend API ──────────────────────
-        try {
-          const res = await apiLoginAdmin(email, pass);
-          setToken(res.token);
-          onLogin("superadmin");
-        } catch {
-          // Fallback محلي إذا Backend غير متوفر
-          if (email === "superadmin" && pass === "SA@Jordan#2025!") onLogin("superadmin");
-          else setErr("بيانات الدخول غير صحيحة");
-        }
+        // ── المدير العام — Backend فقط ───────────────────────────────
+        const res = await apiLoginAdmin(email, pass);
+        setToken(res.token);
+        onLogin("superadmin");
       } else {
-        // ── دخول المتجر عبر Backend API (يعمل من أي متصفح) ────────
+        // ── المتجر — Backend فقط (MongoDB) ───────────────────────────
+        // يعمل من أي متصفح/جهاز/موقع
+        const res = await apiLoginStore(email, pass);
+        setToken(res.token);
+        // كاش بيانات المتجر محلياً للـ UI فقط (ليس للمصادقة)
         try {
-          const res = await apiLoginStore(email, pass);
-          setToken(res.token);
-          // حفظ بيانات المتجر محلياً للسرعة
-          try { localStorage.setItem(`sowwanjo_storeinfo_${res.store.id}`, JSON.stringify(res.store)); } catch {}
-          if (res.store.status === "suspended") { setErr("هذا المتجر موقوف — تواصل مع الدعم الفني."); return; }
-          if (res.store.status === "expired") { setErr("انتهت صلاحية اشتراكك — تواصل مع الدعم لتجديده."); return; }
-          onLogin("store", res.store.id);
-        } catch (apiErr: unknown) {
-          const errMsg = (apiErr as {error?:string}).error;
-          // Fallback: البحث في localStorage فقط إذا Backend غير متوفر
-          if (errMsg && errMsg !== "Failed to fetch") {
-            // Backend رد لكن كلمة المرور خاطئة
-            setErr(errMsg || "البريد الإلكتروني أو كلمة المرور غير صحيحة");
-          } else {
-            // Backend غير متوفر — fallback للـ localStorage
-            let allStores = STORES;
-            try { const s = localStorage.getItem("sowwanjo_sa_stores"); if (s) allStores = JSON.parse(s); } catch {}
-            const store = allStores.find(s => s.email.toLowerCase() === email.toLowerCase());
-            if (store) {
-              let storedPass = "Store@2025";
-              try { const sp = localStorage.getItem(`sowwanjo_pass_${store.id}`); if (sp) storedPass = sp; } catch {}
-              if (pass !== storedPass) { setErr("البريد الإلكتروني أو كلمة المرور غير صحيحة"); return; }
-              if (store.status === "suspended") { setErr("هذا المتجر موقوف."); return; }
-              onLogin("store", store.id);
-            } else setErr("البريد الإلكتروني أو كلمة المرور غير صحيحة");
-          }
-        }
+          localStorage.setItem(`sowwanjo_storeinfo_${res.store.id}`, JSON.stringify(res.store));
+        } catch {}
+        onLogin("store", res.store.id);
       }
+    } catch (err: unknown) {
+      const msg = (err as {error?:string}).error;
+      setErr(msg || "حدث خطأ — تحقق من اتصالك بالإنترنت وحاول مرة أخرى");
     } finally {
       setLoading(false);
     }
