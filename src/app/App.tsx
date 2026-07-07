@@ -827,7 +827,7 @@ function SADash({ onNav }: { onNav: (s: string) => void }) {
                   <div className="flex-1">
                     <div className="flex justify-between mb-1">
                       <span className="text-xs font-bold text-foreground truncate max-w-[110px]">{s.nameAr}</span>
-                      <span className="text-xs font-bold text-foreground">{jod(s.revenue)}</span>
+                      <span className="text-xs font-bold text-foreground">{jod(s.revenue || 0)}</span>
                     </div>
                     <div className="h-1.5 bg-muted rounded-full"><div className="h-full rounded-full" style={{ width: `${(s.revenue / max) * 100}%`, backgroundColor: cat.color }} /></div>
                   </div>
@@ -850,7 +850,7 @@ function SADash({ onNav }: { onNav: (s: string) => void }) {
               <div key={s.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/30">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: cat.bg }}><span style={{ color: cat.color }}>{cat.icon}</span></div>
                 <div className="flex-1 min-w-0"><p className="text-sm font-bold text-foreground truncate">{s.nameAr}</p><p className="text-xs text-muted-foreground">{s.owner} • {s.city}</p></div>
-                <div className="hidden sm:block text-right shrink-0"><p className="text-sm font-bold text-foreground">{jod(s.revenue)}</p><p className="text-xs text-muted-foreground">{s.sales.toLocaleString()} فاتورة</p></div>
+                <div className="hidden sm:block text-right shrink-0"><p className="text-sm font-bold text-foreground">{jod(s.revenue || 0)}</p><p className="text-xs text-muted-foreground">{s.sales.toLocaleString()} فاتورة</p></div>
                 <SBadge status={s.status} />
                 <span className="hidden lg:block text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">{s.plan}</span>
               </div>
@@ -864,7 +864,23 @@ function SADash({ onNav }: { onNav: (s: string) => void }) {
 
 function SAStores() {
   // قائمة المتاجر — تُجلب من Backend (MongoDB) وتُكاش محلياً
-  const [stores, setStores] = useLS<StoreData[]>("sowwanjo_sa_stores", STORES);
+  const [rawStores, setStores] = useLS<StoreData[]>("sowwanjo_sa_stores", STORES);
+  // تطبيع بيانات المتاجر لضمان عدم وجود قيم null/undefined
+  const stores = rawStores.map(s => ({
+    revenue:  0, sales: 0, products: 0, users: 1, branches: 1,
+    ...s,
+    nameAr:   s.nameAr || "متجر",
+    nameEn:   s.nameEn || "",
+    category: (s.category || "supermarket") as StoreData["category"],
+    status:   (s.status || "active") as StoreData["status"],
+    owner:    s.owner || "",
+    email:    s.email || "",
+    phone:    s.phone || "",
+    city:     s.city || "",
+    plan:     s.plan || "مبتدئ",
+    expiresAt:s.expiresAt || new Date(Date.now() + 365*86400000).toISOString().split("T")[0],
+    createdAt:s.createdAt || new Date().toISOString().split("T")[0],
+  }));
   const [loadingStores, setLoadingStores] = useState(false);
   const [q, setQ] = useState("");
   const [sf, setSf] = useState("all");
@@ -902,11 +918,17 @@ function SAStores() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filtered = stores.filter(s =>
-    (!q || s.nameAr.includes(q) || s.nameEn.toLowerCase().includes(q.toLowerCase()) || s.owner.includes(q) || s.email.includes(q))
-    && (sf === "all" || s.status === sf)
-    && (catF === "all" || s.category === catF)
-  );
+  const filtered = stores.filter(s => {
+    if (!s || !s.id) return false;  // skip invalid entries
+    const matchQ = !q
+      || (s.nameAr || "").includes(q)
+      || (s.nameEn || "").toLowerCase().includes(q.toLowerCase())
+      || (s.owner || "").includes(q)
+      || (s.email || "").includes(q);
+    const matchSt = sf === "all" || s.status === sf;
+    const matchCat = catF === "all" || s.category === catF;
+    return matchQ && matchSt && matchCat;
+  });
 
   const toggle = async (id: string) => {
     const store = stores.find(s => s.id === id);
@@ -1059,7 +1081,7 @@ function SAStores() {
                     <td className="p-4 hidden md:table-cell"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: cat.bg, color: cat.color }}>{cat.label}</span></td>
                     <td className="p-4 hidden lg:table-cell"><span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{s.plan}</span></td>
                     <td className="p-4"><SBadge status={s.status} /></td>
-                    <td className="p-4 hidden sm:table-cell font-bold text-foreground">{jod(s.revenue)}</td>
+                    <td className="p-4 hidden sm:table-cell font-bold text-foreground">{jod(s.revenue || 0)}</td>
                     <td className="p-4 hidden lg:table-cell">
                       <span className={`text-xs font-medium ${expired ? "text-red-600 font-bold" : "text-muted-foreground"}`}>{s.expiresAt}</span>
                       {expired && <span className="block text-xs text-red-500 font-bold">منتهي!</span>}
@@ -1266,7 +1288,7 @@ function SAStores() {
             </div>
             <div className="p-3 bg-muted rounded-xl border border-border text-center">
               <p className="font-black text-foreground text-lg">{deleteConfirm.nameAr}</p>
-              <p className="text-xs text-muted-foreground">{deleteConfirm.email} • {deleteConfirm.sales.toLocaleString()} فاتورة • {jod(deleteConfirm.revenue)}</p>
+              <p className="text-xs text-muted-foreground">{deleteConfirm.email} • {deleteConfirm.sales.toLocaleString()} فاتورة • {jod(deleteConfirm.revenue || 0)}</p>
             </div>
             <div className="flex gap-3 justify-end">
               <Btn v="secondary" onClick={() => setDeleteConfirm(null)}>إلغاء</Btn>
