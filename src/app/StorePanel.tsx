@@ -17,7 +17,7 @@ import {
   ArrowUpRight, ArrowDownRight, Clipboard, Copy, Power, Monitor,
   Info, ChevronLeft, Grid3X3, List, Hash, Tag,
 } from "lucide-react";
-import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, PLANS, CAT, ST, printReceipt, StoreData, Product, CartItem, StoreCategory, PRODUCTS, jod, getToken, useStoreModules } from "./lib";
+import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules } from "./lib";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
 
 const STORE_NAV = [
@@ -252,7 +252,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
           {screen === "purchases" && <PurchScreen />}
           {screen === "expenses"  && <ExpScreen />}
           {screen === "returns"   && <ReturnScreen />}
-          {screen === "reports"   && <StoreReports store={store} />}
+          {screen === "reports"   && <StoreReports />}
           {screen === "employees" && <EmpScreen />}
           {screen === "branches"  && <BranchScreen />}
           {screen === "loyalty"   && <LoyaltyScreen />}
@@ -410,8 +410,17 @@ function StoreDash({ store }: { store: StoreData }) {
 // POS TERMINAL (Full interactive)
 // ─────────────────────────────────────────────────────────────────────────────
 
+interface CashSession { id?: string; openedAt: string; openingBalance: number; closingBalance?: number; totalSales?: number; status: "open" | "closed"; }
+
 function POSTerm({ store }: { store: StoreData }) {
   const sid = useStoreId();
+  // Cash session state
+  const [session, setSession] = useLS<CashSession | null>(sk(sid, "pos_session"), null);
+  const [showOpenSession, setShowOpenSession] = useState(false);
+  const [showCloseSession, setShowCloseSession] = useState(false);
+  const [openingBal, setOpeningBal] = useState("0");
+  const [closingBal, setClosingBal] = useState("");
+
   // نفس مخزن المنتجات المشترك مع ProductsMgr وInvScreen
   // منتجات POS — من Backend مباشرة
   const { data: prodsApiRaw, refresh: refreshPosProds } = useApi<unknown[]>("/products", []);
@@ -495,6 +504,58 @@ function POSTerm({ store }: { store: StoreData }) {
 
   const handleClose = () => { setOk(false); setCart([]); setShowPay(false); setCash(""); setDisc(0); };
 
+  const openSession = () => {
+    const s: CashSession = { openedAt: new Date().toISOString(), openingBalance: parseFloat(openingBal) || 0, status: "open" };
+    setSession(s);
+    setShowOpenSession(false);
+    showToast(`تم فتح الجلسة — الرصيد الافتتاحي: ${(parseFloat(openingBal)||0).toFixed(3)} JOD`, "success");
+  };
+
+  const closeSession = () => {
+    if (!session) return;
+    const closed: CashSession = { ...session, closingBalance: parseFloat(closingBal) || 0, totalSales: sub, status: "closed" };
+    // Print closing summary
+    const w = window.open("", "_blank", "width=500,height=600");
+    if (w) {
+      const now = new Date();
+      w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إغلاق الجلسة</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Cairo','Tahoma',Arial,sans-serif;direction:rtl;padding:28px;color:#111;font-size:13px}h1{text-align:center;font-size:18px;font-weight:900;margin-bottom:4px}p.sub{text-align:center;color:#666;font-size:11px;margin-bottom:20px}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e5e7eb;font-size:13px}.row:last-child{font-weight:bold;font-size:15px;border-bottom:2px solid #111}.footer{margin-top:20px;text-align:center;font-size:10px;color:#999}</style></head><body><h1>تقرير إغلاق الجلسة</h1><p class="sub">${store.nameAr}</p><p class="sub">فُتحت: ${new Date(session.openedAt).toLocaleString("ar-JO")} — أُغلقت: ${now.toLocaleString("ar-JO")}</p><div class="row"><span>الرصيد الافتتاحي</span><span>${session.openingBalance.toFixed(3)} JOD</span></div><div class="row"><span>الرصيد الختامي المُعدّ</span><span>${closed.closingBalance?.toFixed(3)} JOD</span></div><div class="row"><span>الفرق</span><span>${((closed.closingBalance||0) - session.openingBalance).toFixed(3)} JOD</span></div><div class="footer">Sowwanjo POS — نظام نقاط البيع</div></body></html>`);
+      w.document.close();
+      setTimeout(() => { w.focus(); w.print(); }, 400);
+    }
+    setSession(null);
+    setShowCloseSession(false);
+    setCart([]);
+    showToast("تم إغلاق الجلسة النقدية بنجاح", "success");
+  };
+
+  // If no session, show session open screen
+  if (!session) {
+    return (
+      <div className="flex h-full items-center justify-center p-6" style={{ background: "linear-gradient(160deg,#F0F9FF,#E0F2FE)" }}>
+        <div className="bg-card rounded-3xl border border-border shadow-xl p-8 max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <Wallet size={36} className="text-blue-500" />
+          </div>
+          <h2 className="text-2xl font-black mb-2">فتح جلسة POS</h2>
+          <p className="text-muted-foreground text-sm mb-6">أدخل الرصيد الافتتاحي في الدرج النقدي لبدء العمل</p>
+          <F label="الرصيد الافتتاحي (JOD)">
+            <TInput value={openingBal} onChange={setOpeningBal} type="number" placeholder="0.000" icon={<Banknote size={13} />} />
+          </F>
+          <div className="grid grid-cols-3 gap-2 my-4">
+            {[0, 10, 20, 50, 100, 200].map(v => (
+              <button key={v} onClick={() => setOpeningBal(String(v))} className="h-10 rounded-xl text-sm font-bold border border-border hover:bg-primary hover:text-white hover:border-primary transition-all">
+                {v} JOD
+              </button>
+            ))}
+          </div>
+          <Btn full s="lg" onClick={openSession} icon={<Power size={16} />}>فتح الجلسة</Btn>
+          <p className="text-xs text-muted-foreground mt-4">{new Date().toLocaleString("ar-JO")}</p>
+        </div>
+        {showOpenSession && null}
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full overflow-hidden" style={{ background: "#F8FAFC" }}>
       {/* Products */}
@@ -567,8 +628,19 @@ function POSTerm({ store }: { store: StoreData }) {
       {/* Cart */}
       <div className="w-72 md:w-80 lg:w-96 bg-card flex flex-col border-l border-border shrink-0">
         <div className="px-4 py-3 border-b border-border shrink-0">
-          <div className="flex items-center justify-between"><p className="font-bold">سلة المشتريات</p><span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-lg">{invNo}</span></div>
-          <p className="text-xs text-muted-foreground mt-0.5">{cart.length} صنف • {cart.reduce((a, i) => a + i.qty, 0)} وحدة</p>
+          <div className="flex items-center justify-between">
+            <p className="font-bold">سلة المشتريات</p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-lg">{invNo}</span>
+              <button onClick={() => { setClosingBal(""); setShowCloseSession(true); }} title="إغلاق الجلسة" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500 transition-colors">
+                <Power size={13} />
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground mt-0.5">{cart.length} صنف • {cart.reduce((a, i) => a + i.qty, 0)} وحدة</p>
+            <p className="text-xs text-emerald-600 font-bold mt-0.5">● جلسة مفتوحة</p>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
           {cart.length === 0 ? (
@@ -734,6 +806,39 @@ function POSTerm({ store }: { store: StoreData }) {
             <Btn v="success" full onClick={handleClose} icon={<Plus size={14} />}>فاتورة جديدة</Btn>
           </div>
         </div>
+      )}
+
+      {/* Close Session Modal */}
+      {showCloseSession && (
+        <Modal title="إغلاق الجلسة النقدية" sub={`فُتحت: ${new Date(session?.openedAt || Date.now()).toLocaleString("ar-JO")}`} onClose={() => setShowCloseSession(false)} size="sm">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-muted/50 rounded-xl p-3 text-center">
+                <p className="text-xs text-muted-foreground mb-1">الرصيد الافتتاحي</p>
+                <p className="font-black text-lg">{session?.openingBalance?.toFixed(3)} JOD</p>
+              </div>
+              <div className="bg-emerald-50 rounded-xl p-3 text-center">
+                <p className="text-xs text-muted-foreground mb-1">إجمالي المبيعات</p>
+                <p className="font-black text-lg text-emerald-700">{total.toFixed(3)} JOD</p>
+              </div>
+            </div>
+            <F label="الرصيد الختامي الفعلي في الدرج (JOD)">
+              <TInput value={closingBal} onChange={setClosingBal} type="number" placeholder="0.000" icon={<Wallet size={13} />} />
+            </F>
+            {closingBal && (
+              <div className={`p-3 rounded-xl border-2 text-center ${parseFloat(closingBal) >= (session?.openingBalance || 0) ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
+                <p className="text-xs text-muted-foreground mb-1">الفرق</p>
+                <p className={`font-black text-lg ${parseFloat(closingBal) >= (session?.openingBalance || 0) ? "text-emerald-700" : "text-red-700"}`}>
+                  {(parseFloat(closingBal) - (session?.openingBalance || 0)).toFixed(3)} JOD
+                </p>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <Btn v="secondary" cls="flex-1" onClick={() => setShowCloseSession(false)}>إلغاء</Btn>
+              <Btn v="danger" cls="flex-1" icon={<Power size={14} />} onClick={closeSession}>إغلاق الجلسة وطباعة التقرير</Btn>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
@@ -1862,121 +1967,122 @@ function ReturnScreen() {
   );
 }
 
-function StoreReports({ store }: { store?: StoreData }) {
-  const [period, setPeriod] = useState("week");
-  type PeriodSummary = { total?: number; count?: number; profit?: number; returns?: number; discounts?: number };
-  type WeekPoint = { day: string; مبيعات: number; أرباح: number };
-  type TopProduct = { nameAr: string; total: number; pct?: number };
-  type PayBreakdown = { method: string; total: number; pct: number };
-  type TaxData = { taxableSales?: number; taxAmount?: number; exemptSales?: number };
-  const { data: periodData, loading: periodLoading } = useApi<PeriodSummary>(`/reports/period?range=${period}`, {});
-  const { data: weekChartRaw } = useApi<WeekPoint[]>("/reports/weekly", []);
-  const { data: topProducts } = useApi<TopProduct[]>("/reports/top-products?limit=5", []);
-  const { data: payBreakdown } = useApi<PayBreakdown[]>("/reports/payment-methods", []);
-  const { data: taxData } = useApi<TaxData>("/reports/tax", {});
-  const defaultWeek: WeekPoint[] = [
-    { day: "السبت", مبيعات: 0, أرباح: 0 }, { day: "الأحد", مبيعات: 0, أرباح: 0 },
-    { day: "الاثنين", مبيعات: 0, أرباح: 0 }, { day: "الثلاثاء", مبيعات: 0, أرباح: 0 },
-    { day: "الأربعاء", مبيعات: 0, أرباح: 0 }, { day: "الخميس", مبيعات: 0, أرباح: 0 },
-    { day: "الجمعة", مبيعات: 0, أرباح: 0 },
-  ];
-  const weekChartData = (weekChartRaw && weekChartRaw.length > 0) ? weekChartRaw : defaultWeek;
-  const maxTopSales = topProducts.length > 0 ? Math.max(...topProducts.map(p => p.total)) : 1;
-  const PAY_ICONS: Record<string, { ic: React.ReactNode; c: string }> = {
-    نقدي:    { ic: <Banknote size={18} />,   c: "#059669" },
-    كليك:    { ic: <CreditCard size={18} />, c: "#1D4ED8" },
-    مختلط:   { ic: <Layers size={18} />,    c: "#D97706" },
-    "بطاقة ائتمانية": { ic: <CreditCard size={18} />, c: "#7C3AED" },
-    "تحويل بنكي":     { ic: <Banknote size={18} />,   c: "#0891B2" },
-    شيك:     { ic: <FileText size={18} />,  c: "#DB2777" },
-  };
-  const taxable = taxData?.taxableSales || 0;
-  const taxAmt  = taxData?.taxAmount    || 0;
-  const exempt  = taxData?.exemptSales  || 0;
+function StoreReports() {
+  const [period, setPeriod] = useState("month");
+  const { data: salesRaw, loading: sLoading } = useApi<unknown[]>("/sales", []);
+  const { data: retsRaw } = useApi<unknown[]>("/returns", []);
+
+  const sales = normList<{id:string;total:number;discount:number;tax:number;paymentMethod:string;createdAt:string;items:{name:string;qty:number;price:number}[]}>(salesRaw);
+  const rets  = normList<{id:string;amount:number;status:string}>(retsRaw);
+
+  const now = new Date();
+  const filtered = sales.filter(s => {
+    const d = new Date(s.createdAt);
+    if (period === "week") { const w = new Date(now); w.setDate(w.getDate() - 7); return d >= w; }
+    if (period === "month") return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    return d.getFullYear() === now.getFullYear();
+  });
+
+  const totalSales    = filtered.reduce((a, s) => a + (s.total || 0), 0);
+  const totalDiscount = filtered.reduce((a, s) => a + (s.discount || 0), 0);
+  const totalTax      = filtered.reduce((a, s) => a + (s.tax || 0), 0);
+  const totalRets     = rets.filter(r => r.status === "معتمد").reduce((a, r) => a + (r.amount || 0), 0);
+
+  const payGroups = filtered.reduce((acc: Record<string, number>, s) => {
+    const m = s.paymentMethod || "نقدي";
+    acc[m] = (acc[m] || 0) + s.total;
+    return acc;
+  }, {});
+  const payTotal = Object.values(payGroups).reduce((a, v) => a + v, 0) || 1;
+
+  const prodMap: Record<string, number> = {};
+  filtered.forEach(s => s.items?.forEach(it => { prodMap[it.name] = (prodMap[it.name] || 0) + (it.price * it.qty); }));
+  const topProds = Object.entries(prodMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const topMax = topProds[0]?.[1] || 1;
+
+  const dayMap: Record<string, number> = {};
+  filtered.forEach(s => {
+    const key = new Date(s.createdAt).toLocaleDateString("ar-JO", { weekday: "short" });
+    dayMap[key] = (dayMap[key] || 0) + s.total;
+  });
+  const chartData = Object.entries(dayMap).map(([day, مبيعات]) => ({ day, مبيعات }));
+
   const printTax = () => {
-    const storeName = store?.nameAr || "المتجر";
-    const storePhone = store?.phone || "";
-    const dateStr = new Date().toLocaleDateString("ar-JO", { year: "numeric", month: "long", day: "numeric" });
-    const monthStr = new Date().toLocaleDateString("ar-JO", { year: "numeric", month: "long" });
-    const html = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير الضريبة - ${storeName}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Cairo','Tahoma',Arial,sans-serif;direction:rtl;text-align:right;padding:32px;color:#111;font-size:14px}h1{text-align:center;font-size:22px;margin-bottom:4px;font-weight:900}h2{text-align:center;font-size:14px;color:#555;margin-bottom:2px;font-weight:normal}p.sub{text-align:center;color:#888;font-size:12px;margin-bottom:28px;margin-top:2px}.section{border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:16px}.section-title{font-size:13px;font-weight:bold;color:#374151;margin-bottom:12px;border-bottom:1px solid #f3f4f6;padding-bottom:8px}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px}.row:last-child{border-bottom:none}.row.total{font-weight:bold;font-size:15px;color:#1d4ed8;padding-top:12px}.footer{margin-top:24px;text-align:center;font-size:11px;color:#9ca3af;line-height:1.6}@media print{body{padding:16px}}</style></head><body><h1>${storeName}</h1>${storePhone ? `<h2>${storePhone}</h2>` : ""}<p class="sub">تقرير ضريبة القيمة المضافة — ${monthStr}<br>تاريخ الطباعة: ${dateStr}</p><div class="section"><div class="section-title">ملخص الضريبة</div><div class="row"><span>المبيعات الإجمالية</span><span>${(taxable + taxAmt).toFixed(3)} JOD</span></div><div class="row"><span>مبيعات خاضعة للضريبة</span><span>${taxable.toFixed(3)} JOD</span></div><div class="row"><span>مبيعات معفاة من الضريبة</span><span>${exempt.toFixed(3)} JOD</span></div><div class="row total"><span>ضريبة القيمة المضافة المحصّلة</span><span>${taxAmt.toFixed(3)} JOD</span></div></div><div class="footer">Sowwanjo POS — نظام نقاط البيع السحابي<br>هذا التقرير مُولَّد تلقائياً من النظام</div></body></html>`;
-    const w = window.open("", "_blank", "width=560,height=750,scrollbars=yes,resizable=yes");
-    if (!w) {
-      showToast("يُرجى السماح بالنوافذ المنبثقة في إعدادات المتصفح ثم أعد المحاولة", "warning");
-      return;
-    }
-    w.document.open();
-    w.document.write(html);
+    const taxable = totalSales - totalTax;
+    const w = window.open("", "_blank", "width=420,height=600");
+    if (!w) { showToast("يُرجى السماح بالنوافذ المنبثقة", "warning"); return; }
+    w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>تقرير الضريبة</title><style>*{font-family:Cairo,sans-serif;margin:0;padding:0}body{padding:20px}h2{text-align:center;margin-bottom:16px}table{width:100%;border-collapse:collapse}td{padding:10px;border-bottom:1px solid #e5e7eb}td:last-child{font-weight:900;text-align:left}@media print{button{display:none}}</style></head><body><h2>تقرير الضريبة — ${period === "month" ? now.toLocaleDateString("ar-JO", { month: "long", year: "numeric" }) : period === "week" ? "آخر 7 أيام" : "السنة الحالية"}</h2><table><tr><td>إجمالي المبيعات</td><td>${totalSales.toFixed(3)} JOD</td></tr><tr><td>مبيعات خاضعة للضريبة</td><td>${taxable.toFixed(3)} JOD</td></tr><tr><td>ضريبة القيمة المضافة 16%</td><td>${totalTax.toFixed(3)} JOD</td></tr><tr><td>الخصومات</td><td>${totalDiscount.toFixed(3)} JOD</td></tr></table><br><button onclick="window.print()">طباعة</button></body></html>`);
     w.document.close();
-    setTimeout(() => { try { w.focus(); w.print(); } catch { showToast("تعذّر فتح نافذة الطباعة", "error"); } }, 600);
   };
+
   return (
-    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto h-full">
-      <Hdr title="التقارير والإحصائيات" action={<><Btn v="secondary" s="sm" icon={<Download size={13} />} onClick={() => showToast("جاري إعداد تقرير PDF...", "info")}>PDF</Btn><Btn v="secondary" s="sm" icon={<Download size={13} />} onClick={() => showToast("جاري تصدير ملف Excel...", "info")}>Excel</Btn></>} />
+    <div className="p-5 space-y-5 overflow-y-auto h-full">
+      <Hdr title="التقارير والإحصائيات" action={<Btn v="secondary" s="sm" icon={<Printer size={13} />} onClick={printTax}>طباعة تقرير الضريبة</Btn>} />
       <div className="flex bg-muted rounded-2xl p-1 border border-border w-fit">
         {[["week","أسبوع"],["month","شهر"],["year","سنة"]].map(([vv,l]) => <button key={vv} onClick={() => setPeriod(vv)} className={`px-4 h-8 rounded-xl text-xs font-bold transition-all ${period === vv ? "bg-card shadow-sm" : "text-muted-foreground"}`}>{l}</button>)}
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI icon={<ShoppingCart size={18} />} label="المبيعات" value={periodLoading ? "..." : `${(periodData.total || 0).toFixed(3)} JOD`} sub={`${periodData.count || 0} فاتورة`} color="#1D4ED8" />
-        <KPI icon={<TrendingUp size={18} />} label="الربح الصافي" value={periodLoading ? "..." : `${(periodData.profit || 0).toFixed(3)} JOD`} color="#059669" />
-        <KPI icon={<RotateCcw size={18} />} label="المرتجعات" value={periodLoading ? "..." : `${(periodData.returns || 0).toFixed(3)} JOD`} color="#DC2626" />
-        <KPI icon={<Percent size={18} />} label="الخصومات" value={periodLoading ? "..." : `${(periodData.discounts || 0).toFixed(3)} JOD`} color="#D97706" />
-      </div>
+      {sLoading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{[0,1,2,3].map(i => <div key={i} className="bg-card rounded-2xl border border-border h-24 animate-pulse" />)}</div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KPI icon={<ShoppingCart size={18} />} label="إجمالي المبيعات" value={`${totalSales.toFixed(3)} JOD`} sub={`${filtered.length} فاتورة`} color="#1D4ED8" />
+          <KPI icon={<TrendingUp size={18} />} label="ضريبة القيمة المضافة" value={`${totalTax.toFixed(3)} JOD`} color="#059669" />
+          <KPI icon={<RotateCcw size={18} />} label="المرتجعات المعتمدة" value={`${totalRets.toFixed(3)} JOD`} color="#DC2626" />
+          <KPI icon={<Percent size={18} />} label="إجمالي الخصومات" value={`${totalDiscount.toFixed(3)} JOD`} color="#D97706" />
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="bg-card rounded-2xl border border-border p-5">
-          <p className="font-bold mb-4">المبيعات والأرباح</p>
-          <ResponsiveContainer width="100%" height={190}>
-            <LineChart data={weekChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="day" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip formatter={(v: number) => [`${v} JOD`]} />
-              <Line key="rpt-sales" type="monotone" dataKey="مبيعات" stroke="#1D4ED8" strokeWidth={2.5} dot={false} />
-              <Line key="rpt-prof" type="monotone" dataKey="أرباح" stroke="#059669" strokeWidth={2.5} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+          <p className="font-bold mb-4">مبيعات الفترة</p>
+          {chartData.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">لا توجد مبيعات في هذه الفترة</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={190}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} />
+                <Tooltip formatter={(v: number) => [`${v.toFixed(3)} JOD`]} />
+                <Line type="monotone" dataKey="مبيعات" stroke="#1D4ED8" strokeWidth={2.5} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">أكثر المنتجات مبيعاً</p>
-          {topProducts.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8">لا توجد مبيعات بعد</p>
+          {topProds.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">لا توجد مبيعات بعد</div>
           ) : (
             <div className="space-y-3">
-              {topProducts.map((pp, i) => {
-                const pct = Math.round((pp.total / maxTopSales) * 100);
-                return (
-                  <div key={i} className="flex items-center gap-3">
-                    <span className="text-xs font-black text-muted-foreground w-4 shrink-0">{i + 1}</span>
-                    <div className="flex-1"><div className="flex justify-between mb-1"><span className="text-xs font-bold">{pp.nameAr}</span><span className="text-xs font-black">{pp.total.toFixed(3)} JOD</span></div><div className="h-1.5 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} /></div></div>
-                  </div>
-                );
-              })}
+              {topProds.map(([name, rev], i) => (
+                <div key={name} className="flex items-center gap-3">
+                  <span className="text-xs font-black text-muted-foreground w-4 shrink-0">{i + 1}</span>
+                  <div className="flex-1"><div className="flex justify-between mb-1"><span className="text-xs font-bold">{name}</span><span className="text-xs font-black">{rev.toFixed(3)} JOD</span></div><div className="h-1.5 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${Math.round((rev / topMax) * 100)}%` }} /></div></div>
+                </div>
+              ))}
             </div>
           )}
         </div>
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">طرق الدفع</p>
-          {payBreakdown.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8">لا توجد بيانات دفع بعد</p>
+          {Object.keys(payGroups).length === 0 ? (
+            <div className="h-24 flex items-center justify-center text-muted-foreground text-sm">لا توجد مبيعات بعد</div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
-              {payBreakdown.map(x => {
-                const meta = PAY_ICONS[x.method] || { ic: <CreditCard size={18} />, c: "#6B7280" };
-                return (
-                  <div key={x.method} className="text-center p-4 rounded-2xl bg-muted/40 border border-border">
-                    <div className="w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center" style={{ backgroundColor: `${meta.c}15` }}><span style={{ color: meta.c }}>{meta.ic}</span></div>
-                    <p className="text-2xl font-black">{x.pct}%</p>
-                    <p className="text-xs font-bold mt-0.5">{x.method}</p>
-                    <p className="text-xs text-muted-foreground">{x.total.toFixed(3)} JOD</p>
-                  </div>
-                );
-              })}
+              {Object.entries(payGroups).map(([method, amount]) => (
+                <div key={method} className="text-center p-4 rounded-2xl bg-muted/40 border border-border">
+                  <p className="text-2xl font-black">{Math.round((amount / payTotal) * 100)}%</p>
+                  <p className="text-xs font-bold mt-0.5">{method}</p>
+                  <p className="text-xs text-muted-foreground">{amount.toFixed(3)} JOD</p>
+                </div>
+              ))}
             </div>
           )}
         </div>
         <div className="bg-card rounded-2xl border border-border p-5">
-          <p className="font-bold mb-4">تقرير الضريبة</p>
+          <p className="font-bold mb-4">ملخص الضريبة</p>
           <div className="space-y-3">
-            {[["المبيعات الإجمالية", `${(taxable + taxAmt + exempt).toFixed(3)} JOD`], ["مبيعات خاضعة للضريبة", `${taxable.toFixed(3)} JOD`], ["مبيعات معفاة من الضريبة", `${exempt.toFixed(3)} JOD`], ["ضريبة القيمة المضافة المحصّلة", `${taxAmt.toFixed(3)} JOD`]].map(([l, vv]) => (
+            {[["إجمالي المبيعات", `${totalSales.toFixed(3)} JOD`], ["مبيعات قبل الضريبة", `${(totalSales - totalTax).toFixed(3)} JOD`], ["ضريبة القيمة المضافة 16%", `${totalTax.toFixed(3)} JOD`], ["الخصومات الممنوحة", `${totalDiscount.toFixed(3)} JOD`]].map(([l, vv]) => (
               <div key={l} className="flex justify-between border-b border-border/60 pb-2 last:border-0">
                 <span className="text-sm text-muted-foreground">{l}</span><span className="font-bold">{vv}</span>
               </div>
@@ -1988,7 +2094,6 @@ function StoreReports({ store }: { store?: StoreData }) {
     </div>
   );
 }
-
 function EmpScreen() {
   const sid = useStoreId();
   const { data: empsRaw, refresh: refreshEmps } = useApi<unknown[]>("/users", []);
