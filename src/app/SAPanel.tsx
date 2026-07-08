@@ -136,41 +136,43 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="flex h-screen overflow-hidden bg-background" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
 
-      {/* ── DESKTOP SIDEBAR (hidden on mobile) ───────────────────────────── */}
-      <aside className={`hidden md:flex ${col ? "w-[58px]" : "w-60"} shrink-0 flex-col transition-all duration-300`}
+      {/* ── SIDEBAR: mobile=hidden, tablet=icon-only(52px), desktop=full(240px) ── */}
+      <aside
+        className={`hidden md:flex shrink-0 flex-col transition-all duration-300 md:w-[52px] ${col ? "lg:w-[52px]" : "lg:w-60"}`}
         style={{ background: "linear-gradient(180deg,#0F172A 0%,#1A2744 100%)" }}>
-        <div className="h-14 flex items-center border-b border-white/7 px-3 gap-3 shrink-0">
+        <div className="h-14 flex items-center border-b border-white/7 px-2 lg:px-3 gap-3 shrink-0">
           <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shrink-0">
             <Store size={15} className="text-blue-400" />
           </div>
-          {!col && <div className="min-w-0"><p className="text-white font-black text-sm truncate">Sowwanjo POS</p><p className="text-white/30 text-xs">لوحة الإدارة العليا</p></div>}
-        </div>
-        {!col && (
-          <div className="mx-3 mt-3 mb-2 p-3 rounded-xl bg-white/5 border border-white/7">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-blue-500/30 flex items-center justify-center shrink-0"><Shield size={12} className="text-blue-400" /></div>
-              <div className="min-w-0"><p className="text-white text-xs font-bold">المدير العام</p><p className="text-white/30 text-xs">Super Admin</p></div>
-            </div>
+          <div className={`min-w-0 hidden ${col ? "lg:hidden" : "lg:block"}`}>
+            <p className="text-white font-black text-sm truncate">Sowwanjo POS</p>
+            <p className="text-white/30 text-xs">لوحة الإدارة العليا</p>
           </div>
-        )}
-        <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto">
+        </div>
+        <div className={`mx-3 mt-3 mb-2 p-3 rounded-xl bg-white/5 border border-white/7 hidden ${col ? "lg:hidden" : "lg:block"}`}>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-blue-500/30 flex items-center justify-center shrink-0"><Shield size={12} className="text-blue-400" /></div>
+            <div className="min-w-0"><p className="text-white text-xs font-bold">المدير العام</p><p className="text-white/30 text-xs">Super Admin</p></div>
+          </div>
+        </div>
+        <nav className="flex-1 px-1.5 py-2 space-y-0.5 overflow-y-auto">
           {SA_NAV.map(n => (
             <button key={n.id} onClick={() => navTo(n.id)}
-              className={`w-full flex items-center gap-3 h-9 rounded-xl text-xs font-semibold transition-all ${col ? "justify-center px-2" : "px-3"} ${screen === n.id ? "bg-white/10 text-white border border-white/10" : "text-white/50 hover:bg-white/5 hover:text-white/80"}`}
-              title={col ? n.label : undefined}>
+              className={`w-full flex items-center gap-3 rounded-xl text-xs font-semibold transition-all justify-center md:h-10 lg:h-9 md:px-1.5 ${col ? "lg:justify-center lg:px-1.5" : "lg:justify-start lg:px-3"} ${screen === n.id ? "bg-white/10 text-white border border-white/10" : "text-white/50 hover:bg-white/5 hover:text-white/80"}`}
+              title={n.label}>
               <span className="shrink-0">{n.icon}</span>
-              {!col && <span>{n.label}</span>}
-              {!col && screen === n.id && <span className="mr-auto w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />}
+              <span className={`hidden ${col ? "lg:hidden" : "lg:inline"} truncate`}>{n.label}</span>
+              <span className={`mr-auto w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 hidden ${col ? "lg:hidden" : screen === n.id ? "lg:inline-block" : "lg:hidden"}`} />
             </button>
           ))}
         </nav>
-        <div className="p-2 border-t border-white/7 space-y-0.5">
-          <button onClick={() => setCol(!col)} className={`w-full flex items-center gap-3 h-9 rounded-xl text-xs text-white/40 hover:text-white/70 hover:bg-white/5 transition-all ${col ? "justify-center" : "px-3"}`}>
+        <div className="p-1.5 border-t border-white/7 space-y-0.5">
+          <button onClick={() => setCol(!col)} className={`hidden lg:flex w-full items-center gap-3 h-9 rounded-xl text-xs text-white/40 hover:text-white/70 hover:bg-white/5 transition-all ${col ? "justify-center" : "px-3"}`}>
             {col ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
             {!col && <span>طي القائمة</span>}
           </button>
-          <button onClick={onLogout} className={`w-full flex items-center gap-3 h-9 rounded-xl text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-all ${col ? "justify-center" : "px-3"}`}>
-            <LogOut size={15} />{!col && <span>تسجيل الخروج</span>}
+          <button onClick={onLogout} className={`w-full flex items-center gap-3 h-10 lg:h-9 rounded-xl text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-all justify-center ${col ? "lg:justify-center" : "lg:justify-start lg:px-3"}`}>
+            <LogOut size={15} /><span className={`hidden ${col ? "lg:hidden" : "lg:inline"}`}>تسجيل الخروج</span>
           </button>
         </div>
       </aside>
@@ -327,9 +329,9 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
           ))}
         </nav>
 
-        {/* ── MOBILE FAB: Create Store ──────────────────────────────────── */}
+        {/* ── MOBILE FAB: Create Store (phone only) ───────────────────── */}
         <button onClick={() => navTo("stores")}
-          className="md:hidden fixed left-4 z-40 w-14 h-14 rounded-full bg-primary text-white shadow-xl flex items-center justify-center"
+          className="flex md:hidden fixed left-4 z-40 w-14 h-14 rounded-full bg-primary text-white shadow-xl items-center justify-center"
           style={{ bottom: "calc(env(safe-area-inset-bottom) + 4.5rem)" }}
           title="إنشاء متجر جديد">
           <Plus size={22} />
