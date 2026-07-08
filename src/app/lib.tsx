@@ -188,6 +188,34 @@ export const CAT: Record<StoreCategory, { label: string; icon: React.ReactNode; 
   barber:      { label: "حلاقة وتجميل",  icon: <Scissors size={15} />,    color: "#DB2777", bg: "#FCE7F3" },
 };
 
+export type CategoryModules = {
+  openFoodFacts: boolean;
+  nutrition: boolean;
+  expiryDate: boolean;
+  weightProducts: boolean;
+  productVariants: boolean;
+  sizes: boolean;
+  colors: boolean;
+  tables: boolean;
+  kitchenOrders: boolean;
+  modifiers: boolean;
+  qrMenu: boolean;
+  serialNumbers: boolean;
+  warranty: boolean;
+  repairs: boolean;
+  appointments: boolean;
+  services: boolean;
+  commissions: boolean;
+};
+
+export const CATEGORY_MODULES: Record<StoreCategory, CategoryModules> = {
+  supermarket: { openFoodFacts: true,  nutrition: true,  expiryDate: true,  weightProducts: true,  productVariants: false, sizes: false, colors: false, tables: false, kitchenOrders: false, modifiers: false, qrMenu: false, serialNumbers: false, warranty: false, repairs: false, appointments: false, services: false, commissions: false },
+  clothing:    { openFoodFacts: false, nutrition: false, expiryDate: false, weightProducts: false, productVariants: true,  sizes: true,  colors: true,  tables: false, kitchenOrders: false, modifiers: false, qrMenu: false, serialNumbers: false, warranty: false, repairs: false, appointments: false, services: false, commissions: false },
+  cafe:        { openFoodFacts: false, nutrition: false, expiryDate: false, weightProducts: false, productVariants: false, sizes: false, colors: false, tables: true,  kitchenOrders: true,  modifiers: true,  qrMenu: true,  serialNumbers: false, warranty: false, repairs: false, appointments: false, services: false, commissions: false },
+  electronics: { openFoodFacts: false, nutrition: false, expiryDate: false, weightProducts: false, productVariants: false, sizes: false, colors: false, tables: false, kitchenOrders: false, modifiers: false, qrMenu: false, serialNumbers: true,  warranty: true,  repairs: true,  appointments: false, services: false, commissions: false },
+  barber:      { openFoodFacts: false, nutrition: false, expiryDate: false, weightProducts: false, productVariants: false, sizes: false, colors: false, tables: false, kitchenOrders: false, modifiers: false, qrMenu: false, serialNumbers: false, warranty: false, repairs: false, appointments: true,  services: true,  commissions: true  },
+};
+
 export const ST = {
   active:    { label: "نشط",    dot: "bg-emerald-500", badge: "bg-emerald-100 text-emerald-700 border border-emerald-200" },
   trial:     { label: "تجريبي", dot: "bg-blue-500",    badge: "bg-blue-100 text-blue-700 border border-blue-200" },
@@ -577,6 +605,22 @@ const sk = (storeId: string, name: string) => `sowwanjo_${storeId}_${name}`;
 // ── Store Context — passes storeId to all child screens ───────────────────────
 export const StoreCtx = createContext<string>("");
 export const useStoreId = () => useContext(StoreCtx);
+
+export function useStoreModules(): CategoryModules {
+  const sid = useStoreId();
+  const [modules, setModules] = useState<CategoryModules>(CATEGORY_MODULES.supermarket);
+  useEffect(() => {
+    const raw = localStorage.getItem(`sowwanjo_storeinfo_${sid}`);
+    if (raw) {
+      try {
+        const store = JSON.parse(raw);
+        const cat = (store.category || store.businessType || "supermarket") as StoreCategory;
+        setModules(CATEGORY_MODULES[cat] || CATEGORY_MODULES.supermarket);
+      } catch {}
+    }
+  }, [sid]);
+  return modules;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LOGIN — SEPARATED (Store / Admin)
