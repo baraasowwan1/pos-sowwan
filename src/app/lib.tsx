@@ -111,7 +111,7 @@ import {
   Download, Upload, Printer, Minus, Percent, DollarSign, ChevronRight,
   Layers, Shield, Activity, Phone, Mail, Star, CheckCircle,
   XCircle, AlertTriangle, Menu, Zap, Coffee, Scissors,
-  Cpu, ShoppingBag, Send, Archive, RotateCcw, Scan, Wallet,
+  Cpu, ShoppingBag, Send, Archive, RotateCcw, Scan, Wallet, Ruler,
   Building2, Boxes, Truck, LayoutDashboard, UserCheck, ClipboardList,
   Banknote, Landmark, Handshake, Globe, MapPin, Key, User,
   ArrowUpRight, ArrowDownRight, Clipboard, Copy, Power, Monitor,
@@ -123,7 +123,7 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type View = "login" | "superadmin" | "store";
-export type StoreCategory = "supermarket" | "clothing" | "cafe" | "electronics" | "barber";
+export type StoreCategory = "supermarket" | "clothing" | "cafe" | "electronics" | "barber" | "print_shop";
 
 export interface StoreData {
   id: string; nameAr: string; nameEn: string; category: StoreCategory;
@@ -186,6 +186,7 @@ export const CAT: Record<StoreCategory, { label: string; icon: React.ReactNode; 
   cafe:        { label: "كافيه",          icon: <Coffee size={15} />,      color: "#D97706", bg: "#FEF3C7" },
   electronics: { label: "إلكترونيات",    icon: <Cpu size={15} />,         color: "#1D4ED8", bg: "#DBEAFE" },
   barber:      { label: "حلاقة وتجميل",  icon: <Scissors size={15} />,    color: "#DB2777", bg: "#FCE7F3" },
+  print_shop:  { label: "مطبعة / طباعة", icon: <Ruler size={15} />,       color: "#0891B2", bg: "#CFFAFE" },
 };
 
 export type CategoryModules = {
@@ -206,14 +207,18 @@ export type CategoryModules = {
   appointments: boolean;
   services: boolean;
   commissions: boolean;
+  printJobs: boolean;
+  printMaterials: boolean;
+  printPricing: boolean;
 };
 
 export const CATEGORY_MODULES: Record<StoreCategory, CategoryModules> = {
-  supermarket: { openFoodFacts: true,  nutrition: true,  expiryDate: true,  weightProducts: true,  productVariants: false, sizes: false, colors: false, tables: false, kitchenOrders: false, modifiers: false, qrMenu: false, serialNumbers: false, warranty: false, repairs: false, appointments: false, services: false, commissions: false },
-  clothing:    { openFoodFacts: false, nutrition: false, expiryDate: false, weightProducts: false, productVariants: true,  sizes: true,  colors: true,  tables: false, kitchenOrders: false, modifiers: false, qrMenu: false, serialNumbers: false, warranty: false, repairs: false, appointments: false, services: false, commissions: false },
-  cafe:        { openFoodFacts: false, nutrition: false, expiryDate: false, weightProducts: false, productVariants: false, sizes: false, colors: false, tables: true,  kitchenOrders: true,  modifiers: true,  qrMenu: true,  serialNumbers: false, warranty: false, repairs: false, appointments: false, services: false, commissions: false },
-  electronics: { openFoodFacts: false, nutrition: false, expiryDate: false, weightProducts: false, productVariants: false, sizes: false, colors: false, tables: false, kitchenOrders: false, modifiers: false, qrMenu: false, serialNumbers: true,  warranty: true,  repairs: true,  appointments: false, services: false, commissions: false },
-  barber:      { openFoodFacts: false, nutrition: false, expiryDate: false, weightProducts: false, productVariants: false, sizes: false, colors: false, tables: false, kitchenOrders: false, modifiers: false, qrMenu: false, serialNumbers: false, warranty: false, repairs: false, appointments: true,  services: true,  commissions: true  },
+  supermarket: { openFoodFacts: true,  nutrition: true,  expiryDate: true,  weightProducts: true,  productVariants: false, sizes: false, colors: false, tables: false, kitchenOrders: false, modifiers: false, qrMenu: false, serialNumbers: false, warranty: false, repairs: false, appointments: false, services: false, commissions: false, printJobs: false, printMaterials: false, printPricing: false },
+  clothing:    { openFoodFacts: false, nutrition: false, expiryDate: false, weightProducts: false, productVariants: true,  sizes: true,  colors: true,  tables: false, kitchenOrders: false, modifiers: false, qrMenu: false, serialNumbers: false, warranty: false, repairs: false, appointments: false, services: false, commissions: false, printJobs: false, printMaterials: false, printPricing: false },
+  cafe:        { openFoodFacts: false, nutrition: false, expiryDate: false, weightProducts: false, productVariants: false, sizes: false, colors: false, tables: true,  kitchenOrders: true,  modifiers: true,  qrMenu: true,  serialNumbers: false, warranty: false, repairs: false, appointments: false, services: false, commissions: false, printJobs: false, printMaterials: false, printPricing: false },
+  electronics: { openFoodFacts: false, nutrition: false, expiryDate: false, weightProducts: false, productVariants: false, sizes: false, colors: false, tables: false, kitchenOrders: false, modifiers: false, qrMenu: false, serialNumbers: true,  warranty: true,  repairs: true,  appointments: false, services: false, commissions: false, printJobs: false, printMaterials: false, printPricing: false },
+  barber:      { openFoodFacts: false, nutrition: false, expiryDate: false, weightProducts: false, productVariants: false, sizes: false, colors: false, tables: false, kitchenOrders: false, modifiers: false, qrMenu: false, serialNumbers: false, warranty: false, repairs: false, appointments: true,  services: true,  commissions: true,  printJobs: false, printMaterials: false, printPricing: false },
+  print_shop:  { openFoodFacts: false, nutrition: false, expiryDate: false, weightProducts: false, productVariants: false, sizes: false, colors: false, tables: false, kitchenOrders: false, modifiers: false, qrMenu: false, serialNumbers: false, warranty: false, repairs: false, appointments: false, services: false, commissions: false, printJobs: true,  printMaterials: true,  printPricing: true  },
 };
 
 export const ST = {
