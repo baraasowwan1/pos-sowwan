@@ -17,7 +17,7 @@ import {
   ArrowUpRight, ArrowDownRight, Clipboard, Copy, Power, Monitor,
   Info, ChevronLeft, Grid3X3, List, Hash, Tag,
 } from "lucide-react";
-import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules } from "./lib";
+import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules } from "./lib";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
 
 const STORE_NAV = [
