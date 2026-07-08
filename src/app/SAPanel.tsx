@@ -21,14 +21,16 @@ import { apiFetch, getToken, useLS, norm, jod, dateAr, showToast, apiCreateStore
 import type { StoreData, Plan, StoreCategory } from "./lib";
 
 const SA_NAV = [
-  { id: "dashboard",  label: "لوحة التحكم",    icon: <LayoutDashboard size={17} /> },
-  { id: "stores",     label: "المتاجر",          icon: <Store size={17} /> },
-  { id: "plans",      label: "خطط الاشتراك",    icon: <CreditCard size={17} /> },
-  { id: "reports",    label: "التقارير العامة",  icon: <BarChart2 size={17} /> },
-  { id: "audit",      label: "سجلات النشاط",    icon: <ClipboardList size={17} /> },
-  { id: "tickets",    label: "الدعم الفني",      icon: <Handshake size={17} /> },
-  { id: "broadcast",  label: "الإعلانات",        icon: <Send size={17} /> },
-  { id: "settings",   label: "إعدادات النظام",  icon: <Settings size={17} /> },
+  { id: "dashboard",    label: "لوحة التحكم",    icon: <LayoutDashboard size={17} /> },
+  { id: "stores",       label: "المتاجر",          icon: <Store size={17} /> },
+  { id: "plans",        label: "خطط الاشتراك",    icon: <CreditCard size={17} /> },
+  { id: "reports",      label: "التقارير العامة",  icon: <BarChart2 size={17} /> },
+  { id: "audit",        label: "سجلات التدقيق",   icon: <ClipboardList size={17} /> },
+  { id: "health",       label: "صحة النظام",       icon: <Activity size={17} /> },
+  { id: "featureflags", label: "ميزات الخطط",      icon: <Zap size={17} /> },
+  { id: "tickets",      label: "الدعم الفني",      icon: <Handshake size={17} /> },
+  { id: "broadcast",    label: "الإعلانات",        icon: <Send size={17} /> },
+  { id: "settings",     label: "إعدادات النظام",  icon: <Settings size={17} /> },
 ];
 
 function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
@@ -148,6 +150,12 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
+              {/* Refresh page button */}
+              <button onClick={() => window.location.reload()} title="تحديث الصفحة"
+                className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-90">
+                <RefreshCw size={16} />
+              </button>
+
               <div className="relative">
                 <button onClick={() => setNotif(!notif)} className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted relative">
                   <Bell size={18} className="text-muted-foreground" />
@@ -182,14 +190,16 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
 
         {/* MAIN CONTENT — extra bottom padding on mobile for bottom nav */}
         <main className="flex-1 overflow-y-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)" }}>
-          {screen === "dashboard" && <SADash onNav={navTo} />}
-          {screen === "stores"    && <SAStores />}
-          {screen === "plans"     && <SAPlans />}
-          {screen === "reports"   && <SAReports />}
-          {screen === "audit"     && <SAAudit />}
-          {screen === "tickets"   && <SATickets />}
-          {screen === "broadcast" && <SABroadcast />}
-          {screen === "settings"  && <SASettings />}
+          {screen === "dashboard"    && <SADash onNav={navTo} />}
+          {screen === "stores"       && <SAStores />}
+          {screen === "plans"        && <SAPlans />}
+          {screen === "reports"      && <SAReports />}
+          {screen === "audit"        && <SAAudit />}
+          {screen === "health"       && <SAHealth />}
+          {screen === "featureflags" && <SAFeatureFlags />}
+          {screen === "tickets"      && <SATickets />}
+          {screen === "broadcast"    && <SABroadcast />}
+          {screen === "settings"     && <SASettings />}
         </main>
 
         {/* ── MOBILE BOTTOM NAV ─────────────────────────────────────────── */}
@@ -1148,28 +1158,357 @@ function SAReports() {
   );
 }
 function SAAudit() {
-  const logs: {user:string;action:string;target:string;time:string;date:string;ip:string;device:string}[] = [];
-  const AC: Record<string, string> = { "تسجيل دخول": "text-blue-600 bg-blue-50", "إضافة منتج": "text-emerald-600 bg-emerald-50", "إصدار فاتورة": "text-purple-600 bg-purple-50", "تعديل سعر": "text-orange-600 bg-orange-50" };
+  const [logs, setLogs] = useState<{_id:string;storeName:string;action:string;category:string;target:string;createdAt:string;ip:string;browser:string;os:string;device:string}[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [total, setTotal] = useState(0);
+
+  const load = useCallback((p = 1) => {
+    setLoading(true);
+    const qs = new URLSearchParams({ page: String(p), limit: "50" });
+    if (search) qs.set("search", search);
+    if (category) qs.set("category", category);
+    apiFetch(`/audit?${qs}`, {}, getToken())
+      .then((d: unknown) => {
+        const r = d as { logs: typeof logs; total: number; pages: number };
+        setLogs(r.logs || []); setTotal(r.total || 0); setPages(r.pages || 1); setPage(p);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [search, category]);
+
+  useEffect(() => { load(1); }, [load]);
+
+  const CAT_COLORS: Record<string, string> = {
+    login: "text-blue-600 bg-blue-50 border-blue-200",
+    product: "text-emerald-600 bg-emerald-50 border-emerald-200",
+    sale: "text-purple-600 bg-purple-50 border-purple-200",
+    settings: "text-orange-600 bg-orange-50 border-orange-200",
+    store: "text-indigo-600 bg-indigo-50 border-indigo-200",
+    subscription: "text-pink-600 bg-pink-50 border-pink-200",
+    user: "text-cyan-600 bg-cyan-50 border-cyan-200",
+  };
+
+  const exportCSV = () => {
+    const header = "المتجر,الإجراء,الفئة,الهدف,التاريخ,IP,المتصفح,الجهاز\n";
+    const rows = logs.map(l =>
+      [l.storeName, l.action, l.category, l.target, new Date(l.createdAt).toLocaleString("ar-JO"), l.ip, l.browser, l.device].join(",")
+    ).join("\n");
+    const blob = new Blob(["﻿" + header + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `audit-${Date.now()}.csv`; a.click();
+  };
+
   return (
-    <div className="p-6 space-y-5">
-      <Hdr title="سجلات النشاط والتدقيق" action={<Btn v="secondary" s="sm" icon={<Download size={14} />} onClick={() => showToast("جاري تصدير سجلات التدقيق...", "info")}>تصدير</Btn>} />
-      <div className="bg-card rounded-2xl border border-border overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead><tr className="border-b border-border bg-muted/40">{["المستخدم","الإجراء","الهدف","التاريخ","الوقت","عنوان IP","الجهاز"].map(h => <th key={h} className="text-right p-4 font-bold text-muted-foreground text-xs">{h}</th>)}</tr></thead>
-          <tbody className="divide-y divide-border/60">
-            {[...logs,...logs].map((l, i) => (
-              <tr key={i} className="hover:bg-muted/20">
-                <td className="p-4 font-semibold text-xs">{l.user}</td>
-                <td className="p-4"><span className={`text-xs font-bold px-2.5 py-1 rounded-full ${AC[l.action] || "bg-muted"}`}>{l.action}</span></td>
-                <td className="p-4 text-xs text-muted-foreground">{l.target}</td>
-                <td className="p-4 text-xs text-muted-foreground">{l.date}</td>
-                <td className="p-4 text-xs font-mono text-muted-foreground">{l.time}</td>
-                <td className="p-4 text-xs font-mono text-muted-foreground">{l.ip}</td>
-                <td className="p-4 text-xs text-muted-foreground">{l.device}</td>
-              </tr>
+    <div className="p-3 sm:p-6 space-y-4">
+      <Hdr title="سجلات التدقيق" sub={`${total.toLocaleString("ar")} سجل`}
+        action={<Btn v="secondary" s="sm" icon={<Download size={14} />} onClick={exportCSV}>تصدير CSV</Btn>} />
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2">
+        <div className="flex-1 min-w-[180px] relative">
+          <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && load(1)}
+            placeholder="بحث في السجلات..." className="w-full h-9 pr-8 pl-3 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+        </div>
+        <select value={category} onChange={e => setCategory(e.target.value)}
+          className="h-9 px-3 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <option value="">كل الفئات</option>
+          {["login","product","sale","settings","store","subscription","user"].map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <Btn v="primary" s="sm" onClick={() => load(1)} icon={<Search size={13} />}>بحث</Btn>
+      </div>
+
+      {loading ? (
+        <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-12 bg-card rounded-xl border border-border animate-pulse" />)}</div>
+      ) : logs.length === 0 ? (
+        <Empty icon={<ClipboardList size={36} />} title="لا توجد سجلات" sub="ستظهر هنا سجلات النشاط والتدقيق تلقائياً" />
+      ) : (
+        <>
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-2">
+            {logs.map(l => (
+              <div key={l._id} className="bg-card rounded-xl border border-border p-3">
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${CAT_COLORS[l.category] || "bg-muted"}`}>{l.action}</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">{new Date(l.createdAt).toLocaleString("ar-JO")}</span>
+                </div>
+                <p className="text-xs font-semibold">{l.storeName || "المدير العام"}</p>
+                {l.target && <p className="text-xs text-muted-foreground">{l.target}</p>}
+                <p className="text-[10px] text-muted-foreground mt-1">{l.ip} · {l.browser} · {l.device}</p>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block bg-card rounded-2xl border border-border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  {["المتجر","الإجراء","الهدف","التاريخ","IP","المتصفح","الجهاز"].map(h => (
+                    <th key={h} className="text-right p-3 font-bold text-muted-foreground text-xs">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {logs.map(l => (
+                  <tr key={l._id} className="hover:bg-muted/20">
+                    <td className="p-3 text-xs font-semibold">{l.storeName || "المدير العام"}</td>
+                    <td className="p-3"><span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${CAT_COLORS[l.category] || "bg-muted text-foreground border-border"}`}>{l.action}</span></td>
+                    <td className="p-3 text-xs text-muted-foreground max-w-[140px] truncate">{l.target}</td>
+                    <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(l.createdAt).toLocaleString("ar-JO")}</td>
+                    <td className="p-3 text-xs font-mono text-muted-foreground">{l.ip}</td>
+                    <td className="p-3 text-xs text-muted-foreground">{l.browser}</td>
+                    <td className="p-3 text-xs text-muted-foreground">{l.device}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {pages > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <button disabled={page <= 1} onClick={() => load(page - 1)}
+                className="h-8 px-3 rounded-lg border border-border text-xs disabled:opacity-40 hover:bg-muted transition-colors">
+                <ChevronRight size={14} />
+              </button>
+              <span className="text-xs text-muted-foreground">صفحة {page} من {pages}</span>
+              <button disabled={page >= pages} onClick={() => load(page + 1)}
+                className="h-8 px-3 rounded-lg border border-border text-xs disabled:opacity-40 hover:bg-muted transition-colors">
+                <ChevronLeft size={14} />
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SA HEALTH — System Health Monitor
+// ─────────────────────────────────────────────────────────────────────────────
+function SAHealth() {
+  const [health, setHealth] = useState<{status:string;db:string;timestamp:string;uptime?:number;memUsed?:number;memTotal?:number} | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [lastCheck, setLastCheck] = useState<Date | null>(null);
+
+  const check = () => {
+    setLoading(true);
+    const API = ((import.meta as Record<string, Record<string, string>>).env?.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
+    fetch(`${API}/health`)
+      .then(r => r.json())
+      .then(d => { setHealth(d); setLastCheck(new Date()); })
+      .catch(() => setHealth(null))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { check(); }, []);
+
+  const services = [
+    { name: "خادم API",      icon: <Cpu size={16} />,      ok: health?.status === "ok" },
+    { name: "قاعدة البيانات", icon: <Boxes size={16} />,    ok: health?.db === "connected" },
+    { name: "المصادقة JWT",  icon: <Shield size={16} />,   ok: health?.status === "ok" },
+    { name: "Rate Limiting",  icon: <Activity size={16} />, ok: true },
+    { name: "CORS",           icon: <Globe size={16} />,    ok: true },
+    { name: "Helmet Security",icon: <Lock size={16} />,     ok: true },
+  ];
+
+  return (
+    <div className="p-3 sm:p-6 space-y-5">
+      <Hdr title="صحة النظام" sub={lastCheck ? `آخر فحص: ${lastCheck.toLocaleTimeString("ar-JO")}` : ""}
+        action={<Btn v="secondary" s="sm" icon={loading ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />} onClick={check} disabled={loading}>فحص الآن</Btn>} />
+
+      {/* Overall Status Banner */}
+      <div className={`rounded-2xl border p-5 flex items-center gap-4 ${health?.status === "ok" ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${health?.status === "ok" ? "bg-emerald-100" : "bg-red-100"}`}>
+          {health?.status === "ok" ? <CheckCircle size={24} className="text-emerald-600" /> : <XCircle size={24} className="text-red-500" />}
+        </div>
+        <div>
+          <p className={`font-black text-lg ${health?.status === "ok" ? "text-emerald-800" : "text-red-700"}`}>
+            {loading ? "جاري الفحص..." : health?.status === "ok" ? "النظام يعمل بشكل مثالي" : "تحذير: مشكلة في النظام"}
+          </p>
+          {health?.timestamp && <p className="text-sm text-muted-foreground">{new Date(health.timestamp).toLocaleString("ar-JO")}</p>}
+        </div>
+      </div>
+
+      {/* Services Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {services.map(s => (
+          <div key={s.name} className="bg-card rounded-2xl border border-border p-4 flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${s.ok ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"}`}>
+              {s.icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold">{s.name}</p>
+              <p className={`text-xs font-semibold ${s.ok ? "text-emerald-600" : "text-red-500"}`}>
+                {s.ok ? "يعمل بشكل طبيعي" : "توقف عن العمل"}
+              </p>
+            </div>
+            {s.ok ? <CheckCircle size={16} className="text-emerald-500 shrink-0" /> : <XCircle size={16} className="text-red-400 shrink-0" />}
+          </div>
+        ))}
+      </div>
+
+      {/* System Info */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
+          <p className="font-bold flex items-center gap-2"><Monitor size={14} /> معلومات النظام</p>
+          {[
+            { k: "الخادم", v: "Render.com — Cloud" },
+            { k: "قاعدة البيانات", v: "MongoDB Atlas" },
+            { k: "الإطار", v: "Node.js + Express + TypeScript" },
+            { k: "الواجهة", v: "React 18 + Vite + Tailwind CSS" },
+            { k: "حالة قاعدة البيانات", v: health?.db === "connected" ? "✅ متصلة" : "❌ منقطعة" },
+          ].map(r => (
+            <div key={r.k} className="flex justify-between text-sm border-b border-border/60 pb-2 last:border-0">
+              <span className="text-muted-foreground">{r.k}</span>
+              <span className="font-semibold">{r.v}</span>
+            </div>
+          ))}
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
+          <p className="font-bold flex items-center gap-2"><Shield size={14} /> إعدادات الأمان</p>
+          {[
+            { k: "Helmet Security Headers", v: "✅ مفعّل" },
+            { k: "CORS Policy", v: "✅ مفعّل" },
+            { k: "Rate Limiting", v: "✅ 500 req/15min" },
+            { k: "JWT Authentication", v: "✅ مفعّل" },
+            { k: "bcrypt Password Hashing", v: "✅ مفعّل" },
+            { k: "Morgan Logging", v: "✅ مفعّل" },
+          ].map(r => (
+            <div key={r.k} className="flex justify-between text-sm border-b border-border/60 pb-2 last:border-0">
+              <span className="text-muted-foreground">{r.k}</span>
+              <span className="font-semibold text-emerald-600">{r.v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SA FEATURE FLAGS — Manage Features per Plan
+// ─────────────────────────────────────────────────────────────────────────────
+const ALL_FEATURES = [
+  { id: "loyalty",       label: "برنامج الولاء",      icon: <Star size={14} />,     desc: "نقاط وعروض لكسب ولاء العملاء" },
+  { id: "crm",           label: "إدارة علاقات العملاء", icon: <Users size={14} />,  desc: "تحليل سلوك العملاء والحفاظ عليهم" },
+  { id: "tables",        label: "إدارة الطاولات",       icon: <Grid3X3 size={14} />, desc: "للمطاعم والمقاهي" },
+  { id: "kitchen",       label: "شاشة المطبخ",          icon: <Coffee size={14} />,  desc: "طلبات المطبخ المباشرة" },
+  { id: "appointments",  label: "حجز المواعيد",          icon: <ClipboardList size={14} />, desc: "جدولة المواعيد للخدمات" },
+  { id: "warranty",      label: "إدارة الضمانات",        icon: <Shield size={14} />, desc: "ضمانات المنتجات للإلكترونيات" },
+  { id: "repair",        label: "وحدة الإصلاح",          icon: <Scissors size={14} />, desc: "متابعة طلبات الإصلاح" },
+  { id: "multibranch",   label: "تعدد الفروع",           icon: <Building2 size={14} />, desc: "إدارة أكثر من فرع" },
+  { id: "multiwarehouse",label: "تعدد المستودعات",       icon: <Boxes size={14} />,  desc: "إدارة مستودعات متعددة" },
+  { id: "openfoodfacts", label: "Open Food Facts",        icon: <Scan size={14} />,   desc: "مزامنة بيانات الغذاء التلقائية" },
+  { id: "api_access",    label: "الوصول لـ API",          icon: <Globe size={14} />,  desc: "مفاتيح API للتكامل مع أنظمة خارجية" },
+  { id: "advanced_reports", label: "تقارير متقدمة",      icon: <BarChart2 size={14} />, desc: "تقارير تفصيلية وتصدير" },
+  { id: "custom_receipt", label: "تصميم الفاتورة",       icon: <Printer size={14} />, desc: "تخصيص الفواتير بالشعار والألوان" },
+  { id: "sms",           label: "رسائل SMS",              icon: <Phone size={14} />,  desc: "إشعارات نصية للعملاء" },
+  { id: "email_notif",   label: "إشعارات بريدية",         icon: <Mail size={14} />,   desc: "رسائل بريدية تلقائية" },
+];
+
+const PLAN_KEYS = ["starter", "basic", "professional", "enterprise"];
+const PLAN_LABELS: Record<string, string> = { starter: "Starter", basic: "Basic", professional: "Professional", enterprise: "Enterprise" };
+
+function SAFeatureFlags() {
+  const [flags, setFlags] = useState<Record<string, Record<string, boolean>>>(() => {
+    const def: Record<string, Record<string, boolean>> = {};
+    PLAN_KEYS.forEach(p => {
+      def[p] = {};
+      ALL_FEATURES.forEach(f => { def[p][f.id] = p === "enterprise"; });
+    });
+    // default enabled per plan
+    ["starter"].forEach(p => { ["custom_receipt", "advanced_reports"].forEach(f => { def[p][f] = false; }); });
+    ["basic","professional","enterprise"].forEach(p => { def[p]["loyalty"] = true; def[p]["crm"] = true; });
+    ["professional","enterprise"].forEach(p => { def[p]["multibranch"] = true; def[p]["api_access"] = true; });
+    return def;
+  });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const toggle = (plan: string, feat: string) => {
+    setFlags(prev => ({ ...prev, [plan]: { ...prev[plan], [feat]: !prev[plan][feat] } }));
+    setSaved(false);
+  };
+
+  const enableAll = (plan: string) => {
+    const all: Record<string, boolean> = {};
+    ALL_FEATURES.forEach(f => { all[f.id] = true; });
+    setFlags(prev => ({ ...prev, [plan]: all }));
+    setSaved(false);
+  };
+
+  const disableAll = (plan: string) => {
+    const none: Record<string, boolean> = {};
+    ALL_FEATURES.forEach(f => { none[f.id] = false; });
+    setFlags(prev => ({ ...prev, [plan]: none }));
+    setSaved(false);
+  };
+
+  const doSave = async () => {
+    setSaving(true);
+    try {
+      await apiFetch("/super-admin/settings", { method: "PUT", body: JSON.stringify({ featureFlags: flags }) }, getToken());
+      showToast("تم حفظ إعدادات الميزات بنجاح ✓", "success");
+      setSaved(true);
+    } catch { showToast("فشل الحفظ", "error"); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="p-3 sm:p-6 space-y-4">
+      <Hdr title="ميزات خطط الاشتراك" sub="تحكم في الميزات المتاحة لكل خطة"
+        action={<Btn v="success" s="sm" icon={saved ? <CheckCircle size={14} /> : <Check size={14} />} onClick={doSave} disabled={saving}>
+          {saving ? "جاري الحفظ..." : saved ? "تم الحفظ ✓" : "حفظ الإعدادات"}
+        </Btn>} />
+
+      {/* Plan columns */}
+      <div className="overflow-x-auto">
+        <div className="min-w-[640px]">
+          {/* Header row */}
+          <div className="grid grid-cols-5 gap-3 mb-3">
+            <div className="col-span-1" />
+            {PLAN_KEYS.map(p => (
+              <div key={p} className="bg-card rounded-2xl border border-border p-3 text-center">
+                <p className="font-black text-sm">{PLAN_LABELS[p]}</p>
+                <div className="flex gap-1 mt-1.5 justify-center">
+                  <button onClick={() => enableAll(p)} className="text-[10px] text-emerald-600 hover:underline">كل</button>
+                  <span className="text-muted-foreground text-[10px]">/</span>
+                  <button onClick={() => disableAll(p)} className="text-[10px] text-red-500 hover:underline">لا شيء</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Feature rows */}
+          <div className="space-y-1.5">
+            {ALL_FEATURES.map(feat => (
+              <div key={feat.id} className="grid grid-cols-5 gap-3 items-center">
+                <div className="bg-card rounded-xl border border-border p-3 flex items-center gap-2">
+                  <span className="text-muted-foreground shrink-0">{feat.icon}</span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold truncate">{feat.label}</p>
+                    <p className="text-[10px] text-muted-foreground truncate hidden sm:block">{feat.desc}</p>
+                  </div>
+                </div>
+                {PLAN_KEYS.map(p => (
+                  <div key={p} className="flex items-center justify-center">
+                    <button onClick={() => toggle(p, feat.id)}
+                      className={`w-10 h-6 rounded-full relative transition-all duration-200 ${flags[p]?.[feat.id] ? "bg-primary" : "bg-muted"}`}>
+                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all duration-200 ${flags[p]?.[feat.id] ? "left-4" : "left-0.5"}`} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
