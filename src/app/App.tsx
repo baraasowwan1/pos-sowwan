@@ -428,13 +428,13 @@ function Modal({ title, sub, onClose, children, size = "md" }: {
 }) {
   const w = { sm: "max-w-md", md: "max-w-xl", lg: "max-w-2xl" };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)" }}>
-      <div className={`bg-card rounded-2xl shadow-2xl w-full ${w[size]} max-h-[92vh] flex flex-col`} dir="rtl">
-        <div className="flex items-center justify-between p-6 border-b border-border shrink-0">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)" }}>
+      <div className={`bg-card rounded-t-3xl sm:rounded-2xl shadow-2xl w-full ${w[size]} max-h-[92vh] flex flex-col`} dir="rtl" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border shrink-0">
           <div><h3 className="text-lg font-bold text-foreground">{title}</h3>{sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}</div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-muted transition-colors"><X size={15} className="text-muted-foreground" /></button>
         </div>
-        <div className="p-6 overflow-y-auto flex-1">{children}</div>
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );
@@ -839,14 +839,32 @@ const SA_NAV = [
 ];
 
 function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
-  const [screen, setScreen] = useState("dashboard");
+  const [screen, setScreen] = useState(() => {
+    try { return localStorage.getItem("sowwanjo_sa_screen") || "dashboard"; } catch { return "dashboard"; }
+  });
   const [col, setCol] = useState(false);
+  const [mobileMenu, setMobileMenu] = useState(false);
   const [notif, setNotif] = useState(false);
+  const navTo = (s: string) => {
+    setScreen(s);
+    try { localStorage.setItem("sowwanjo_sa_screen", s); } catch {}
+    setMobileMenu(false);
+  };
+
+  // Bottom nav: 5 most-used items
+  const bottomNav = [
+    { id: "dashboard", label: "الرئيسية", icon: <LayoutDashboard size={19} /> },
+    { id: "stores",    label: "المتاجر",  icon: <Store size={19} /> },
+    { id: "reports",   label: "التقارير", icon: <BarChart2 size={19} /> },
+    { id: "tickets",   label: "الدعم",    icon: <Handshake size={19} /> },
+    { id: "settings",  label: "إعدادات",  icon: <Settings size={19} /> },
+  ];
 
   return (
     <div className="flex h-screen overflow-hidden bg-background" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
-      {/* Sidebar */}
-      <aside className={`${col ? "w-[58px]" : "w-60"} shrink-0 flex flex-col transition-all duration-300`}
+
+      {/* ── DESKTOP SIDEBAR (hidden on mobile) ───────────────────────────── */}
+      <aside className={`hidden md:flex ${col ? "w-[58px]" : "w-60"} shrink-0 flex-col transition-all duration-300`}
         style={{ background: "linear-gradient(180deg,#0F172A 0%,#1A2744 100%)" }}>
         <div className="h-14 flex items-center border-b border-white/7 px-3 gap-3 shrink-0">
           <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shrink-0">
@@ -864,7 +882,7 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
         )}
         <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto">
           {SA_NAV.map(n => (
-            <button key={n.id} onClick={() => setScreen(n.id)}
+            <button key={n.id} onClick={() => navTo(n.id)}
               className={`w-full flex items-center gap-3 h-9 rounded-xl text-xs font-semibold transition-all ${col ? "justify-center px-2" : "px-3"} ${screen === n.id ? "bg-white/10 text-white border border-white/10" : "text-white/50 hover:bg-white/5 hover:text-white/80"}`}
               title={col ? n.label : undefined}>
               <span className="shrink-0">{n.icon}</span>
@@ -884,45 +902,94 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-14 bg-card border-b border-border flex items-center justify-between px-5 shrink-0">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setCol(!col)} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground"><Menu size={16} /></button>
-            <div><p className="text-sm font-bold text-foreground">{SA_NAV.find(n => n.id === screen)?.label}</p><p className="text-xs text-muted-foreground">{dateAr()}</p></div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <button onClick={() => setNotif(!notif)} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-muted relative">
-                <Bell size={16} className="text-muted-foreground" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-card" />
-              </button>
-              {notif && (
-                <div className="absolute left-0 top-full mt-2 w-80 bg-card rounded-2xl border border-border shadow-2xl z-50 overflow-hidden">
-                  <div className="flex justify-between px-4 py-3 border-b border-border">
-                    <span className="font-bold text-sm">الإشعارات</span>
-                    <button onClick={() => setNotif(false)} className="text-xs text-primary font-semibold">إغلاق</button>
-                  </div>
-                  {[
-                    { t: "انتهى اشتراك سوبرماركت العائلة", dt: "منذ 10 دقائق", c: "bg-red-500" },
-                    { t: "متجر ستايل باربر موقوف تلقائياً", dt: "منذ ساعتين", c: "bg-orange-500" },
-                    { t: "طلب دعم جديد من إسبريسو عمّان", dt: "منذ 5 ساعات", c: "bg-blue-500" },
-                  ].map((n, i) => (
-                    <div key={i} className="flex gap-3 px-4 py-3 hover:bg-muted/40 border-b border-border/50 last:border-0">
-                      <span className={`w-2 h-2 rounded-full ${n.c} shrink-0 mt-1.5`} />
-                      <div><p className="text-xs text-foreground font-medium">{n.t}</p><p className="text-xs text-muted-foreground">{n.dt}</p></div>
-                    </div>
-                  ))}
-                </div>
-              )}
+      {/* ── MOBILE SLIDE-IN MENU ─────────────────────────────────────────── */}
+      {mobileMenu && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileMenu(false)} />
+          <div className="relative mr-auto w-72 h-full flex flex-col shadow-2xl"
+            style={{ background: "linear-gradient(180deg,#0F172A 0%,#1A2744 100%)", paddingTop: "env(safe-area-inset-top)" }}>
+            <div className="h-14 flex items-center border-b border-white/7 px-4 gap-3 shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shrink-0">
+                <Store size={15} className="text-blue-400" />
+              </div>
+              <div className="min-w-0 flex-1"><p className="text-white font-black text-sm truncate">Sowwanjo POS</p><p className="text-white/30 text-xs">المدير العام</p></div>
+              <button onClick={() => setMobileMenu(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 text-white shrink-0"><X size={15} /></button>
             </div>
-            <div className="h-8 px-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-bold text-emerald-700">النظام يعمل</span>
+            <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+              {SA_NAV.map(n => (
+                <button key={n.id} onClick={() => navTo(n.id)}
+                  className={`w-full flex items-center gap-3 h-11 rounded-xl px-4 text-sm font-semibold transition-all ${screen === n.id ? "bg-white/10 text-white border border-white/10" : "text-white/60 hover:bg-white/5 hover:text-white/90"}`}>
+                  <span className="shrink-0">{n.icon}</span>
+                  <span>{n.label}</span>
+                  {screen === n.id && <span className="mr-auto w-2 h-2 rounded-full bg-blue-400 shrink-0" />}
+                </button>
+              ))}
+            </nav>
+            <div className="p-3 border-t border-white/7 space-y-1" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}>
+              <button onClick={onLogout} className="w-full flex items-center gap-3 h-11 rounded-xl px-4 text-sm text-red-400/80 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                <LogOut size={16} /><span>تسجيل الخروج</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CONTENT AREA ─────────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+
+        {/* HEADER */}
+        <header className="shrink-0 bg-card border-b border-border z-30" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+          <div className="h-14 flex items-center justify-between px-3 sm:px-5 gap-2">
+            {/* Mobile hamburger */}
+            <button onClick={() => setMobileMenu(true)} className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground shrink-0">
+              <Menu size={20} />
+            </button>
+            {/* Desktop sidebar toggle */}
+            <button onClick={() => setCol(!col)} className="hidden md:flex w-8 h-8 items-center justify-center rounded-xl hover:bg-muted text-muted-foreground shrink-0">
+              <Menu size={16} />
+            </button>
+
+            <div className="flex-1 min-w-0 px-1">
+              <p className="text-sm font-bold text-foreground truncate">{SA_NAV.find(n => n.id === screen)?.label || "لوحة التحكم"}</p>
+              <p className="text-xs text-muted-foreground hidden sm:block">{dateAr()}</p>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <div className="relative">
+                <button onClick={() => setNotif(!notif)} className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted relative">
+                  <Bell size={18} className="text-muted-foreground" />
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-card" />
+                </button>
+                {notif && (
+                  <div className="absolute left-0 top-full mt-2 w-80 max-w-[calc(100vw-1rem)] bg-card rounded-2xl border border-border shadow-2xl z-50 overflow-hidden">
+                    <div className="flex justify-between px-4 py-3 border-b border-border">
+                      <span className="font-bold text-sm">الإشعارات</span>
+                      <button onClick={() => setNotif(false)} className="text-xs text-primary font-semibold">إغلاق</button>
+                    </div>
+                    {[
+                      { t: "انتهى اشتراك سوبرماركت العائلة", dt: "منذ 10 دقائق", c: "bg-red-500" },
+                      { t: "متجر ستايل باربر موقوف تلقائياً", dt: "منذ ساعتين", c: "bg-orange-500" },
+                      { t: "طلب دعم جديد من إسبريسو عمّان", dt: "منذ 5 ساعات", c: "bg-blue-500" },
+                    ].map((n, i) => (
+                      <div key={i} className="flex gap-3 px-4 py-3 hover:bg-muted/40 border-b border-border/50 last:border-0">
+                        <span className={`w-2 h-2 rounded-full ${n.c} shrink-0 mt-1.5`} />
+                        <div><p className="text-xs text-foreground font-medium">{n.t}</p><p className="text-xs text-muted-foreground">{n.dt}</p></div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="hidden sm:flex h-8 px-2.5 bg-emerald-50 border border-emerald-200 rounded-xl items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-bold text-emerald-700 whitespace-nowrap">النظام يعمل</span>
+              </div>
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto">
-          {screen === "dashboard" && <SADash onNav={setScreen} />}
+
+        {/* MAIN CONTENT — extra bottom padding on mobile for bottom nav */}
+        <main className="flex-1 overflow-y-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)" }}>
+          {screen === "dashboard" && <SADash onNav={navTo} />}
           {screen === "stores"    && <SAStores />}
           {screen === "plans"     && <SAPlans />}
           {screen === "reports"   && <SAReports />}
@@ -931,6 +998,27 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
           {screen === "broadcast" && <SABroadcast />}
           {screen === "settings"  && <SASettings />}
         </main>
+
+        {/* ── MOBILE BOTTOM NAV ─────────────────────────────────────────── */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-40 flex"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          {bottomNav.map(n => (
+            <button key={n.id} onClick={() => navTo(n.id)}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-all min-h-[56px] ${screen === n.id ? "text-primary" : "text-muted-foreground"}`}>
+              <span className={`transition-transform ${screen === n.id ? "scale-110" : ""}`}>{n.icon}</span>
+              <span className="text-[10px] font-bold leading-tight">{n.label}</span>
+              {screen === n.id && <span className="absolute bottom-1 w-1 h-1 rounded-full bg-primary" />}
+            </button>
+          ))}
+        </nav>
+
+        {/* ── MOBILE FAB: Create Store ──────────────────────────────────── */}
+        <button onClick={() => navTo("stores")}
+          className="md:hidden fixed left-4 z-40 w-14 h-14 rounded-full bg-primary text-white shadow-xl flex items-center justify-center"
+          style={{ bottom: "calc(env(safe-area-inset-bottom) + 4.5rem)" }}
+          title="إنشاء متجر جديد">
+          <Plus size={22} />
+        </button>
       </div>
     </div>
   );
@@ -988,9 +1076,9 @@ function SADash({ onNav }: { onNav: (s: string) => void }) {
   const totalSales   = dashStores.reduce((a, s) => a + (s.sales   || 0), 0);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KPI icon={<Store size={20} />} label="إجمالي المتاجر"
           value={String(dashStores.length)}
           sub={`${dashStores.filter(s => s.status === "active").length} نشط`}
@@ -1004,7 +1092,7 @@ function SADash({ onNav }: { onNav: (s: string) => void }) {
       </div>
 
       {/* Status breakdown */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         {(["active","trial","suspended","expired"] as const).map(st => {
           const count = dashStores.filter(s => s.status === st).length;
           return (
@@ -1307,7 +1395,54 @@ function SAStores() {
 
       {/* Stores Table */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile cards (< md) */}
+        <div className="md:hidden divide-y divide-border/60">
+          {filtered.length === 0 ? (
+            <Empty icon={<Store size={24} />} title="لا توجد متاجر" desc="لم يتم العثور على متاجر تطابق البحث" />
+          ) : filtered.map(s => {
+            const cat = CAT[s.category as StoreCategory] || CAT["supermarket"];
+            const expired = s.expiresAt ? new Date(s.expiresAt) < new Date() : false;
+            return (
+              <div key={s.id} className={`p-4 ${s.status === "suspended" ? "opacity-70" : ""}`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: cat.bg }}>
+                    <span style={{ color: cat.color }}>{cat.icon}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-foreground text-sm truncate">{s.nameAr}</p>
+                    <p className="text-xs text-muted-foreground">{s.owner} • {s.city}</p>
+                  </div>
+                  <SBadge status={s.status} />
+                </div>
+                <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
+                  <div className="bg-muted/50 rounded-xl p-2 text-center">
+                    <p className="font-black text-foreground">{s.plan}</p>
+                    <p className="text-muted-foreground">الخطة</p>
+                  </div>
+                  <div className="bg-muted/50 rounded-xl p-2 text-center">
+                    <p className="font-black text-foreground">{jod(s.revenue || 0)}</p>
+                    <p className="text-muted-foreground">الإيرادات</p>
+                  </div>
+                  <div className={`rounded-xl p-2 text-center ${expired ? "bg-red-50" : "bg-muted/50"}`}>
+                    <p className={`font-black text-xs ${expired ? "text-red-600" : "text-foreground"}`}>{s.expiresAt?.split("T")[0] || "—"}</p>
+                    <p className={`text-xs ${expired ? "text-red-400" : "text-muted-foreground"}`}>{expired ? "منتهي!" : "الانتهاء"}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={() => setDetail(s)} className="flex-1 h-9 min-w-[72px] flex items-center justify-center gap-1.5 rounded-xl bg-primary/10 text-primary text-xs font-bold"><Eye size={13} />تفاصيل</button>
+                  <button onClick={() => setEditStore({ ...s })} className="flex-1 h-9 min-w-[72px] flex items-center justify-center gap-1.5 rounded-xl bg-blue-50 text-blue-600 text-xs font-bold"><Edit2 size={13} />تعديل</button>
+                  <button onClick={() => toggle(s.id)} className={`flex-1 h-9 min-w-[72px] flex items-center justify-center gap-1.5 rounded-xl text-xs font-bold ${s.status === "active" ? "bg-orange-50 text-orange-600" : "bg-emerald-50 text-emerald-600"}`}>
+                    {s.status === "active" ? <><Lock size={13} />إيقاف</> : <><Unlock size={13} />تفعيل</>}
+                  </button>
+                  <button onClick={() => setDeleteConfirm(s)} className="h-9 w-9 flex items-center justify-center rounded-xl bg-red-50 text-red-500"><Trash2 size={14} /></button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop table (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b border-border bg-muted/40">
               {["المتجر","الفئة","الخطة","الحالة","الإيرادات","تاريخ الانتهاء","إجراءات"].map(h =>
@@ -1315,7 +1450,6 @@ function SAStores() {
             </tr></thead>
             <tbody className="divide-y divide-border/60">
               {filtered.map(s => {
-                // defensive fallback — يمنع crash إذا كانت الفئة غير موجودة
                 const cat = CAT[s.category as StoreCategory] || CAT["supermarket"];
                 const expired = s.expiresAt ? new Date(s.expiresAt) < new Date() : false;
                 return (
@@ -1351,8 +1485,8 @@ function SAStores() {
               })}
             </tbody>
           </table>
+          {filtered.length === 0 && <Empty icon={<Store size={24} />} title="لا توجد متاجر" desc="لم يتم العثور على متاجر تطابق البحث" />}
         </div>
-        {filtered.length === 0 && <Empty icon={<Store size={24} />} title="لا توجد متاجر" desc="لم يتم العثور على متاجر تطابق البحث" />}
       </div>
 
       {/* ── Create Store Modal ── */}
@@ -1554,97 +1688,272 @@ function SAStores() {
 
 function SAPlans() {
   const [billing, setBilling] = useState<"m" | "y">("m");
+  const [plans, setPlans] = useState<Plan[]>(PLANS);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editPlan, setEditPlan] = useState<Plan | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ nameAr: "", price: "", yearlyPrice: "", maxBranches: "1", maxUsers: "3", maxProducts: "500", maxInvoices: "1000", maxTerminals: "1", storage: "1 غيغابايت", apiAccess: false, badge: "", color: "#1D4ED8", features: "" });
+
+  const loadPlans = () => {
+    setLoading(true);
+    apiFetch("/plans", {}, getToken())
+      .then(d => { if (Array.isArray(d)) setPlans((d as object[]).map(x => norm(x as Plan & { _id?: string }))); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { loadPlans(); }, []);
+
+  const openEdit = (p: Plan) => {
+    setEditPlan(p);
+    setForm({ nameAr: p.nameAr, price: String(p.price), yearlyPrice: String(p.yearlyPrice), maxBranches: String(p.maxBranches), maxUsers: String(p.maxUsers), maxProducts: String(p.maxProducts), maxInvoices: String(p.maxInvoices), maxTerminals: String(p.maxTerminals), storage: p.storage, apiAccess: p.apiAccess, badge: p.badge || "", color: p.color, features: p.features.join("\n") });
+    setShowForm(true);
+  };
+  const openNew = () => {
+    setEditPlan(null);
+    setForm({ nameAr: "", price: "", yearlyPrice: "", maxBranches: "1", maxUsers: "3", maxProducts: "500", maxInvoices: "1000", maxTerminals: "1", storage: "1 غيغابايت", apiAccess: false, badge: "", color: "#1D4ED8", features: "" });
+    setShowForm(true);
+  };
+  const savePlan = async () => {
+    if (!form.nameAr || !form.price) { showToast("الاسم والسعر مطلوبان", "error"); return; }
+    setSaving(true);
+    try {
+      const body = { nameAr: form.nameAr, price: +form.price, yearlyPrice: +(form.yearlyPrice || form.price), maxBranches: +form.maxBranches, maxUsers: +form.maxUsers, maxProducts: +form.maxProducts, maxInvoices: +form.maxInvoices, maxTerminals: +form.maxTerminals, storage: form.storage, apiAccess: form.apiAccess, badge: form.badge || undefined, color: form.color, active: true, features: form.features.split("\n").map(f => f.trim()).filter(Boolean) };
+      if (editPlan) {
+        await apiFetch(`/plans/${editPlan.id}`, { method: "PUT", body: JSON.stringify(body) }, getToken());
+        showToast("تم تحديث الخطة بنجاح ✓", "success");
+      } else {
+        await apiFetch("/plans", { method: "POST", body: JSON.stringify(body) }, getToken());
+        showToast("تم إنشاء الخطة بنجاح ✓", "success");
+      }
+      setShowForm(false);
+      loadPlans();
+    } catch (e) { showToast((e as { error?: string }).error || "فشل الحفظ", "error"); }
+    finally { setSaving(false); }
+  };
+  const deletePlan = async (id: string, name: string) => {
+    if (!window.confirm(`هل أنت متأكد من حذف خطة "${name}"؟`)) return;
+    try {
+      await apiFetch(`/plans/${id}`, { method: "DELETE" }, getToken());
+      showToast("تم حذف الخطة", "success"); loadPlans();
+    } catch { showToast("فشل الحذف", "error"); }
+  };
+
+  const storedStores: StoreData[] = (() => { try { const s = localStorage.getItem("sowwanjo_sa_stores"); return s ? JSON.parse(s) : []; } catch { return []; } })();
+
   return (
-    <div className="p-6 space-y-6">
-      <Hdr title="خطط الاشتراك" sub="إدارة وتخصيص الخطط وتعيينها للمتاجر" action={<Btn icon={<Plus size={14} />}>خطة جديدة</Btn>} />
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+      <Hdr title="خطط الاشتراك" sub="إدارة وتخصيص الخطط وتعيينها للمتاجر" action={<Btn icon={<Plus size={14} />} onClick={openNew}>خطة جديدة</Btn>} />
       <div className="flex bg-muted rounded-2xl p-1 w-fit border border-border">
         <button onClick={() => setBilling("m")} className={`px-6 h-9 rounded-xl text-sm font-bold transition-all ${billing === "m" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>شهري</button>
         <button onClick={() => setBilling("y")} className={`px-6 h-9 rounded-xl text-sm font-bold transition-all ${billing === "y" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>سنوي (خصم 32%)</button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {PLANS.map(plan => (
-          <div key={plan.id} className={`bg-card rounded-2xl border-2 p-6 flex flex-col relative ${plan.badge ? "border-primary shadow-xl" : "border-border"}`}>
-            {plan.badge && <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-black px-4 py-1 rounded-full">{plan.badge}</div>}
-            <div className="mb-5">
-              <div className="w-11 h-11 rounded-xl mb-3 flex items-center justify-center" style={{ backgroundColor: `${plan.color}18` }}><CreditCard size={20} style={{ color: plan.color }} /></div>
-              <h3 className="text-xl font-black">{plan.nameAr}</h3>
-              <div className="flex items-baseline gap-1 mt-2">
-                <span className="text-4xl font-black">{billing === "m" ? plan.price : plan.yearlyPrice}</span>
-                <span className="text-muted-foreground text-sm">JOD / {billing === "m" ? "شهر" : "سنة"}</span>
+      {loading ? (
+        <div className="grid grid-cols-3 gap-5">{[1,2,3].map(i => <div key={i} className="bg-card rounded-2xl border border-border p-6 h-64 animate-pulse" />)}</div>
+      ) : plans.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground bg-card rounded-2xl border border-border">
+          <CreditCard size={40} className="mx-auto mb-3 opacity-30" />
+          <p className="font-bold mb-1">لا توجد خطط بعد</p>
+          <p className="text-sm mb-4">أنشئ أول خطة اشتراك لمتاجرك</p>
+          <Btn onClick={openNew} icon={<Plus size={14} />}>إنشاء خطة</Btn>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+          {plans.map(plan => (
+            <div key={plan.id} className={`bg-card rounded-2xl border-2 p-6 flex flex-col relative ${plan.badge ? "border-primary shadow-xl" : "border-border"}`}>
+              {plan.badge && <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-black px-4 py-1 rounded-full">{plan.badge}</div>}
+              <div className="mb-5">
+                <div className="w-11 h-11 rounded-xl mb-3 flex items-center justify-center" style={{ backgroundColor: `${plan.color}18` }}><CreditCard size={20} style={{ color: plan.color }} /></div>
+                <h3 className="text-xl font-black">{plan.nameAr}</h3>
+                <div className="flex items-baseline gap-1 mt-2">
+                  <span className="text-4xl font-black">{billing === "m" ? plan.price : plan.yearlyPrice}</span>
+                  <span className="text-muted-foreground text-sm">JOD / {billing === "m" ? "شهر" : "سنة"}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-5 text-xs">
+                {[["فروع", plan.maxBranches >= 99 ? "∞" : plan.maxBranches], ["مستخدمون", plan.maxUsers >= 99 ? "∞" : plan.maxUsers], ["منتجات", plan.maxProducts > 9999 ? "∞" : plan.maxProducts.toLocaleString()], ["فواتير/شهر", plan.maxInvoices > 9999 ? "∞" : plan.maxInvoices.toLocaleString()]].map(([l, vv]) =>
+                  <div key={String(l)} className="bg-muted/60 rounded-xl p-2.5 text-center"><p className="font-black text-foreground text-base">{vv}</p><p className="text-muted-foreground">{l}</p></div>)}
+              </div>
+              <ul className="space-y-2 mb-6 flex-1">
+                {plan.features.map(f => <li key={f} className="flex items-center gap-2 text-xs"><CheckCircle size={12} className="text-emerald-500 shrink-0" />{f}</li>)}
+              </ul>
+              <div className="flex gap-2">
+                <Btn v="secondary" s="sm" cls="flex-1" icon={<Edit2 size={11} />} onClick={() => openEdit(plan)}>تعديل</Btn>
+                <Btn v="ghost" s="sm" icon={<Trash2 size={11} />} onClick={() => deletePlan(plan.id, plan.nameAr)}>حذف</Btn>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 mb-5 text-xs">
-              {[["فروع", plan.maxBranches === 99 ? "∞" : plan.maxBranches], ["مستخدمون", plan.maxUsers === 99 ? "∞" : plan.maxUsers], ["منتجات", plan.maxProducts > 9999 ? "∞" : plan.maxProducts.toLocaleString()], ["فواتير/شهر", plan.maxInvoices > 9999 ? "∞" : plan.maxInvoices.toLocaleString()]].map(([l, vv]) =>
-                <div key={String(l)} className="bg-muted/60 rounded-xl p-2.5 text-center"><p className="font-black text-foreground text-base">{vv}</p><p className="text-muted-foreground">{l}</p></div>)}
-            </div>
-            <ul className="space-y-2 mb-6 flex-1">
-              {plan.features.map(f => <li key={f} className="flex items-center gap-2 text-xs"><CheckCircle size={12} className="text-emerald-500 shrink-0" />{f}</li>)}
-            </ul>
-            <div className="flex gap-2"><Btn v="secondary" s="sm" cls="flex-1" icon={<Edit2 size={11} />}>تعديل</Btn><Btn v={plan.badge ? "primary" : "ghost"} s="sm" cls="flex-1">{plan.badge ? "محدد" : "تحديد"}</Btn></div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
+
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
-        <div className="p-5 border-b border-border font-bold text-foreground">اشتراكات المتاجر الحالية</div>
+        <div className="p-5 border-b border-border font-bold text-foreground">اشتراكات المتاجر الحالية ({storedStores.length})</div>
         <div className="divide-y divide-border/60">
-          {(() => { try { const ss = localStorage.getItem("sowwanjo_sa_stores"); return ss ? JSON.parse(ss) : []; } catch { return []; } })().map((s: StoreData) => (
+          {storedStores.length === 0 ? (
+            <p className="text-center py-6 text-sm text-muted-foreground">لا يوجد متاجر بعد</p>
+          ) : storedStores.map((s: StoreData) => (
             <div key={s.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/20">
               <div className="flex-1 min-w-0"><p className="text-sm font-bold">{s.nameAr}</p><p className="text-xs text-muted-foreground">{s.email}</p></div>
               <span className="hidden sm:block text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">{s.plan}</span>
               <SBadge status={s.status} />
               <div className="hidden md:block text-xs text-muted-foreground">انتهاء: {s.expiresAt}</div>
-              <div className="flex gap-1.5"><Btn v="secondary" s="xs">تجديد</Btn><Btn v="ghost" s="xs" icon={<TrendingUp size={11} />}>ترقية</Btn><Btn v="ghost" s="xs" icon={<TrendingDown size={11} />}>تخفيض</Btn></div>
+              <div className="flex gap-1.5">
+                <Btn v="secondary" s="xs" onClick={() => showToast(`تم تجديد اشتراك ${s.nameAr}`, "success")}>تجديد</Btn>
+                <Btn v="ghost" s="xs" icon={<TrendingUp size={11} />} onClick={() => showToast("تم طلب الترقية", "info")}>ترقية</Btn>
+              </div>
             </div>
           ))}
         </div>
       </div>
+
+      {showForm && (
+        <Modal title={editPlan ? "تعديل الخطة" : "خطة جديدة"} sub="أدخل تفاصيل خطة الاشتراك" onClose={() => setShowForm(false)}>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <F label="اسم الخطة" req><TInput value={form.nameAr} onChange={v => setForm(f => ({ ...f, nameAr: v }))} placeholder="مثال: الاحترافي" /></F>
+              <F label="السعر الشهري (JOD)" req><TInput value={form.price} onChange={v => setForm(f => ({ ...f, price: v }))} type="number" /></F>
+              <F label="السعر السنوي (JOD)"><TInput value={form.yearlyPrice} onChange={v => setForm(f => ({ ...f, yearlyPrice: v }))} type="number" /></F>
+              <F label="اللون (Hex)"><TInput value={form.color} onChange={v => setForm(f => ({ ...f, color: v }))} placeholder="#1D4ED8" /></F>
+              <F label="الحد الأقصى للفروع"><TInput value={form.maxBranches} onChange={v => setForm(f => ({ ...f, maxBranches: v }))} type="number" /></F>
+              <F label="الحد الأقصى للمستخدمين"><TInput value={form.maxUsers} onChange={v => setForm(f => ({ ...f, maxUsers: v }))} type="number" /></F>
+              <F label="الحد الأقصى للمنتجات"><TInput value={form.maxProducts} onChange={v => setForm(f => ({ ...f, maxProducts: v }))} type="number" /></F>
+              <F label="الحد الأقصى للفواتير/شهر"><TInput value={form.maxInvoices} onChange={v => setForm(f => ({ ...f, maxInvoices: v }))} type="number" /></F>
+              <F label="عدد أجهزة POS"><TInput value={form.maxTerminals} onChange={v => setForm(f => ({ ...f, maxTerminals: v }))} type="number" /></F>
+              <F label="حجم التخزين"><TInput value={form.storage} onChange={v => setForm(f => ({ ...f, storage: v }))} placeholder="5 غيغابايت" /></F>
+            </div>
+            <F label="شارة مميزة (اختياري)"><TInput value={form.badge} onChange={v => setForm(f => ({ ...f, badge: v }))} placeholder="مثال: الأكثر شيوعاً" /></F>
+            <F label="المميزات (كل ميزة في سطر جديد)" req>
+              <textarea value={form.features} onChange={e => setForm(f => ({ ...f, features: e.target.value }))} rows={5} placeholder={"تقارير متقدمة\nإدارة المخزون\nدعم أولوية"} className="w-full rounded-xl border border-border bg-input-background text-sm text-foreground px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring/25 resize-none" />
+            </F>
+            <div className="flex gap-3 pt-2">
+              <Btn full onClick={savePlan} disabled={saving}>{saving ? "جاري الحفظ..." : (editPlan ? "حفظ التعديلات" : "إنشاء الخطة")}</Btn>
+              <Btn v="secondary" full onClick={() => setShowForm(false)}>إلغاء</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
-
 function SAReports() {
+  const [stores, setStores] = useState<StoreData[]>(() => {
+    try { const s = localStorage.getItem("sowwanjo_sa_stores"); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const [loadingRep, setLoadingRep] = useState(true);
+
+  useEffect(() => {
+    apiFetch("/stores", {}, getToken())
+      .then(d => {
+        if (Array.isArray(d)) {
+          const mapped = (d as (StoreData & { _id?: string })[]).map(s => ({ revenue: 0, sales: 0, products: 0, users: 1, ...s, id: s._id || s.id || "" }));
+          setStores(mapped);
+          try { localStorage.setItem("sowwanjo_sa_stores", JSON.stringify(mapped)); } catch {}
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingRep(false));
+  }, []);
+
+  const totalRevenue  = stores.reduce((a, s) => a + (s.revenue || 0), 0);
+  const totalSales    = stores.reduce((a, s) => a + (s.sales || 0), 0);
+  const totalProducts = stores.reduce((a, s) => a + (s.products || 0), 0);
+  const totalUsers    = stores.reduce((a, s) => a + (s.users || 0), 0);
+  const avgInvoice    = totalSales > 0 ? totalRevenue / totalSales : 0;
+  const activeCount   = stores.filter(s => s.status === "active").length;
+  const retentionRate = stores.length > 0 ? Math.round((activeCount / stores.length) * 100) : 0;
+
+  // Monthly revenue by plan
+  const planRevenue: Record<string, number> = {};
+  stores.forEach(s => { planRevenue[s.plan] = (planRevenue[s.plan] || 0) + (s.revenue || 0); });
+
+  const planChartData = Object.entries(planRevenue).map(([plan, rev]) => ({ plan, إيرادات: rev }));
+
+  if (loadingRep) return <div className="p-6 text-center text-muted-foreground py-20">جاري تحميل التقارير من قاعدة البيانات...</div>;
+
   return (
-    <div className="p-6 space-y-5">
-      <Hdr title="التقارير العامة" sub="نظرة شاملة على أداء المنصة" action={<><Btn v="secondary" s="sm" icon={<Download size={14} />} onClick={() => showToast("جاري إعداد تقرير PDF الشامل...", "info")}>PDF</Btn><Btn v="secondary" s="sm" icon={<Download size={14} />} onClick={() => showToast("جاري تصدير ملف Excel...", "info")}>Excel</Btn></>} />
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-5">
+      <Hdr title="التقارير العامة" sub="نظرة شاملة على أداء المنصة — بيانات حقيقية من قاعدة البيانات" action={<><Btn v="secondary" s="sm" icon={<Download size={14} />} onClick={() => showToast("جاري إعداد تقرير PDF الشامل...", "info")}>PDF</Btn><Btn v="secondary" s="sm" icon={<Download size={14} />} onClick={() => showToast("جاري تصدير ملف Excel...", "info")}>Excel</Btn></>} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <KPI icon={<DollarSign size={20} />} label="إجمالي الإيرادات" value={jod(totalRevenue)} sub={`من ${stores.length} متجر`} color="#1D4ED8" />
+        <KPI icon={<FileText size={20} />} label="إجمالي الفواتير" value={totalSales.toLocaleString("ar-JO")} sub="فاتورة مسجلة" color="#059669" />
+        <KPI icon={<TrendingUp size={20} />} label="متوسط الفاتورة" value={jod(avgInvoice)} color="#D97706" />
+        <KPI icon={<Store size={20} />} label="معدل النشاط" value={`${retentionRate}%`} sub={`${activeCount} متجر نشط`} color="#7C3AED" />
+      </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI icon={<DollarSign size={20} />} label="إجمالي الإيرادات" value="158,940 JOD" sub="هذا العام" color="#1D4ED8" trend={24} />
-        <KPI icon={<FileText size={20} />} label="إجمالي الفواتير" value="8,520" sub="هذا العام" color="#059669" trend={18} />
-        <KPI icon={<TrendingUp size={20} />} label="متوسط الفاتورة" value="18.65 JOD" color="#D97706" trend={5} />
-        <KPI icon={<Store size={20} />} label="معدل الاحتفاظ" value="87.3%" color="#7C3AED" trend={3} />
+        <KPI icon={<Package size={20} />} label="إجمالي المنتجات" value={totalProducts.toLocaleString("ar-JO")} color="#0891B2" />
+        <KPI icon={<Users size={20} />} label="إجمالي المستخدمين" value={totalUsers.toLocaleString("ar-JO")} color="#059669" />
+        <KPI icon={<Store size={20} />} label="المتاجر النشطة" value={String(activeCount)} sub={`من ${stores.length} إجمالي`} color="#1D4ED8" />
+        <KPI icon={<AlertCircle size={20} />} label="متاجر منتهية/موقوفة" value={String(stores.filter(s => s.status === "suspended" || s.status === "expired").length)} color="#EF4444" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="bg-card rounded-2xl border border-border p-5">
-          <p className="font-bold mb-4">الإيرادات مقابل المصروفات (JOD)</p>
+          <p className="font-bold mb-1">الإيرادات حسب الخطة (JOD)</p>
+          <p className="text-xs text-muted-foreground mb-4">مجموع الإيرادات لكل خطة اشتراك</p>
           <ResponsiveContainer width="100%" height={230}>
-            <BarChart data={monthData} barGap={4}>
+            <BarChart data={planChartData.length > 0 ? planChartData : [{ plan: "لا توجد بيانات", إيرادات: 0 }]} barGap={4}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `${v / 1000}k`} />
-              <Tooltip formatter={(v: number) => [`${v.toLocaleString()} JOD`]} />
+              <XAxis dataKey="plan" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} tickFormatter={v => jod(v)} />
+              <Tooltip formatter={(v: number) => [jod(v)]} />
               <Bar key="bar-rev" dataKey="إيرادات" fill="#1D4ED8" radius={[5, 5, 0, 0]} />
-              <Bar key="bar-exp" dataKey="مصروفات" fill="#E2E8F0" radius={[5, 5, 0, 0]} />
-              <Bar key="bar-prof" dataKey="أرباح" fill="#059669" radius={[5, 5, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
         <div className="bg-card rounded-2xl border border-border p-5">
-          <p className="font-bold mb-4">المبيعات الأسبوعية</p>
-          <ResponsiveContainer width="100%" height={230}>
-            <LineChart data={weekData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="day" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip formatter={(v: number) => [`${v} JOD`]} />
-              <Line key="line-sales" type="monotone" dataKey="مبيعات" stroke="#1D4ED8" strokeWidth={2.5} dot={false} />
-              <Line key="line-prof" type="monotone" dataKey="أرباح" stroke="#059669" strokeWidth={2.5} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+          <p className="font-bold mb-4">توزيع المتاجر حسب النوع</p>
+          {stores.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">لا توجد بيانات بعد</div>
+          ) : (
+            <div className="space-y-3">
+              {(Object.keys(CAT) as StoreCategory[]).map(cat => {
+                const count = stores.filter(s => s.category === cat).length;
+                const pct = stores.length > 0 ? (count / stores.length) * 100 : 0;
+                return (
+                  <div key={cat} className="flex items-center gap-3">
+                    <div className="w-20 shrink-0"><p className="text-xs font-bold text-foreground">{CAT[cat].label}</p></div>
+                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: CAT[cat].color }} />
+                    </div>
+                    <span className="text-xs font-bold text-foreground w-8 text-left shrink-0">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
+      </div>
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="p-5 border-b border-border font-bold">أداء المتاجر ({stores.length})</div>
+        {stores.length === 0 ? (
+          <p className="text-center py-8 text-sm text-muted-foreground">لا يوجد متاجر مسجلة بعد</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-border bg-muted/40">{["المتجر","الفئة","الخطة","الحالة","الإيرادات","الفواتير","المنتجات","المستخدمون"].map(h => <th key={h} className="text-right p-3 font-bold text-muted-foreground text-xs">{h}</th>)}</tr></thead>
+              <tbody className="divide-y divide-border/60">
+                {stores.sort((a,b) => (b.revenue||0)-(a.revenue||0)).map(s => {
+                  const cat = CAT[s.category as StoreCategory] || CAT["supermarket"];
+                  return (
+                    <tr key={s.id} className="hover:bg-muted/20">
+                      <td className="p-3 font-bold text-xs">{s.nameAr}</td>
+                      <td className="p-3"><span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ color: cat.color, backgroundColor: cat.bg }}>{cat.label}</span></td>
+                      <td className="p-3 text-xs font-bold text-primary">{s.plan}</td>
+                      <td className="p-3"><SBadge status={s.status} /></td>
+                      <td className="p-3 text-xs font-bold">{jod(s.revenue || 0)}</td>
+                      <td className="p-3 text-xs text-muted-foreground">{(s.sales||0).toLocaleString()}</td>
+                      <td className="p-3 text-xs text-muted-foreground">{(s.products||0).toLocaleString()}</td>
+                      <td className="p-3 text-xs text-muted-foreground">{s.users||0}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
 function SAAudit() {
   const logs: {user:string;action:string;target:string;time:string;date:string;ip:string;device:string}[] = [];
   const AC: Record<string, string> = { "تسجيل دخول": "text-blue-600 bg-blue-50", "إضافة منتج": "text-emerald-600 bg-emerald-50", "إصدار فاتورة": "text-purple-600 bg-purple-50", "تعديل سعر": "text-orange-600 bg-orange-50" };
@@ -1674,85 +1983,271 @@ function SAAudit() {
 }
 
 function SATickets() {
-  const tickets = [
-    { id: "TK-001", store: "إسبريسو عمّان", subject: "مشكلة في طباعة الإيصالات", priority: "عالية", status: "open", date: "2024-12-11" },
-    { id: "TK-002", store: "هدى للأزياء", subject: "كيفية إضافة المتغيرات للمنتجات", priority: "متوسطة", status: "pending", date: "2024-12-10" },
-    { id: "TK-003", store: "سوبرماركت المدينة", subject: "طلب تقرير مخصص", priority: "منخفضة", status: "closed", date: "2024-12-09" },
-  ];
-  const PR: Record<string, string> = { عالية: "text-red-600 bg-red-50 border-red-200", متوسطة: "text-orange-600 bg-orange-50 border-orange-200", منخفضة: "text-blue-600 bg-blue-50 border-blue-200" };
-  const SR: Record<string, string> = { open: "text-emerald-700 bg-emerald-100", pending: "text-amber-700 bg-amber-100", closed: "text-gray-600 bg-gray-100" };
-  const SL: Record<string, string> = { open: "مفتوح", pending: "قيد الانتظار", closed: "مغلق" };
-  return (
-    <div className="p-6 space-y-4">
-      <Hdr title="تذاكر الدعم الفني" sub={`${tickets.filter(t => t.status !== "closed").length} تذاكر مفتوحة`} />
-      <div className="space-y-3">
-        {tickets.map(t => (
-          <div key={t.id} className="bg-card rounded-2xl border border-border p-5 flex items-start gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="text-xs font-mono text-muted-foreground">{t.id}</span>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${PR[t.priority]}`}>{t.priority}</span>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${SR[t.status]}`}>{SL[t.status]}</span>
-              </div>
-              <p className="font-bold text-foreground">{t.subject}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t.store} • {t.date}</p>
-            </div>
-            <div className="flex gap-2 shrink-0"><Btn s="sm" icon={<Send size={12} />}>رد</Btn>{t.status !== "closed" && <Btn v="secondary" s="sm">إغلاق</Btn>}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+  const [tickets, setTickets] = useState<{ _id: string; storeName: string; subject: string; message: string; priority: string; status: string; createdAt: string; replies: { from: string; message: string; isSA: boolean; createdAt: string }[] }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [replyMsg, setReplyMsg] = useState("");
+  const [replying, setReplying] = useState(false);
 
-function SABroadcast() {
-  const [msg, setMsg] = useState(""); const [target, setTarget] = useState("all"); const [sent, setSent] = useState(false);
+  const loadTickets = () => {
+    apiFetch("/tickets", {}, getToken())
+      .then(d => { if (Array.isArray(d)) setTickets(d as typeof tickets); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { loadTickets(); }, []);
+
+  const changeStatus = async (id: string, status: string) => {
+    try {
+      await apiFetch(`/tickets/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }, getToken());
+      showToast("تم تحديث الحالة", "success"); loadTickets();
+    } catch { showToast("فشل تحديث الحالة", "error"); }
+  };
+
+  const sendReply = async (id: string) => {
+    if (!replyMsg.trim()) return;
+    setReplying(true);
+    try {
+      await apiFetch(`/tickets/${id}/reply`, { method: "POST", body: JSON.stringify({ message: replyMsg }) }, getToken());
+      showToast("تم إرسال الرد ✓", "success");
+      setReplyMsg(""); loadTickets();
+    } catch { showToast("فشل الإرسال", "error"); }
+    finally { setReplying(false); }
+  };
+
+  const PR: Record<string, string> = { "عالية": "text-red-600 bg-red-50 border-red-200", "متوسطة": "text-orange-600 bg-orange-50 border-orange-200", "منخفضة": "text-blue-600 bg-blue-50 border-blue-200" };
+  const SR: Record<string, string> = { open: "text-emerald-700 bg-emerald-100", pending: "text-amber-700 bg-amber-100", closed: "text-gray-600 bg-gray-100" };
+  const SL: Record<string, string> = { open: "مفتوح", pending: "قيد المعالجة", closed: "مغلق" };
+
+  const selectedTicket = tickets.find(t => t._id === selected);
+
   return (
-    <div className="p-6 space-y-5">
-      <Hdr title="مركز الإعلانات" sub="إرسال رسائل ومستجدات لجميع المتاجر أو لمتجر محدد" />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
-          <p className="font-bold">إرسال إعلان جديد</p>
-          <F label="المستهدف"><SInput value={target} onChange={setTarget} options={[{ value: "all", label: "جميع المتاجر" }, { value: "active", label: "النشطة فقط" }, ...(() => { try { const ss = localStorage.getItem("sowwanjo_sa_stores"); return ss ? JSON.parse(ss).map((s: StoreData) => ({ value: s.id, label: s.nameAr })) : []; } catch { return []; } })()]} /></F>
-          <F label="نص الإعلان" req><textarea value={msg} onChange={e => setMsg(e.target.value)} rows={5} placeholder="اكتب نص الإعلان..." className="w-full rounded-xl border border-border bg-input-background text-sm text-foreground px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring/25 resize-none" /></F>
-          {sent && <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm"><CheckCircle size={14} /> تم الإرسال بنجاح!</div>}
-          <Btn full icon={<Send size={15} />} disabled={!msg} onClick={() => { setSent(true); setMsg(""); setTimeout(() => setSent(false), 3000); }}>إرسال الآن</Btn>
+    <div className="p-3 sm:p-6 space-y-4">
+      <Hdr title="تذاكر الدعم الفني" sub={`${tickets.filter(t => t.status !== "closed").length} تذاكر مفتوحة`} action={<button onClick={loadTickets} className="text-xs text-primary hover:underline flex items-center gap-1"><RefreshCw size={12} />تحديث</button>} />
+      {loading ? (
+        <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-24 bg-card rounded-2xl border border-border animate-pulse" />)}</div>
+      ) : tickets.length === 0 ? (
+        <div className="text-center py-16 bg-card rounded-2xl border border-border text-muted-foreground">
+          <ClipboardList size={40} className="mx-auto mb-3 opacity-30" />
+          <p className="font-bold mb-1">لا توجد تذاكر دعم</p>
+          <p className="text-sm">سيظهر هنا طلبات الدعم من المتاجر</p>
         </div>
-        <div className="bg-card rounded-2xl border border-border p-5">
-          <p className="font-bold mb-4">الإعلانات السابقة</p>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
           <div className="space-y-3">
-            {([]).map((p: {t:string;d:string;type:string}, i: number) => (
-              <div key={i} className="border border-border rounded-xl p-4">
-                <div className="flex justify-between mb-1.5"><span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{p.type}</span><span className="text-xs text-muted-foreground">{p.d}</span></div>
-                <p className="text-sm">{p.t}</p>
+            {tickets.map(t => (
+              <div key={t._id} onClick={() => setSelected(t._id === selected ? null : t._id)} className={`bg-card rounded-2xl border p-4 cursor-pointer transition-all hover:border-primary/50 ${selected === t._id ? "border-primary bg-primary/2" : "border-border"}`}>
+                <div className="flex items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-xs font-mono text-muted-foreground">#{t._id.slice(-6).toUpperCase()}</span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${PR[t.priority] || PR["متوسطة"]}`}>{t.priority}</span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${SR[t.status] || SR.open}`}>{SL[t.status] || t.status}</span>
+                    </div>
+                    <p className="font-bold text-foreground text-sm">{t.subject}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t.storeName} • {new Date(t.createdAt).toLocaleDateString("ar-JO")}</p>
+                    {t.replies.length > 0 && <p className="text-xs text-primary mt-1">{t.replies.length} {t.replies.length === 1 ? "رد" : "ردود"}</p>}
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    {t.status !== "closed" && (
+                      <button onClick={e => { e.stopPropagation(); changeStatus(t._id, "closed"); }} className="text-xs text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded-lg transition-all">إغلاق</button>
+                    )}
+                    {t.status === "closed" && (
+                      <button onClick={e => { e.stopPropagation(); changeStatus(t._id, "open"); }} className="text-xs text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded-lg transition-all">فتح</button>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
+          {selectedTicket && (
+            <div className="bg-card rounded-2xl border border-border p-5 flex flex-col h-fit">
+              <div className="mb-4 pb-4 border-b border-border">
+                <p className="font-bold text-foreground">{selectedTicket.subject}</p>
+                <p className="text-xs text-muted-foreground mt-1">{selectedTicket.storeName}</p>
+                {selectedTicket.message && <p className="text-sm mt-3 text-foreground bg-muted/40 rounded-xl p-3">{selectedTicket.message}</p>}
+              </div>
+              <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+                {selectedTicket.replies.map((r, i) => (
+                  <div key={i} className={`p-3 rounded-xl text-sm ${r.isSA ? "bg-primary/10 border border-primary/20 mr-4" : "bg-muted/50 ml-4"}`}>
+                    <p className={`text-xs font-bold mb-1 ${r.isSA ? "text-primary" : "text-muted-foreground"}`}>{r.from}</p>
+                    <p>{r.message}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{new Date(r.createdAt).toLocaleString("ar-JO")}</p>
+                  </div>
+                ))}
+              </div>
+              {selectedTicket.status !== "closed" && (
+                <div className="space-y-2">
+                  <textarea value={replyMsg} onChange={e => setReplyMsg(e.target.value)} rows={3} placeholder="اكتب ردك هنا..." className="w-full rounded-xl border border-border bg-input-background text-sm text-foreground px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring/25 resize-none" />
+                  <Btn full icon={<Send size={13} />} disabled={!replyMsg.trim() || replying} onClick={() => sendReply(selectedTicket._id)}>
+                    {replying ? "جاري الإرسال..." : "إرسال الرد"}
+                  </Btn>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+function SABroadcast() {
+  const [msg, setMsg] = useState("");
+  const [title, setTitle] = useState("");
+  const [target, setTarget] = useState("all");
+  const [type, setType] = useState("info");
+  const [sending, setSending] = useState(false);
+  const [announcements, setAnnouncements] = useState<{ _id: string; title: string; message: string; target: string; createdAt: string }[]>([]);
+  const [loadingAnns, setLoadingAnns] = useState(true);
+
+  const storedStores: StoreData[] = (() => { try { const s = localStorage.getItem("sowwanjo_sa_stores"); return s ? JSON.parse(s) : []; } catch { return []; } })();
+
+  const loadAnnouncements = () => {
+    apiFetch("/announcements", {}, getToken())
+      .then(d => { if (Array.isArray(d)) setAnnouncements(d as typeof announcements); })
+      .catch(() => {})
+      .finally(() => setLoadingAnns(false));
+  };
+  useEffect(() => { loadAnnouncements(); }, []);
+
+  const sendAnn = async () => {
+    if (!msg.trim()) { showToast("يرجى كتابة نص الإعلان", "error"); return; }
+    setSending(true);
+    try {
+      await apiFetch("/announcements", { method: "POST", body: JSON.stringify({ title: title || "إعلان جديد", message: msg, target, type }) }, getToken());
+      showToast("تم إرسال الإعلان بنجاح ✓", "success");
+      setMsg(""); setTitle("");
+      loadAnnouncements();
+    } catch (e) {
+      showToast((e as { error?: string }).error || "فشل الإرسال", "error");
+    } finally { setSending(false); }
+  };
+
+  const deleteAnn = async (id: string) => {
+    try {
+      await apiFetch(`/announcements/${id}`, { method: "DELETE" }, getToken());
+      showToast("تم الحذف", "success"); loadAnnouncements();
+    } catch { showToast("فشل الحذف", "error"); }
+  };
+
+  const targetLabel = (t: string) => {
+    if (t === "all") return "جميع المتاجر";
+    if (t === "active") return "النشطة فقط";
+    const store = storedStores.find(s => s.id === t);
+    return store ? store.nameAr : t;
+  };
+
+  const typeColors: Record<string, string> = { info: "bg-blue-100 text-blue-700", warning: "bg-amber-100 text-amber-700", success: "bg-emerald-100 text-emerald-700", danger: "bg-red-100 text-red-700" };
+  const typeLabels: Record<string, string> = { info: "معلومات", warning: "تحذير", success: "إيجابي", danger: "تنبيه" };
+
+  return (
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-5">
+      <Hdr title="مركز الإعلانات" sub="إرسال رسائل ومستجدات لجميع المتاجر أو لمتجر محدد" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
+          <p className="font-bold">إرسال إعلان جديد</p>
+          <F label="العنوان"><TInput value={title} onChange={setTitle} placeholder="عنوان الإعلان" /></F>
+          <F label="المستهدف">
+            <SInput value={target} onChange={setTarget} options={[
+              { value: "all", label: "جميع المتاجر" },
+              { value: "active", label: "النشطة فقط" },
+              ...storedStores.map(s => ({ value: s.id, label: s.nameAr })),
+            ]} />
+          </F>
+          <F label="نوع الإعلان">
+            <SInput value={type} onChange={setType} options={[{ value: "info", label: "معلومات" }, { value: "warning", label: "تحذير" }, { value: "success", label: "إيجابي" }, { value: "danger", label: "تنبيه" }]} />
+          </F>
+          <F label="نص الإعلان" req>
+            <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={5} placeholder="اكتب نص الإعلان..." className="w-full rounded-xl border border-border bg-input-background text-sm text-foreground px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring/25 resize-none" />
+          </F>
+          <Btn full icon={<Send size={15} />} disabled={!msg.trim() || sending} onClick={sendAnn}>
+            {sending ? "جاري الإرسال..." : "إرسال الآن"}
+          </Btn>
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <p className="font-bold">الإعلانات السابقة ({announcements.length})</p>
+            <button onClick={loadAnnouncements} className="text-xs text-primary hover:underline flex items-center gap-1"><RefreshCw size={11} />تحديث</button>
+          </div>
+          {loadingAnns ? (
+            <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 bg-muted animate-pulse rounded-xl" />)}</div>
+          ) : announcements.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">لا توجد إعلانات بعد</div>
+          ) : (
+            <div className="space-y-3 max-h-[420px] overflow-y-auto">
+              {announcements.map((a) => (
+                <div key={a._id} className="border border-border rounded-xl p-3">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${typeColors[a.type] || typeColors.info}`}>{typeLabels[a.type] || a.type}</span>
+                      <span className="text-xs text-muted-foreground">{targetLabel(a.target)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{new Date(a.createdAt).toLocaleDateString("ar-JO")}</span>
+                      <button onClick={() => deleteAnn(a._id)} className="text-red-400 hover:text-red-600"><Trash2 size={12} /></button>
+                    </div>
+                  </div>
+                  {a.title && <p className="text-xs font-bold mb-0.5">{a.title}</p>}
+                  <p className="text-sm text-foreground">{a.message}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
 function SASettings() {
   const [lang, setLang] = useState("ar");
   const [vat, setVat] = useState("16");
   const [trial, setTrial] = useState("14");
   const [supportEmail, setSupportEmail] = useState("support@sowwanjo.online");
+  const [platformName, setPlatformName] = useState("Sowwanjo POS");
   const [backupOn, setBackupOn] = useState(true);
   const [syncOn, setSyncOn] = useState(true);
   const [auditOn, setAuditOn] = useState(true);
   const [backupLoading, setBackupLoading] = useState(false);
+  const [loadingSett, setLoadingSett] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const doSave = () => showToast("تم حفظ إعدادات النظام بنجاح ✓", "success");
+  useEffect(() => {
+    apiFetch("/super-admin/settings", {}, getToken())
+      .then((d: unknown) => {
+        const s = d as Record<string, unknown>;
+        if (s.lang) setLang(String(s.lang));
+        if (s.vat) setVat(String(s.vat));
+        if (s.trial) setTrial(String(s.trial));
+        if (s.supportEmail) setSupportEmail(String(s.supportEmail));
+        if (s.platformName) setPlatformName(String(s.platformName));
+        if (typeof s.backupOn === "boolean") setBackupOn(s.backupOn);
+        if (typeof s.syncOn === "boolean") setSyncOn(s.syncOn);
+        if (typeof s.auditOn === "boolean") setAuditOn(s.auditOn);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingSett(false));
+  }, []);
+
+  const doSave = async () => {
+    setSaving(true);
+    try {
+      await apiFetch("/super-admin/settings", { method: "PUT", body: JSON.stringify({ lang, vat, trial, supportEmail, platformName, backupOn, syncOn, auditOn }) }, getToken());
+      showToast("تم حفظ إعدادات النظام بنجاح ✓", "success");
+    } catch (e) {
+      showToast((e as { error?: string }).error || "فشل الحفظ", "error");
+    } finally { setSaving(false); }
+  };
+
   const doBackup = () => {
     setBackupLoading(true);
     setTimeout(() => { setBackupLoading(false); showToast("تم إنشاء النسخة الاحتياطية وحفظها بنجاح", "success"); }, 1800);
   };
 
+  if (loadingSett) return <div className="p-6 text-center text-muted-foreground py-20">جاري تحميل الإعدادات...</div>;
+
   return (
-    <div className="p-6 space-y-5">
-      <Hdr title="إعدادات النظام" action={<Btn v="success" s="sm" icon={<Check size={14} />} onClick={doSave}>حفظ الإعدادات</Btn>} />
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-5">
+      <Hdr title="إعدادات النظام" action={<Btn v="success" s="sm" icon={<Check size={14} />} onClick={doSave} disabled={saving}>{saving ? "جاري الحفظ..." : "حفظ الإعدادات"}</Btn>} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
           <p className="font-bold flex items-center gap-2"><Globe size={14} /> الإعدادات العامة</p>
@@ -1852,12 +2347,29 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
     createdAt:rawStore?.createdAt|| new Date().toISOString().split("T")[0],
     expiresAt:rawStore?.expiresAt|| new Date(Date.now() + 365*86400000).toISOString().split("T")[0],
   };
-  const [screen, setScreen] = useState("dashboard");
+  const [screen, setScreen] = useState(() => {
+    try { return localStorage.getItem(`sowwanjo_store_screen_${storeId}`) || "dashboard"; } catch { return "dashboard"; }
+  });
   const [col, setCol] = useState(false);
+  const navTo = (s: string) => {
+    setScreen(s);
+    try { localStorage.setItem(`sowwanjo_store_screen_${storeId}`, s); } catch {}
+  };
   const cat = CAT[store.category as StoreCategory] || CAT["supermarket"];
+  const [storeMobileMenu, setStoreMobileMenu] = useState(false);
+  const storeBottomNav = [
+    { id: "dashboard", label: "الرئيسية", icon: <LayoutDashboard size={19} /> },
+    { id: "pos",       label: "البيع",    icon: <ShoppingCart size={19} /> },
+    { id: "products",  label: "المنتجات", icon: <Package size={19} /> },
+    { id: "reports",   label: "التقارير", icon: <BarChart2 size={19} /> },
+    { id: "settings",  label: "إعدادات",  icon: <Settings size={19} /> },
+  ];
+
   return (
     <div className="flex h-screen overflow-hidden bg-background" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
-      <aside className={`${col ? "w-[50px]" : "w-56"} shrink-0 flex flex-col transition-all duration-300`} style={{ background: "#0F172A" }}>
+
+      {/* Desktop sidebar */}
+      <aside className={`hidden md:flex ${col ? "w-[50px]" : "w-56"} shrink-0 flex-col transition-all duration-300`} style={{ background: "#0F172A" }}>
         <div className="h-14 flex items-center gap-2.5 px-3 border-b border-white/7 shrink-0">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${cat.color}25` }}>
             <span style={{ color: cat.color }}>{cat.icon}</span>
@@ -1866,7 +2378,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
         </div>
         <nav className="flex-1 px-1.5 py-2 space-y-0.5 overflow-y-auto">
           {STORE_NAV.map(n => (
-            <button key={n.id} onClick={() => setScreen(n.id)}
+            <button key={n.id} onClick={() => navTo(n.id)}
               className={`w-full flex items-center gap-2.5 h-8 rounded-xl text-xs font-semibold transition-all ${col ? "justify-center px-1.5" : "px-2.5"} ${screen === n.id ? "bg-white/10 text-white" : "text-white/45 hover:bg-white/5 hover:text-white/80"}`}
               title={col ? n.label : undefined}>
               <span className="shrink-0">{n.icon}</span>
@@ -1884,20 +2396,53 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
           </button>
         </div>
       </aside>
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setCol(!col)} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground"><Menu size={15} /></button>
-            <div><p className="text-sm font-bold">{STORE_NAV.find(n => n.id === screen)?.label}</p><p className="text-xs text-muted-foreground">{dateAr()} • {timeAr()}</p></div>
+
+      {/* Mobile slide-in menu */}
+      {storeMobileMenu && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setStoreMobileMenu(false)} />
+          <div className="relative mr-auto w-64 h-full flex flex-col shadow-2xl" style={{ background: "#0F172A", paddingTop: "env(safe-area-inset-top)" }}>
+            <div className="h-14 flex items-center gap-2.5 px-4 border-b border-white/7 shrink-0">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${cat.color}25` }}>
+                <span style={{ color: cat.color }}>{cat.icon}</span>
+              </div>
+              <div className="min-w-0 flex-1"><p className="text-white font-bold text-xs leading-tight truncate">{store.nameAr}</p><p className="text-white/30 text-xs">{cat.label}</p></div>
+              <button onClick={() => setStoreMobileMenu(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 text-white shrink-0"><X size={14} /></button>
+            </div>
+            <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto">
+              {STORE_NAV.map(n => (
+                <button key={n.id} onClick={() => { navTo(n.id); setStoreMobileMenu(false); }}
+                  className={`w-full flex items-center gap-2.5 h-10 rounded-xl px-3 text-sm font-semibold transition-all ${screen === n.id ? "bg-white/10 text-white" : "text-white/50 hover:bg-white/5 hover:text-white/80"}`}>
+                  <span className="shrink-0">{n.icon}</span>
+                  <span className="truncate">{n.label}</span>
+                </button>
+              ))}
+            </nav>
+            <div className="p-2 border-t border-white/7 space-y-0.5" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}>
+              {<div className="px-3 py-2 rounded-xl bg-white/4 mb-1"><p className="text-white/40 text-xs">{store.plan}</p><p className="text-white/25 text-xs">ينتهي {store.expiresAt}</p></div>}
+              <button onClick={onLogout} className="w-full flex items-center gap-2 h-9 rounded-xl text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10 px-3">
+                <LogOut size={13} />تسجيل الخروج
+              </button>
+            </div>
           </div>
+        </div>
+      )}
+
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <header className="h-14 bg-card border-b border-border flex items-center justify-between px-3 sm:px-4 shrink-0" style={{ paddingTop: "env(safe-area-inset-top)" }}>
           <div className="flex items-center gap-2">
+            <button onClick={() => setStoreMobileMenu(true)} className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground"><Menu size={18} /></button>
+            <button onClick={() => setCol(!col)} className="hidden md:flex w-8 h-8 items-center justify-center rounded-xl hover:bg-muted text-muted-foreground"><Menu size={15} /></button>
+            <div><p className="text-sm font-bold">{STORE_NAV.find(n => n.id === screen)?.label}</p><p className="text-xs text-muted-foreground hidden sm:block">{dateAr()} • {timeAr()}</p></div>
+          </div>
+          <div className="flex items-center gap-1.5">
             <span className="hidden sm:flex items-center gap-1.5 text-xs bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> نشط
             </span>
-            <button className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground"><Bell size={15} /></button>
+            <button className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground"><Bell size={16} /></button>
           </div>
         </header>
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-hidden" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 3.5rem)" }}>
           {screen === "dashboard" && <StoreDash store={store} />}
           {screen === "pos"       && <POSTerm store={store} />}
           {screen === "products"  && <ProductsMgr />}
@@ -1913,15 +2458,22 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
           {screen === "loyalty"   && <LoyaltyScreen />}
           {screen === "settings"  && <StoreSetts store={store} />}
         </main>
+
+        {/* Mobile bottom nav */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-40 flex"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          {storeBottomNav.map(n => (
+            <button key={n.id} onClick={() => navTo(n.id)}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-all min-h-[56px] ${screen === n.id ? "text-primary" : "text-muted-foreground"}`}>
+              <span className={`transition-transform ${screen === n.id ? "scale-110" : ""}`}>{n.icon}</span>
+              <span className="text-[10px] font-bold leading-tight">{n.label}</span>
+            </button>
+          ))}
+        </nav>
       </div>
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STORE DASHBOARD
-// ─────────────────────────────────────────────────────────────────────────────
-
 function StoreDash({ store }: { store: StoreData }) {
   return (
     <div className="p-5 space-y-5 overflow-y-auto h-full">
@@ -3490,6 +4042,31 @@ function StoreSetts({ store }: { store: StoreData }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  // ── PWA meta tags injection ──────────────────────────────────
+  useEffect(() => {
+    // Viewport for mobile
+    let vp = document.querySelector("meta[name=viewport]");
+    if (!vp) { vp = document.createElement("meta"); vp.setAttribute("name","viewport"); document.head.appendChild(vp); }
+    vp.setAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1");
+    // Theme color
+    let tc = document.querySelector("meta[name=theme-color]");
+    if (!tc) { tc = document.createElement("meta"); tc.setAttribute("name","theme-color"); document.head.appendChild(tc); }
+    tc.setAttribute("content", "#0F172A");
+    // Apple mobile
+    let am = document.querySelector("meta[name=apple-mobile-web-app-capable]");
+    if (!am) { am = document.createElement("meta"); am.setAttribute("name","apple-mobile-web-app-capable"); document.head.appendChild(am); }
+    am.setAttribute("content", "yes");
+    let ams = document.querySelector("meta[name=apple-mobile-web-app-status-bar-style]");
+    if (!ams) { ams = document.createElement("meta"); ams.setAttribute("name","apple-mobile-web-app-status-bar-style"); document.head.appendChild(ams); }
+    ams.setAttribute("content", "black-translucent");
+    // Manifest link
+    let ml = document.querySelector("link[rel=manifest]");
+    if (!ml) { ml = document.createElement("link"); ml.setAttribute("rel","manifest"); document.head.appendChild(ml); }
+    ml.setAttribute("href", "/manifest.json");
+    // Title
+    document.title = "Sowwanjo POS";
+  }, []);
+
   // ── Persist session across refreshes ──────────────────────────
   const [view, setView] = useState<View>(() => {
     try {
