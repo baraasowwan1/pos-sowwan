@@ -1947,6 +1947,9 @@ function StoreSetts({ store }: { store: StoreData }) {
   const [printPhone,   setPrintPhone]   = useState(true);
   const [printBarcode, setPrintBarcode] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  // White-label branding state
+  const [brandColor,   setBrandColor]   = useState(() => { try { const r = localStorage.getItem(`sowwanjo_storeinfo_${sid}`); return r ? (JSON.parse(r).primaryColor || "") : ""; } catch { return ""; } });
+  const [brandAppName, setBrandAppName] = useState(() => { try { const r = localStorage.getItem(`sowwanjo_storeinfo_${sid}`); return r ? (JSON.parse(r).appName || "") : ""; } catch { return ""; } });
   const [logo, setLogo] = useState<string>(() => {
     try { return localStorage.getItem(`sowwanjo_logo_${sid}`) || ""; } catch { return ""; }
   });
@@ -2001,10 +2004,23 @@ function StoreSetts({ store }: { store: StoreData }) {
         taxRate: parseFloat(tax) || 0,
         paperSize: paper, printCopies,
         printLogo, printTax, printPhone, printBarcode,
+        // White-label branding
+        appName: brandAppName, primaryColor: brandColor, logoUrl: logo,
       });
       // تحديث localStorage للـ POS
       try { localStorage.setItem(sk(sid, "sett_tax"), String(parseFloat(tax) || 0)); } catch {}
       try { localStorage.setItem(sk(sid, "sett_paper"), paper); } catch {}
+      // تحديث branding في localStorage
+      try {
+        const r = localStorage.getItem(`sowwanjo_storeinfo_${sid}`);
+        if (r) {
+          const info = JSON.parse(r);
+          info.appName = brandAppName;
+          info.primaryColor = brandColor;
+          info.logoUrl = logo;
+          localStorage.setItem(`sowwanjo_storeinfo_${sid}`, JSON.stringify(info));
+        }
+      } catch {}
       await refreshSettings();
       showToast("تم حفظ إعدادات المتجر في قاعدة البيانات ✅", "success");
     } catch { showToast("خطأ في حفظ الإعدادات", "error"); }
@@ -2076,6 +2092,25 @@ function StoreSetts({ store }: { store: StoreData }) {
             طباعة إيصال تجريبي
           </Btn>
         </div>
+        {/* White-label branding */}
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
+          <p className="font-bold flex items-center gap-2"><Zap size={13} /> هوية المتجر (White-Label)</p>
+          <F label="اسم التطبيق عند التثبيت">
+            <TInput value={brandAppName} onChange={setBrandAppName} placeholder={store.nameAr || "اسم متجرك"} />
+          </F>
+          <F label="اللون الرئيسي للعلامة التجارية">
+            <div className="flex items-center gap-3">
+              <input type="color" value={brandColor || "#0F172A"} onChange={e => setBrandColor(e.target.value)}
+                className="w-11 h-11 rounded-xl border border-border cursor-pointer bg-transparent p-1" />
+              <TInput value={brandColor} onChange={setBrandColor} placeholder="#0F172A" />
+            </div>
+          </F>
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800 leading-relaxed">
+            <p className="font-bold mb-1 flex items-center gap-1"><Info size={11} /> ملاحظة حول الهوية البصرية</p>
+            <p>سيتم استخدام اسم التطبيق كعنوان النافذة وعند تثبيت التطبيق. اللون الرئيسي يظهر في شريط الحالة على الجوال.</p>
+          </div>
+        </div>
+
         <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
           <p className="font-bold flex items-center gap-2"><CreditCard size={13} /> تفاصيل الاشتراك</p>
           <div className="space-y-2.5">
