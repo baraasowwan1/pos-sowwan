@@ -40,6 +40,84 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
   const [col, setCol] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notif, setNotif] = useState(false);
+
+  // ── Real notifications from backend ──────────────────────────────────────
+  type SANotif = { id: string; text: string; sub: string; color: string; screen?: string };
+  const [notifications, setNotifications] = useState<SANotif[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [seenNotifs, setSeenNotifs] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("sowwanjo_sa_notif_seen") || "[]"); } catch { return []; }
+  });
+
+  const loadNotifications = useCallback(async () => {
+    setNotifLoading(true);
+    try {
+      const [stores, tickets] = await Promise.all([
+        apiFetch("/stores", {}, getToken()).catch(() => []),
+        apiFetch("/tickets", {}, getToken()).catch(() => []),
+      ]);
+
+      const list: SANotif[] = [];
+
+      // منتهية الاشتراك
+      if (Array.isArray(stores)) {
+        (stores as { _id?: string; id?: string; nameAr?: string; status?: string; expiresAt?: string }[])
+          .filter(s => s.status === "expired" || (s.expiresAt && new Date(s.expiresAt) < new Date()))
+          .slice(0, 3)
+          .forEach(s => list.push({
+            id: `exp-${s._id || s.id}`,
+            text: `انتهى اشتراك ${s.nameAr || "متجر"}`,
+            sub: `انتهى ${s.expiresAt ? new Date(s.expiresAt).toLocaleDateString("ar-JO") : ""}`,
+            color: "bg-red-500",
+            screen: "stores",
+          }));
+
+        // موقوفة
+        (stores as { _id?: string; id?: string; nameAr?: string; status?: string }[])
+          .filter(s => s.status === "suspended")
+          .slice(0, 2)
+          .forEach(s => list.push({
+            id: `sus-${s._id || s.id}`,
+            text: `متجر ${s.nameAr || "متجر"} موقوف`,
+            sub: "موقوف من قِبل المدير العام",
+            color: "bg-orange-500",
+            screen: "stores",
+          }));
+      }
+
+      // تذاكر دعم مفتوحة
+      if (Array.isArray(tickets)) {
+        (tickets as { _id?: string; storeName?: string; subject?: string; status?: string; createdAt?: string }[])
+          .filter(t => t.status === "open")
+          .slice(0, 3)
+          .forEach(t => list.push({
+            id: `ticket-${t._id}`,
+            text: `تذكرة جديدة: ${t.subject || "طلب دعم"}`,
+            sub: `${t.storeName || "متجر"} • ${t.createdAt ? new Date(t.createdAt).toLocaleDateString("ar-JO") : ""}`,
+            color: "bg-blue-500",
+            screen: "tickets",
+          }));
+      }
+
+      setNotifications(list);
+    } catch { /* ignore */ }
+    finally { setNotifLoading(false); }
+  }, []);
+
+  useEffect(() => { loadNotifications(); }, [loadNotifications]);
+
+  const unreadNotifs = notifications.filter(n => !seenNotifs.includes(n.id)).length;
+
+  const openNotif = () => {
+    setNotif(v => !v);
+    if (!notif) {
+      // mark all as seen
+      const ids = notifications.map(n => n.id);
+      setSeenNotifs(ids);
+      try { localStorage.setItem("sowwanjo_sa_notif_seen", JSON.stringify(ids)); } catch {}
+    }
+  };
+
   const navTo = (s: string) => {
     setScreen(s);
     try { localStorage.setItem("sowwanjo_sa_screen", s); } catch {}
@@ -157,26 +235,60 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
               </button>
 
               <div className="relative">
-                <button onClick={() => setNotif(!notif)} className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted relative">
+                <button onClick={openNotif} className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted relative">
                   <Bell size={18} className="text-muted-foreground" />
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-card" />
+                  {unreadNotifs > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-card">
+                      {unreadNotifs > 9 ? "9+" : unreadNotifs}
+                    </span>
+                  )}
                 </button>
                 {notif && (
-                  <div className="absolute left-0 top-full mt-2 w-80 max-w-[calc(100vw-1rem)] bg-card rounded-2xl border border-border shadow-2xl z-50 overflow-hidden">
-                    <div className="flex justify-between px-4 py-3 border-b border-border">
-                      <span className="font-bold text-sm">الإشعارات</span>
-                      <button onClick={() => setNotif(false)} className="text-xs text-primary font-semibold">إغلاق</button>
-                    </div>
-                    {[
-                      { t: "انتهى اشتراك سوبرماركت العائلة", dt: "منذ 10 دقائق", c: "bg-red-500" },
-                      { t: "متجر ستايل باربر موقوف تلقائياً", dt: "منذ ساعتين", c: "bg-orange-500" },
-                      { t: "طلب دعم جديد من إسبريسو عمّان", dt: "منذ 5 ساعات", c: "bg-blue-500" },
-                    ].map((n, i) => (
-                      <div key={i} className="flex gap-3 px-4 py-3 hover:bg-muted/40 border-b border-border/50 last:border-0">
-                        <span className={`w-2 h-2 rounded-full ${n.c} shrink-0 mt-1.5`} />
-                        <div><p className="text-xs text-foreground font-medium">{n.t}</p><p className="text-xs text-muted-foreground">{n.dt}</p></div>
+                  <div className="absolute left-0 top-full mt-2 w-84 max-w-[calc(100vw-1rem)] bg-card rounded-2xl border border-border shadow-2xl z-50 overflow-hidden" style={{ width: "340px" }}>
+                    <div className="flex justify-between items-center px-4 py-3 border-b border-border">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm">الإشعارات</span>
+                        {notifications.length > 0 && (
+                          <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full font-semibold">{notifications.length}</span>
+                        )}
                       </div>
-                    ))}
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { loadNotifications(); }} title="تحديث" className="text-muted-foreground hover:text-foreground">
+                          <RefreshCw size={13} className={notifLoading ? "animate-spin" : ""} />
+                        </button>
+                        <button onClick={() => setNotif(false)} className="text-xs text-primary font-semibold">إغلاق</button>
+                      </div>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifLoading ? (
+                        <div className="space-y-1 p-3">{[1,2,3].map(i => <div key={i} className="h-12 bg-muted animate-pulse rounded-xl" />)}</div>
+                      ) : notifications.length === 0 ? (
+                        <div className="text-center py-10 text-muted-foreground">
+                          <Bell size={28} className="mx-auto mb-2 opacity-30" />
+                          <p className="text-sm font-semibold">لا توجد إشعارات</p>
+                          <p className="text-xs mt-1">جميع المتاجر والتذاكر في حالة جيدة</p>
+                        </div>
+                      ) : notifications.map(n => (
+                        <button key={n.id} onClick={() => { if (n.screen) navTo(n.screen); setNotif(false); }}
+                          className="w-full flex gap-3 px-4 py-3 hover:bg-muted/40 border-b border-border/50 last:border-0 text-right transition-colors">
+                          <span className={`w-2 h-2 rounded-full ${n.color} shrink-0 mt-1.5`} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-foreground font-semibold truncate">{n.text}</p>
+                            <p className="text-xs text-muted-foreground truncate">{n.sub}</p>
+                          </div>
+                          {n.screen && <ChevronLeft size={12} className="text-muted-foreground shrink-0 mt-1" />}
+                        </button>
+                      ))}
+                    </div>
+                    {notifications.length > 0 && (
+                      <div className="px-4 py-2 border-t border-border bg-muted/20">
+                        <p className="text-[10px] text-muted-foreground text-center">
+                          {notifications.filter(n => n.color === "bg-red-500").length} منتهية •{" "}
+                          {notifications.filter(n => n.color === "bg-orange-500").length} موقوفة •{" "}
+                          {notifications.filter(n => n.color === "bg-blue-500").length} تذاكر مفتوحة
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
