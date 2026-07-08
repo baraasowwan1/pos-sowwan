@@ -296,7 +296,7 @@ function StoreDash({ store }: { store: StoreData }) {
   const hourChartData = (hourChartRaw && hourChartRaw.length > 0) ? hourChartRaw : defaultHour;
 
   return (
-    <div className="p-5 space-y-5 overflow-y-auto h-full">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto h-full">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI icon={<ShoppingCart size={18} />} label="مبيعات اليوم"
           value={sumLoading ? "..." : `${(summary.today?.total || 0).toFixed(3)} JOD`}
@@ -841,7 +841,7 @@ function ProductsMgr() {
   };
 
   return (
-    <div className="p-5 space-y-4 overflow-y-auto h-full">
+    <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
       <Hdr title="إدارة المنتجات" sub={`${prods.length} منتج • ${categories.length - 1} فئة`}
         action={<>
           <Btn v="secondary" s="sm" icon={<Upload size={13} />} onClick={() => showToast("ميزة استيراد CSV تتطلب الـ Backend — راجع دليل الإعداد", "info")}>استيراد CSV</Btn>
@@ -862,7 +862,36 @@ function ProductsMgr() {
         </div>
       ) : (
         <div className="bg-card rounded-2xl border border-border overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile cards */}
+          <div className="md:hidden divide-y divide-border/60">
+            {filtered.map(p => {
+              const mg = p.costPrice > 0 ? ((p.sellPrice - p.costPrice) / p.costPrice * 100) : 0;
+              const low = p.stock <= p.minStock;
+              return (
+                <div key={p.id} className={`p-4 ${p.stock === 0 ? "bg-red-50/20" : ""}`}>
+                  <div className="flex items-start gap-3 mb-3">
+                    {p.image ? <img src={p.image} alt={p.nameAr} className="w-12 h-12 rounded-xl object-cover bg-muted shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} /> : <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center shrink-0"><Package size={18} className="text-muted-foreground/40" /></div>}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm">{p.nameAr}</p>
+                      <p className="text-xs text-muted-foreground">{p.sku || p.nameEn}</p>
+                      <span className="text-xs bg-muted px-2 py-0.5 rounded-full mt-1 inline-block">{p.category}</span>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => setEditProd({ ...p })} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-blue-100 text-blue-500 active:scale-90"><Edit2 size={14} /></button>
+                      <button onClick={async () => { await storeApi.delete(`/products/${p.id}`); await refreshProds(); showToast(`تم حذف "${p.nameAr}"`, "warning"); }} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-red-100 text-red-500 active:scale-90"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="bg-muted/50 rounded-xl p-2 text-center"><p className="font-black">{p.sellPrice.toFixed(3)}</p><p className="text-muted-foreground">سعر البيع</p></div>
+                    <div className={`rounded-xl p-2 text-center ${low ? "bg-red-50" : "bg-muted/50"}`}><p className={`font-black ${low ? "text-red-600" : ""}`}>{p.stock}</p><p className="text-muted-foreground">المخزون</p></div>
+                    <div className="bg-muted/50 rounded-xl p-2 text-center"><p className={`font-black ${mg > 30 ? "text-emerald-600" : mg > 10 ? "text-amber-600" : "text-red-500"}`}>{mg.toFixed(0)}%</p><p className="text-muted-foreground">الربح</p></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead><tr className="border-b border-border bg-muted/40">
                 {["المنتج","الباركود","الفئة","تكلفة","بيع","مخزون","ربح","الحالة","إجراءات"].map(h => <th key={h} className="text-right p-3.5 font-bold text-muted-foreground text-xs">{h}</th>)}
@@ -877,7 +906,7 @@ function ProductsMgr() {
                         {p.image ? <img src={p.image} alt={p.nameAr} className="w-10 h-10 rounded-xl object-cover bg-muted shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} /> : <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0"><Package size={16} className="text-muted-foreground/40" /></div>}
                         <div><p className="font-bold">{p.nameAr}</p><p className="text-xs text-muted-foreground">{p.sku || p.nameEn}</p></div>
                       </div></td>
-                      <td className="p-3.5 font-mono text-xs text-muted-foreground hidden md:table-cell">{p.barcode}</td>
+                      <td className="p-3.5 font-mono text-xs text-muted-foreground">{p.barcode}</td>
                       <td className="p-3.5"><span className="text-xs bg-muted px-2 py-0.5 rounded-full">{p.category}</span></td>
                       <td className="p-3.5 text-muted-foreground text-xs">{p.costPrice.toFixed(3)}</td>
                       <td className="p-3.5 font-bold">{p.sellPrice.toFixed(3)} JOD</td>
@@ -1073,7 +1102,7 @@ function InvScreen() {
   const totalVal = invProds.reduce((a, p) => a + p.costPrice * p.stock, 0);
 
   return (
-    <div className="p-5 space-y-4 overflow-y-auto h-full">
+    <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
       <Hdr title="إدارة المخزون والجرد" action={
         <div className="flex gap-2">
           <Btn v="secondary" s="sm" icon={<Printer size={13} />} onClick={printJard}>طباعة ورقة الجرد</Btn>
@@ -1092,36 +1121,62 @@ function InvScreen() {
       {invProds.length === 0 ? (
         <Empty icon={<Boxes size={28} />} title="لا توجد منتجات في المخزون" desc="أضف منتجات من شاشة إدارة المنتجات" />
       ) : (
-        <div className="bg-card rounded-2xl border border-border overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-border bg-muted/40">
-              {["المنتج","SKU","الكمية","الحد الأدنى","قيمة المخزون","الحالة","إجراءات"].map(h =>
-                <th key={h} className="text-right p-3.5 font-bold text-muted-foreground text-xs">{h}</th>)}
-            </tr></thead>
-            <tbody className="divide-y divide-border/60">
-              {invProds.map(p => {
-                const val = p.costPrice * p.stock;
-                const sc = p.stock === 0
-                  ? { l: "نفد", c: "text-red-700 bg-red-100 border border-red-200" }
-                  : p.stock <= p.minStock
-                  ? { l: "منخفض", c: "text-orange-700 bg-orange-100 border border-orange-200" }
-                  : { l: "مناسب", c: "text-emerald-700 bg-emerald-100 border border-emerald-200" };
-                return (
-                  <tr key={p.id} className={`hover:bg-muted/20 ${p.stock === 0 ? "bg-red-50/30" : ""}`}>
-                    <td className="p-3.5 font-bold">{p.nameAr}<br /><span className="text-xs text-muted-foreground font-normal">{p.category}</span></td>
-                    <td className="p-3.5 font-mono text-xs text-muted-foreground">{p.sku}</td>
-                    <td className="p-3.5 font-black text-lg">{p.stock} <span className="text-xs font-normal text-muted-foreground">{p.unit}</span></td>
-                    <td className="p-3.5 text-muted-foreground">{p.minStock}</td>
-                    <td className="p-3.5 font-bold">{val.toFixed(3)} JOD</td>
-                    <td className="p-3.5"><span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${sc.c}`}>{sc.l}</span></td>
-                    <td className="p-3.5">
-                      <Btn v="secondary" s="xs" icon={<Edit2 size={10} />} onClick={() => openAdj(p)}>تعديل</Btn>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          {/* Mobile cards */}
+          <div className="md:hidden divide-y divide-border/60">
+            {invProds.map(p => {
+              const val = p.costPrice * p.stock;
+              const sc = p.stock === 0
+                ? { l: "نفد", c: "text-red-700 bg-red-50 border-red-200" }
+                : p.stock <= p.minStock
+                ? { l: "منخفض", c: "text-orange-700 bg-orange-50 border-orange-200" }
+                : { l: "مناسب", c: "text-emerald-700 bg-emerald-50 border-emerald-200" };
+              return (
+                <div key={p.id} className={`p-4 ${p.stock === 0 ? "bg-red-50/20" : ""}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div><p className="font-bold text-sm">{p.nameAr}</p><p className="text-xs text-muted-foreground">{p.category} • {p.sku}</p></div>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${sc.c}`}>{sc.l}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs mb-3">
+                    <div className="bg-muted/50 rounded-xl p-2 text-center"><p className="font-black text-lg">{p.stock}</p><p className="text-muted-foreground">{p.unit}</p></div>
+                    <div className="bg-muted/50 rounded-xl p-2 text-center"><p className="font-black">{p.minStock}</p><p className="text-muted-foreground">الحد الأدنى</p></div>
+                    <div className="bg-muted/50 rounded-xl p-2 text-center"><p className="font-black">{val.toFixed(3)}</p><p className="text-muted-foreground">القيمة JOD</p></div>
+                  </div>
+                  <Btn v="secondary" s="sm" full icon={<Edit2 size={12} />} onClick={() => openAdj(p)}>تعديل الكمية</Btn>
+                </div>
+              );
+            })}
+          </div>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-border bg-muted/40">
+                {["المنتج","SKU","الكمية","الحد الأدنى","قيمة المخزون","الحالة","إجراءات"].map(h =>
+                  <th key={h} className="text-right p-3.5 font-bold text-muted-foreground text-xs">{h}</th>)}
+              </tr></thead>
+              <tbody className="divide-y divide-border/60">
+                {invProds.map(p => {
+                  const val = p.costPrice * p.stock;
+                  const sc = p.stock === 0
+                    ? { l: "نفد", c: "text-red-700 bg-red-100 border border-red-200" }
+                    : p.stock <= p.minStock
+                    ? { l: "منخفض", c: "text-orange-700 bg-orange-100 border border-orange-200" }
+                    : { l: "مناسب", c: "text-emerald-700 bg-emerald-100 border border-emerald-200" };
+                  return (
+                    <tr key={p.id} className={`hover:bg-muted/20 ${p.stock === 0 ? "bg-red-50/30" : ""}`}>
+                      <td className="p-3.5 font-bold">{p.nameAr}<br /><span className="text-xs text-muted-foreground font-normal">{p.category}</span></td>
+                      <td className="p-3.5 font-mono text-xs text-muted-foreground">{p.sku}</td>
+                      <td className="p-3.5 font-black text-lg">{p.stock} <span className="text-xs font-normal text-muted-foreground">{p.unit}</span></td>
+                      <td className="p-3.5 text-muted-foreground">{p.minStock}</td>
+                      <td className="p-3.5 font-bold">{val.toFixed(3)} JOD</td>
+                      <td className="p-3.5"><span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${sc.c}`}>{sc.l}</span></td>
+                      <td className="p-3.5"><Btn v="secondary" s="xs" icon={<Edit2 size={10} />} onClick={() => openAdj(p)}>تعديل</Btn></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -1217,7 +1272,7 @@ function CustScreen() {
     setShowNewC(false); setNc({ name: "", phone: "", level: "عادي" });
   };
   return (
-    <div className="p-5 space-y-4 overflow-y-auto h-full">
+    <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
       <Hdr title="إدارة العملاء" action={<><Btn v="secondary" s="sm" icon={<Upload size={13} />} onClick={() => showToast("اسحب ملف CSV لاستيراد العملاء", "info")}>استيراد</Btn><Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowNewC(true)}>عميل جديد</Btn></>} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI icon={<Users size={18} />} label="إجمالي العملاء" value={custs.length.toLocaleString()} color="#1D4ED8" />
@@ -1230,26 +1285,53 @@ function CustScreen() {
           <Empty icon={<Users size={28} />} title="لا يوجد عملاء بعد" desc="أضف عميلاً جديداً من الزر أعلاه أو استورد من ملف CSV" />
         </div>
       ) : (
-        <div className="bg-card rounded-2xl border border-border overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-border bg-muted/40">{["العميل","المشتريات","الإجمالي","نقاط الولاء","المستوى","آخر زيارة","إجراءات"].map(h => <th key={h} className="text-right p-3.5 font-bold text-muted-foreground text-xs">{h}</th>)}</tr></thead>
-            <tbody className="divide-y divide-border/60">
-              {custs.map(c => (
-                <tr key={c.id} className="hover:bg-muted/20">
-                  <td className="p-3.5"><div className="flex items-center gap-2.5"><div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary shrink-0">{c.name[0]}</div><div><p className="font-bold">{c.name}</p><p className="text-xs text-muted-foreground">{c.phone}</p></div></div></td>
-                  <td className="p-3.5 text-muted-foreground">{c.purchases} فاتورة</td>
-                  <td className="p-3.5 font-bold">{c.total.toFixed(3)} JOD</td>
-                  <td className="p-3.5"><span className="text-amber-600 font-bold">⭐ {c.points}</span></td>
-                  <td className="p-3.5"><span className={`text-xs font-bold px-2 py-0.5 rounded-full ${LV[c.level]}`}>{c.level}</span></td>
-                  <td className="p-3.5 text-xs text-muted-foreground">{c.lastVisit}</td>
-                  <td className="p-3.5"><div className="flex gap-1">
-                    <Btn v="ghost" s="xs" icon={<Eye size={10} />} onClick={() => showToast(`${c.name}: ${c.purchases} فاتورة، ${c.points} نقطة`, "info")}>تفاصيل</Btn>
-                    <Btn v="ghost" s="xs" icon={<Trash2 size={10} />} onClick={async () => { await storeApi.delete(`/customers/${c.id}`); await refreshCusts(); showToast("تم حذف العميل","warning"); }}>حذف</Btn>
-                  </div></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          {/* Mobile cards */}
+          <div className="md:hidden divide-y divide-border/60">
+            {custs.map(c => (
+              <div key={c.id} className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary shrink-0 text-lg">{c.name[0]}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold">{c.name}</p>
+                    <p className="text-xs text-muted-foreground">{c.phone}</p>
+                  </div>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${LV[c.level]}`}>{c.level}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs mb-3">
+                  <div className="bg-muted/50 rounded-xl p-2 text-center"><p className="font-black">{c.purchases}</p><p className="text-muted-foreground">فاتورة</p></div>
+                  <div className="bg-muted/50 rounded-xl p-2 text-center"><p className="font-black">{c.total.toFixed(3)}</p><p className="text-muted-foreground">JOD</p></div>
+                  <div className="bg-amber-50 rounded-xl p-2 text-center"><p className="font-black text-amber-600">⭐ {c.points}</p><p className="text-amber-600">نقاط</p></div>
+                </div>
+                <div className="flex gap-2">
+                  <Btn v="secondary" s="sm" full icon={<Eye size={12} />} onClick={() => showToast(`${c.name}: ${c.purchases} فاتورة، ${c.points} نقطة`, "info")}>تفاصيل</Btn>
+                  <button onClick={async () => { await storeApi.delete(`/customers/${c.id}`); await refreshCusts(); showToast("تم حذف العميل","warning"); }} className="w-10 h-9 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 active:scale-90"><Trash2 size={14} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-border bg-muted/40">{["العميل","المشتريات","الإجمالي","نقاط الولاء","المستوى","آخر زيارة","إجراءات"].map(h => <th key={h} className="text-right p-3.5 font-bold text-muted-foreground text-xs">{h}</th>)}</tr></thead>
+              <tbody className="divide-y divide-border/60">
+                {custs.map(c => (
+                  <tr key={c.id} className="hover:bg-muted/20">
+                    <td className="p-3.5"><div className="flex items-center gap-2.5"><div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary shrink-0">{c.name[0]}</div><div><p className="font-bold">{c.name}</p><p className="text-xs text-muted-foreground">{c.phone}</p></div></div></td>
+                    <td className="p-3.5 text-muted-foreground">{c.purchases} فاتورة</td>
+                    <td className="p-3.5 font-bold">{c.total.toFixed(3)} JOD</td>
+                    <td className="p-3.5"><span className="text-amber-600 font-bold">⭐ {c.points}</span></td>
+                    <td className="p-3.5"><span className={`text-xs font-bold px-2 py-0.5 rounded-full ${LV[c.level]}`}>{c.level}</span></td>
+                    <td className="p-3.5 text-xs text-muted-foreground">{c.lastVisit}</td>
+                    <td className="p-3.5"><div className="flex gap-1">
+                      <Btn v="ghost" s="xs" icon={<Eye size={10} />} onClick={() => showToast(`${c.name}: ${c.purchases} فاتورة، ${c.points} نقطة`, "info")}>تفاصيل</Btn>
+                      <Btn v="ghost" s="xs" icon={<Trash2 size={10} />} onClick={async () => { await storeApi.delete(`/customers/${c.id}`); await refreshCusts(); showToast("تم حذف العميل","warning"); }}>حذف</Btn>
+                    </div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       {showNewC && (
@@ -1272,7 +1354,7 @@ function SuppScreen() {
   const [sups, setSups] = useState<{id:string;name:string;phone:string;products:number;lastOrder:string;balance:number}[]>([]);
   useEffect(() => { setSups(normList<{id:string;name:string;phone:string;products:number;lastOrder:string;balance:number}>(supsRaw)); }, [supsRaw]);
   return (
-    <div className="p-5 space-y-4 overflow-y-auto h-full">
+    <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
       <Hdr title="إدارة الموردين" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => showToast("فتح نموذج إضافة مورد جديد", "info")}>مورد جديد</Btn>} />
       {sups.length === 0 ? (
         <div className="bg-card rounded-2xl border border-border">
@@ -1299,7 +1381,7 @@ function PurchScreen() {
   const [orders, setOrders] = useLS<{id:string;sup:string;date:string;items:number;total:number;status:string}[]>(sk(sid, "purchases"), []);
   const SC: Record<string, string> = { مكتمل: "bg-emerald-100 text-emerald-700", "قيد الاستلام": "bg-blue-100 text-blue-700" };
   return (
-    <div className="p-5 space-y-4 overflow-y-auto h-full">
+    <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
       <Hdr title="طلبات الشراء" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => showToast("فتح نموذج طلب شراء جديد", "info")}>طلب شراء جديد</Btn>} />
       <div className="grid grid-cols-3 gap-4">
         <KPI icon={<ClipboardList size={18} />} label="طلبات الشهر" value="15" color="#1D4ED8" />
@@ -1351,7 +1433,7 @@ function ExpScreen() {
   const saveEdit = async () => { if (!editExp) return; await storeApi.put(`/expenses/${editExp.id}`, editExp); await refreshExps(); showToast("تم تعديل المصروف"); setEditExp(null); };
 
   return (
-    <div className="p-5 space-y-4 overflow-y-auto h-full">
+    <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
       <Hdr title="إدارة المصروفات" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowAdd(true)}>مصروف جديد</Btn>} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI icon={<Wallet size={18} />} label="مصروفات الشهر" value={`${total.toFixed(3)} JOD`} color="#DC2626" />
@@ -1421,7 +1503,7 @@ function ReturnScreen() {
 
   const total = rets.filter(r=>r.status==="معتمد").reduce((a,r)=>a+r.amount,0);
   return (
-    <div className="p-5 space-y-4 overflow-y-auto h-full">
+    <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
       <Hdr title="المرتجعات والاسترداد" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowNew(true)}>مرتجع جديد</Btn>} />
       <div className="grid grid-cols-3 gap-4">
         <KPI icon={<RotateCcw size={18} />} label="مرتجعات الشهر" value={String(rets.length)} color="#DC2626" />
@@ -1509,7 +1591,7 @@ function StoreReports() {
     setTimeout(() => { w.focus(); w.print(); }, 400);
   };
   return (
-    <div className="p-5 space-y-5 overflow-y-auto h-full">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto h-full">
       <Hdr title="التقارير والإحصائيات" action={<><Btn v="secondary" s="sm" icon={<Download size={13} />} onClick={() => showToast("جاري إعداد تقرير PDF...", "info")}>PDF</Btn><Btn v="secondary" s="sm" icon={<Download size={13} />} onClick={() => showToast("جاري تصدير ملف Excel...", "info")}>Excel</Btn></>} />
       <div className="flex bg-muted rounded-2xl p-1 border border-border w-fit">
         {[["week","أسبوع"],["month","شهر"],["year","سنة"]].map(([vv,l]) => <button key={vv} onClick={() => setPeriod(vv)} className={`px-4 h-8 rounded-xl text-xs font-bold transition-all ${period === vv ? "bg-card shadow-sm" : "text-muted-foreground"}`}>{l}</button>)}
@@ -1610,7 +1692,7 @@ function EmpScreen() {
   const saveEdit = async () => { if (!editEmp) return; await storeApi.put(`/users/${editEmp.id}`, { name: editEmp.name, role: editEmp.role, status: editEmp.status }); await refreshEmps(); showToast("تم حفظ تعديلات الموظف"); setEditEmp(null); };
 
   return (
-    <div className="p-5 space-y-4 overflow-y-auto h-full">
+    <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
       <Hdr title="الموظفون والصلاحيات" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowNew(true)}>موظف جديد</Btn>} />
       {emps.length === 0 && (
         <div className="bg-card rounded-2xl border border-border mb-4">
@@ -1704,7 +1786,7 @@ function BranchScreen() {
   const addTerm = async () => { if (!nt.name) return; try { await storeApi.post("/branches/terminals", { ...nt, status: "مغلق" }); await refreshTerms(); showToast(`تم إضافة جهاز "${nt.name}" ✅`); } catch { showToast("خطأ في إضافة الجهاز","error"); return; } setShowTerm(false); setNt({name:"",cashier:"",branch:"الفرع الرئيسي"}); };
 
   return (
-    <div className="p-5 space-y-5 overflow-y-auto h-full">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto h-full">
       <Hdr title="الفروع والأجهزة" action={<><Btn v="secondary" s="sm" icon={<Monitor size={13} />} onClick={() => setShowTerm(true)}>جهاز جديد</Btn><Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowBranch(true)}>فرع جديد</Btn></>} />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {branches.map(b => (
@@ -1792,7 +1874,7 @@ function LoyaltyScreen() {
   const copyCoupon = (code: string) => { navigator.clipboard?.writeText(code); showToast(`تم نسخ الكود: ${code}`, "info"); };
 
   return (
-    <div className="p-5 space-y-5 overflow-y-auto h-full">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto h-full">
       <Hdr title="نظام الولاء والمكافآت" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowNew(true)}>قسيمة جديدة</Btn>} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI icon={<Star size={18} />} label="نقاط مُصدرة" value="48,250" color="#D97706" />
@@ -1929,7 +2011,7 @@ function StoreSetts({ store }: { store: StoreData }) {
   };
 
   return (
-    <div className="p-5 space-y-5 overflow-y-auto h-full">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto h-full">
       <Hdr title="إعدادات المتجر" action={<Btn v="success" s="sm" icon={<Check size={13} />} onClick={doSave}>حفظ الإعدادات</Btn>} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
