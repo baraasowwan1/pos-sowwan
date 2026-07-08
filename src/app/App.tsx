@@ -941,24 +941,86 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SADash({ onNav }: { onNav: (s: string) => void }) {
-  const total = STORES.reduce((a, s) => a + (s.revenue || 0), 0);
+  // يقرأ من localStorage (المصدر المشترك مع SAStores) ويجدّد من Backend
+  const [dashStores, setDashStores] = useState<StoreData[]>(() => {
+    try {
+      const s = localStorage.getItem("sowwanjo_sa_stores");
+      return s ? JSON.parse(s) : [];
+    } catch { return []; }
+  });
+
+  useEffect(() => {
+    // تحديث فوري من Backend
+    apiFetch("/stores", {}, getToken())
+      .then(data => {
+        if (!Array.isArray(data)) return;
+        const mapped: StoreData[] = (data as (StoreData & { _id?: string })[]).map(s => ({
+          revenue: 0, sales: 0, products: 0, users: 1, branches: 1,
+          ...s,
+          id:       s._id || s.id || "",
+          nameAr:   s.nameAr   || "متجر",
+          nameEn:   s.nameEn   || "",
+          category: (s.category || "supermarket") as StoreData["category"],
+          status:   (s.status   || "active")      as StoreData["status"],
+          owner:    s.owner    || "",
+          email:    s.email    || "",
+          phone:    s.phone    || "",
+          city:     s.city     || "",
+          plan:     s.plan     || "مبتدئ",
+          expiresAt:s.expiresAt|| new Date(Date.now()+365*86400000).toISOString().split("T")[0],
+          createdAt:s.createdAt|| new Date().toISOString().split("T")[0],
+        }));
+        setDashStores(mapped);
+        try { localStorage.setItem("sowwanjo_sa_stores", JSON.stringify(mapped)); } catch {}
+      })
+      .catch(() => {
+        // Fallback من localStorage إذا Backend غير متوفر
+        try {
+          const s = localStorage.getItem("sowwanjo_sa_stores");
+          if (s) setDashStores(JSON.parse(s));
+        } catch {}
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const totalRevenue = dashStores.reduce((a, s) => a + (s.revenue || 0), 0);
+  const totalUsers   = dashStores.reduce((a, s) => a + (s.users   || 0), 0);
+  const totalSales   = dashStores.reduce((a, s) => a + (s.sales   || 0), 0);
+
   return (
     <div className="p-6 space-y-6">
+      {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI icon={<Store size={20} />} label="إجمالي المتاجر" value={String(STORES.length)} sub={`${STORES.filter(s => s.status === "active").length} نشط`} color="#1D4ED8" trend={14} />
-        <KPI icon={<DollarSign size={20} />} label="إجمالي الإيرادات" value={jod(total)} sub="منذ الإطلاق" color="#059669" trend={22} />
-        <KPI icon={<Users size={20} />} label="إجمالي المستخدمين" value={String(STORES.reduce((a, s) => a + (s.users || 0), 0))} color="#D97706" trend={9} />
-        <KPI icon={<FileText size={20} />} label="إجمالي الفواتير" value={STORES.reduce((a, s) => a + (s.sales || 0), 0).toLocaleString()} color="#7C3AED" trend={18} />
+        <KPI icon={<Store size={20} />} label="إجمالي المتاجر"
+          value={String(dashStores.length)}
+          sub={`${dashStores.filter(s => s.status === "active").length} نشط`}
+          color="#1D4ED8" />
+        <KPI icon={<DollarSign size={20} />} label="إجمالي الإيرادات"
+          value={jod(totalRevenue)} sub="منذ الإطلاق" color="#059669" />
+        <KPI icon={<Users size={20} />} label="إجمالي المستخدمين"
+          value={String(totalUsers)} color="#D97706" />
+        <KPI icon={<FileText size={20} />} label="إجمالي الفواتير"
+          value={totalSales.toLocaleString("ar-JO")} color="#7C3AED" />
       </div>
 
+      {/* Status breakdown */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(["active","trial","suspended","expired"] as const).map(st => {
-          const count = STORES.filter(s => s.status === st).length;
-          return <div key={st} className="bg-card rounded-2xl border border-border p-4 flex items-center gap-3"><span className={`w-3 h-3 rounded-full ${ST[st].dot} shrink-0`} /><div><p className="text-xl font-black text-foreground">{count}</p><p className="text-xs text-muted-foreground">{ST[st].label}</p></div></div>;
+          const count = dashStores.filter(s => s.status === st).length;
+          return (
+            <div key={st} className="bg-card rounded-2xl border border-border p-4 flex items-center gap-3">
+              <span className={`w-3 h-3 rounded-full ${ST[st].dot} shrink-0`} />
+              <div>
+                <p className="text-xl font-black text-foreground">{count}</p>
+                <p className="text-xs text-muted-foreground">{ST[st].label}</p>
+              </div>
+            </div>
+          );
         })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Monthly chart */}
         <div className="lg:col-span-2 bg-card rounded-2xl border border-border p-5">
           <p className="font-bold text-foreground mb-1">الإيرادات الشهرية (JOD)</p>
           <p className="text-xs text-muted-foreground mb-4">آخر 6 أشهر</p>
@@ -978,47 +1040,68 @@ function SADash({ onNav }: { onNav: (s: string) => void }) {
               <XAxis dataKey="month" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `${v / 1000}k`} />
               <Tooltip formatter={(v: number) => [`${v.toLocaleString()} JOD`]} />
-              <Area key="area-rev" type="monotone" dataKey="إيرادات" stroke="#1D4ED8" strokeWidth={2.5} fill="url(#sa-dash-rev)" />
-              <Area key="area-prof" type="monotone" dataKey="أرباح" stroke="#059669" strokeWidth={2.5} fill="url(#sa-dash-prof)" />
+              <Area key="area-rev"  type="monotone" dataKey="إيرادات" stroke="#1D4ED8" strokeWidth={2.5} fill="url(#sa-dash-rev)" />
+              <Area key="area-prof" type="monotone" dataKey="أرباح"   stroke="#059669" strokeWidth={2.5} fill="url(#sa-dash-prof)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
+
+        {/* Store performance */}
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold text-foreground mb-4">أداء المتاجر</p>
-          <div className="space-y-3">
-            {STORES.filter(s => s.revenue > 0).sort((a, b) => b.revenue - a.revenue).map((s, i) => {
-              const cat = CAT[s.category];
-              const max = Math.max(...STORES.map(x => x.revenue), 1);
-              return (
-                <div key={s.id} className="flex items-center gap-2">
-                  <span className="text-xs font-black text-muted-foreground w-4 shrink-0">{i + 1}</span>
-                  <div className="flex-1">
-                    <div className="flex justify-between mb-1">
-                      <span className="text-xs font-bold text-foreground truncate max-w-[110px]">{s.nameAr}</span>
-                      <span className="text-xs font-bold text-foreground">{jod(s.revenue || 0)}</span>
+          {dashStores.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8">لا يوجد متاجر بعد</p>
+          ) : (
+            <div className="space-y-3">
+              {dashStores.sort((a, b) => (b.revenue||0) - (a.revenue||0)).slice(0,5).map((s, i) => {
+                const cat = CAT[s.category as StoreData["category"]] || CAT["supermarket"];
+                const maxRev = Math.max(...dashStores.map(x => x.revenue||0), 1);
+                return (
+                  <div key={s.id} className="flex items-center gap-2">
+                    <span className="text-xs font-black text-muted-foreground w-4 shrink-0">{i + 1}</span>
+                    <div className="flex-1">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-xs font-bold text-foreground truncate max-w-[110px]">{s.nameAr}</span>
+                        <span className="text-xs font-bold text-foreground">{jod(s.revenue||0)}</span>
+                      </div>
+                      <div className="h-1.5 bg-muted rounded-full">
+                        <div className="h-full rounded-full" style={{ width: `${((s.revenue||0)/maxRev)*100}%`, backgroundColor: cat.color }} />
+                      </div>
                     </div>
-                    <div className="h-1.5 bg-muted rounded-full"><div className="h-full rounded-full" style={{ width: `${(s.revenue / max) * 100}%`, backgroundColor: cat.color }} /></div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Stores list */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         <div className="flex items-center justify-between p-5 border-b border-border">
-          <p className="font-bold text-foreground">قائمة المتاجر</p>
+          <p className="font-bold text-foreground">أحدث المتاجر ({dashStores.length})</p>
           <Btn v="ghost" s="sm" onClick={() => onNav("stores")} icon={<ChevronLeft size={13} />}>عرض الكل</Btn>
         </div>
         <div className="divide-y divide-border/60">
-          {STORES.map(s => {
-            const cat = CAT[s.category];
+          {dashStores.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">
+              لا يوجد متاجر — اذهب إلى "إدارة المتاجر" لإنشاء أول متجر
+            </div>
+          ) : dashStores.slice(0, 5).map(s => {
+            const cat = CAT[s.category as StoreData["category"]] || CAT["supermarket"];
             return (
               <div key={s.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/30">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: cat.bg }}><span style={{ color: cat.color }}>{cat.icon}</span></div>
-                <div className="flex-1 min-w-0"><p className="text-sm font-bold text-foreground truncate">{s.nameAr}</p><p className="text-xs text-muted-foreground">{s.owner} • {s.city}</p></div>
-                <div className="hidden sm:block text-right shrink-0"><p className="text-sm font-bold text-foreground">{jod(s.revenue || 0)}</p><p className="text-xs text-muted-foreground">{(s.sales || 0).toLocaleString()} فاتورة</p></div>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: cat.bg }}>
+                  <span style={{ color: cat.color }}>{cat.icon}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground truncate">{s.nameAr}</p>
+                  <p className="text-xs text-muted-foreground">{s.owner} • {s.city}</p>
+                </div>
+                <div className="hidden sm:block text-right shrink-0">
+                  <p className="text-sm font-bold text-foreground">{jod(s.revenue||0)}</p>
+                  <p className="text-xs text-muted-foreground">{(s.sales||0).toLocaleString()} فاتورة</p>
+                </div>
                 <SBadge status={s.status} />
                 <span className="hidden lg:block text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">{s.plan}</span>
               </div>
@@ -1504,7 +1587,7 @@ function SAPlans() {
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         <div className="p-5 border-b border-border font-bold text-foreground">اشتراكات المتاجر الحالية</div>
         <div className="divide-y divide-border/60">
-          {STORES.map(s => (
+          {(() => { try { const ss = localStorage.getItem("sowwanjo_sa_stores"); return ss ? JSON.parse(ss) : []; } catch { return []; } })().map((s: StoreData) => (
             <div key={s.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/20">
               <div className="flex-1 min-w-0"><p className="text-sm font-bold">{s.nameAr}</p><p className="text-xs text-muted-foreground">{s.email}</p></div>
               <span className="hidden sm:block text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">{s.plan}</span>
@@ -1630,7 +1713,7 @@ function SABroadcast() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
           <p className="font-bold">إرسال إعلان جديد</p>
-          <F label="المستهدف"><SInput value={target} onChange={setTarget} options={[{ value: "all", label: "جميع المتاجر" }, { value: "active", label: "النشطة فقط" }, ...STORES.map(s => ({ value: s.id, label: s.nameAr }))]} /></F>
+          <F label="المستهدف"><SInput value={target} onChange={setTarget} options={[{ value: "all", label: "جميع المتاجر" }, { value: "active", label: "النشطة فقط" }, ...(() => { try { const ss = localStorage.getItem("sowwanjo_sa_stores"); return ss ? JSON.parse(ss).map((s: StoreData) => ({ value: s.id, label: s.nameAr })) : []; } catch { return []; } })()]} /></F>
           <F label="نص الإعلان" req><textarea value={msg} onChange={e => setMsg(e.target.value)} rows={5} placeholder="اكتب نص الإعلان..." className="w-full rounded-xl border border-border bg-input-background text-sm text-foreground px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring/25 resize-none" /></F>
           {sent && <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm"><CheckCircle size={14} /> تم الإرسال بنجاح!</div>}
           <Btn full icon={<Send size={15} />} disabled={!msg} onClick={() => { setSent(true); setMsg(""); setTimeout(() => setSent(false), 3000); }}>إرسال الآن</Btn>
