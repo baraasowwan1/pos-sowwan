@@ -17,7 +17,7 @@ import {
   ArrowUpRight, ArrowDownRight, Clipboard, Copy, Power, Monitor,
   Info, ChevronLeft, Grid3X3, List, Hash, Tag,
 } from "lucide-react";
-import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, PLANS, CAT, ST, weekData, hourData, printReceipt, StoreData, Product, CartItem, StoreCategory, PRODUCTS, jod, getToken } from "./lib";
+import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, PLANS, CAT, ST, printReceipt, StoreData, Product, CartItem, StoreCategory, PRODUCTS, jod, getToken, useStoreModules } from "./lib";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
 
 const STORE_NAV = [
@@ -119,31 +119,40 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
   return (
     <div className="flex h-screen overflow-hidden bg-background" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
 
-      {/* Desktop sidebar */}
-      <aside className={`hidden md:flex ${col ? "w-[50px]" : "w-56"} shrink-0 flex-col transition-all duration-300`} style={{ background: "#0F172A" }}>
-        <div className="h-14 flex items-center gap-2.5 px-3 border-b border-white/7 shrink-0">
+      {/* SIDEBAR: mobile=hidden, tablet=icon(52px), desktop=full(224px) */}
+      <aside
+        className={`hidden md:flex shrink-0 flex-col transition-all duration-300 md:w-[52px] ${col ? "lg:w-[52px]" : "lg:w-56"}`}
+        style={{ background: "#0F172A" }}>
+        <div className="h-14 flex items-center gap-2.5 px-2 lg:px-3 border-b border-white/7 shrink-0">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${cat.color}25` }}>
             <span style={{ color: cat.color }}>{cat.icon}</span>
           </div>
-          {!col && <div className="min-w-0"><p className="text-white font-bold text-xs leading-tight truncate">{store.nameAr}</p><p className="text-white/30 text-xs">{cat.label}</p></div>}
+          <div className={`min-w-0 hidden ${col ? "lg:hidden" : "lg:block"}`}>
+            <p className="text-white font-bold text-xs leading-tight truncate">{store.nameAr}</p>
+            <p className="text-white/30 text-xs">{cat.label}</p>
+          </div>
         </div>
-        <nav className="flex-1 px-1.5 py-2 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 px-1 py-2 space-y-0.5 overflow-y-auto">
           {STORE_NAV.map(n => (
             <button key={n.id} onClick={() => navTo(n.id)}
-              className={`w-full flex items-center gap-2.5 h-8 rounded-xl text-xs font-semibold transition-all ${col ? "justify-center px-1.5" : "px-2.5"} ${screen === n.id ? "bg-white/10 text-white" : "text-white/45 hover:bg-white/5 hover:text-white/80"}`}
-              title={col ? n.label : undefined}>
+              className={`w-full flex items-center gap-2.5 md:h-10 lg:h-9 rounded-xl text-xs font-semibold transition-all justify-center md:px-1.5 ${col ? "lg:justify-center lg:px-1.5" : "lg:justify-start lg:px-2.5"} ${screen === n.id ? "bg-white/10 text-white" : "text-white/45 hover:bg-white/5 hover:text-white/80"}`}
+              title={n.label}>
               <span className="shrink-0">{n.icon}</span>
-              {!col && <span className="truncate">{n.label}</span>}
+              <span className={`hidden truncate ${col ? "lg:hidden" : "lg:inline"}`}>{n.label}</span>
             </button>
           ))}
         </nav>
         <div className="p-1.5 border-t border-white/7 space-y-0.5">
-          {!col && <div className="px-2.5 py-2 rounded-xl bg-white/4"><p className="text-white/40 text-xs">{store.plan}</p><p className="text-white/25 text-xs">ينتهي {store.expiresAt}</p></div>}
-          <button onClick={() => setCol(!col)} className="w-full flex items-center justify-center h-8 rounded-xl text-white/30 hover:text-white/60 hover:bg-white/5">
+          <div className={`px-2.5 py-2 rounded-xl bg-white/4 hidden ${col ? "lg:hidden" : "lg:block"}`}>
+            <p className="text-white/40 text-xs">{store.plan}</p>
+            <p className="text-white/25 text-xs">ينتهي {store.expiresAt}</p>
+          </div>
+          <button onClick={() => setCol(!col)} className="hidden lg:flex w-full items-center justify-center h-8 rounded-xl text-white/30 hover:text-white/60 hover:bg-white/5">
             {col ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
           </button>
-          <button onClick={onLogout} className={`w-full flex items-center gap-2 h-8 rounded-xl text-xs text-red-400/60 hover:text-red-400 hover:bg-red-500/10 ${col ? "justify-center" : "px-2.5"}`}>
-            <LogOut size={13} />{!col && "تسجيل الخروج"}
+          <button onClick={onLogout} className={`w-full flex items-center gap-2 md:h-10 lg:h-8 rounded-xl text-xs text-red-400/60 hover:text-red-400 hover:bg-red-500/10 justify-center ${col ? "lg:justify-center" : "lg:justify-start lg:px-2.5"}`}>
+            <LogOut size={13} />
+            <span className={`hidden ${col ? "lg:hidden" : "lg:inline"}`}>تسجيل الخروج</span>
           </button>
         </div>
       </aside>
@@ -265,9 +274,26 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
 }
 function StoreDash({ store }: { store: StoreData }) {
   type DashSummary = { today?: { total: number; count: number }; month?: { total: number; count: number }; totalProducts?: number; monthExpenses?: number; totalCustomers?: number; lowStock?: number; todayReturns?: number };
+  type WeekPoint = { day: string; مبيعات: number; أرباح: number };
+  type HourPoint = { h: string; v: number };
   const { data: summary, loading: sumLoading } = useApi<DashSummary>("/reports/summary", {});
   const { data: recentSales, loading: salesLoading } = useApi<{_id:string;invoiceNo:string;customerName:string;total:number;payMethod:string;createdAt:string}[]>("/sales?limit=5&sort=-createdAt", []);
   const { data: lowStockProds } = useApi<{_id:string;nameAr:string;quantity:number;minStock:number}[]>("/inventory?lowStock=true&limit=6", []);
+  const { data: weekChartRaw } = useApi<WeekPoint[]>("/reports/weekly", []);
+  const { data: hourChartRaw } = useApi<HourPoint[]>("/reports/hourly", []);
+  const defaultWeek: WeekPoint[] = [
+    { day: "السبت", مبيعات: 0, أرباح: 0 }, { day: "الأحد", مبيعات: 0, أرباح: 0 },
+    { day: "الاثنين", مبيعات: 0, أرباح: 0 }, { day: "الثلاثاء", مبيعات: 0, أرباح: 0 },
+    { day: "الأربعاء", مبيعات: 0, أرباح: 0 }, { day: "الخميس", مبيعات: 0, أرباح: 0 },
+    { day: "الجمعة", مبيعات: 0, أرباح: 0 },
+  ];
+  const defaultHour: HourPoint[] = [
+    { h: "8ص", v: 0 }, { h: "9ص", v: 0 }, { h: "10ص", v: 0 }, { h: "11ص", v: 0 },
+    { h: "12م", v: 0 }, { h: "1م", v: 0 }, { h: "2م", v: 0 }, { h: "3م", v: 0 },
+    { h: "4م", v: 0 }, { h: "5م", v: 0 }, { h: "6م", v: 0 }, { h: "7م", v: 0 },
+  ];
+  const weekChartData = (weekChartRaw && weekChartRaw.length > 0) ? weekChartRaw : defaultWeek;
+  const hourChartData = (hourChartRaw && hourChartRaw.length > 0) ? hourChartRaw : defaultHour;
 
   return (
     <div className="p-5 space-y-5 overflow-y-auto h-full">
@@ -300,7 +326,7 @@ function StoreDash({ store }: { store: StoreData }) {
         <div className="lg:col-span-2 bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">مبيعات وأرباح الأسبوع (JOD)</p>
           <ResponsiveContainer width="100%" height={190}>
-            <BarChart data={weekData} barGap={4}>
+            <BarChart data={weekChartData} barGap={4}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
               <XAxis dataKey="day" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} />
@@ -313,7 +339,7 @@ function StoreDash({ store }: { store: StoreData }) {
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">المبيعات بالساعة</p>
           <ResponsiveContainer width="100%" height={190}>
-            <AreaChart data={hourData}>
+            <AreaChart data={hourChartData}>
               <defs>
                 <linearGradient id="store-dash-hour" x1="0" y1="0" x2="0" y2="1">
                   <stop key="sdh-top" offset="5%" stopColor="#1D4ED8" stopOpacity={0.15} />
@@ -475,35 +501,36 @@ function POSTerm({ store }: { store: StoreData }) {
           <div className="flex gap-2">
             <div className="flex-1 relative">
               <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <input value={q} onChange={e => setQ(e.target.value)} placeholder="بحث بالاسم، الباركود، SKU..." className="w-full h-10 rounded-xl border border-border bg-background text-sm pr-9 pl-3 focus:outline-none focus:ring-2 focus:ring-ring/25 focus:border-primary" />
+              <input value={q} onChange={e => setQ(e.target.value)} placeholder="بحث بالاسم، الباركود، SKU..." className="w-full h-11 rounded-xl border border-border bg-background text-sm pr-9 pl-3 focus:outline-none focus:ring-2 focus:ring-ring/25 focus:border-primary" />
             </div>
-            <button title="مسح الباركود" className="w-10 h-10 flex items-center justify-center rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground"><Scan size={16} /></button>
-            <button onClick={() => setVm(v => v === "grid" ? "list" : "grid")} className="w-10 h-10 flex items-center justify-center rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground">
-              {vm === "grid" ? <List size={16} /> : <Grid3X3 size={16} />}
+            <button title="مسح الباركود" className="w-11 h-11 flex items-center justify-center rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground"><Scan size={18} /></button>
+            <button onClick={() => setVm(v => v === "grid" ? "list" : "grid")} className="w-11 h-11 flex items-center justify-center rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground">
+              {vm === "grid" ? <List size={18} /> : <Grid3X3 size={18} />}
             </button>
           </div>
           <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-            {cats.map(c => <button key={c} onClick={() => setCat(c)} className={`shrink-0 px-3 h-7 rounded-full text-xs font-bold border transition-all ${cat === c ? "bg-primary text-white border-primary" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>{c}</button>)}
+            {cats.map(c => <button key={c} onClick={() => setCat(c)} className={`shrink-0 px-3 h-8 rounded-full text-xs font-bold border transition-all ${cat === c ? "bg-primary text-white border-primary" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>{c}</button>)}
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex-1 overflow-y-auto p-2 sm:p-3">
           {vm === "grid" ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
               {prods.map(p => {
                 const inCart = cart.find(i => i.product.id === p.id);
                 const low = p.stock <= p.minStock;
                 return (
-                  <button key={p.id} onClick={() => add(p)} className={`bg-card rounded-2xl border-2 p-3 text-right hover:shadow-md transition-all hover:-translate-y-0.5 active:scale-95 ${inCart ? "border-primary shadow-md" : "border-border"}`}>
+                  <button key={p.id} onClick={() => add(p)} className={`bg-card rounded-2xl border-2 p-2.5 sm:p-3 text-right hover:shadow-md transition-all active:scale-95 ${inCart ? "border-primary shadow-md bg-primary/2" : "border-border hover:-translate-y-0.5"}`}>
                     <div className="aspect-square rounded-xl bg-muted/40 mb-2 overflow-hidden relative">
                       <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                      {low && <div className="absolute top-1 left-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">منخفض</div>}
+                      {low && <div className="absolute top-1 left-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">منخفض</div>}
+                      {inCart && <div className="absolute top-1 right-1 w-5 h-5 bg-primary text-white text-xs font-black rounded-full flex items-center justify-center">{inCart.qty}</div>}
                     </div>
-                    <p className="text-xs font-bold leading-tight line-clamp-2 mb-1">{p.nameAr}</p>
+                    <p className="text-xs font-bold leading-tight line-clamp-2 mb-1.5">{p.nameAr}</p>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-black text-primary">{p.sellPrice.toFixed(3)}</span>
-                      <span className={`text-xs font-bold ${low ? "text-red-500" : "text-emerald-600"}`}>{p.stock}</span>
+                      <span className={`text-xs font-semibold ${low ? "text-red-500" : "text-emerald-600"}`}>{p.stock}</span>
                     </div>
-                    {inCart && <div className="mt-1.5 bg-primary text-white rounded-full text-xs font-black text-center py-0.5">{inCart.qty} في السلة</div>}
+                    {inCart && <div className="mt-1.5 bg-primary/10 text-primary rounded-xl text-xs font-black text-center py-1">✓ في السلة</div>}
                   </button>
                 );
               })}
@@ -513,11 +540,11 @@ function POSTerm({ store }: { store: StoreData }) {
               {prods.map(p => {
                 const inCart = cart.find(i => i.product.id === p.id);
                 return (
-                  <button key={p.id} onClick={() => add(p)} className={`w-full flex items-center gap-3 bg-card rounded-xl border p-3 text-right hover:shadow-sm transition-all ${inCart ? "border-primary" : "border-border"}`}>
-                    <img src={p.image} alt={p.nameAr} className="w-12 h-12 rounded-xl object-cover bg-muted shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                    <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{p.nameAr}</p><p className="text-xs text-muted-foreground">{p.sku} • {p.category}</p></div>
-                    <div className="text-right shrink-0"><p className="text-sm font-black text-primary">{p.sellPrice.toFixed(3)} JOD</p><p className={`text-xs ${p.stock <= p.minStock ? "text-red-500" : "text-emerald-600"}`}>{p.stock}</p></div>
-                    {inCart && <div className="w-6 h-6 rounded-full bg-primary text-white text-xs font-black flex items-center justify-center shrink-0">{inCart.qty}</div>}
+                  <button key={p.id} onClick={() => add(p)} className={`w-full flex items-center gap-3 bg-card rounded-xl border p-3 md:p-4 text-right hover:shadow-sm transition-all active:scale-[0.99] ${inCart ? "border-primary bg-primary/2" : "border-border"}`}>
+                    <img src={p.image} alt={p.nameAr} className="w-12 h-12 md:w-14 md:h-14 rounded-xl object-cover bg-muted shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    <div className="flex-1 min-w-0"><p className="text-sm md:text-base font-bold truncate">{p.nameAr}</p><p className="text-xs text-muted-foreground">{p.sku} • {p.category}</p></div>
+                    <div className="text-right shrink-0"><p className="text-sm md:text-base font-black text-primary">{p.sellPrice.toFixed(3)} JOD</p><p className={`text-xs ${p.stock <= p.minStock ? "text-red-500" : "text-emerald-600"}`}>{p.stock}</p></div>
+                    {inCart && <div className="w-7 h-7 rounded-full bg-primary text-white text-xs font-black flex items-center justify-center shrink-0">{inCart.qty}</div>}
                   </button>
                 );
               })}
@@ -536,7 +563,7 @@ function POSTerm({ store }: { store: StoreData }) {
       </div>
 
       {/* Cart */}
-      <div className="w-80 bg-card flex flex-col border-l border-border shrink-0">
+      <div className="w-72 md:w-80 lg:w-96 bg-card flex flex-col border-l border-border shrink-0">
         <div className="px-4 py-3 border-b border-border shrink-0">
           <div className="flex items-center justify-between"><p className="font-bold">سلة المشتريات</p><span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-lg">{invNo}</span></div>
           <p className="text-xs text-muted-foreground mt-0.5">{cart.length} صنف • {cart.reduce((a, i) => a + i.qty, 0)} وحدة</p>
@@ -558,15 +585,15 @@ function POSTerm({ store }: { store: StoreData }) {
                   </div>
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => upd(item.product.id, -1)} className="w-6 h-6 rounded-lg bg-muted flex items-center justify-center hover:bg-red-100 hover:text-red-600"><Minus size={10} /></button>
+                      <button onClick={() => upd(item.product.id, -1)} className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-muted flex items-center justify-center hover:bg-red-100 hover:text-red-600 active:scale-90"><Minus size={12} /></button>
                       <span className="w-8 text-center text-sm font-black">{item.qty}</span>
-                      <button onClick={() => upd(item.product.id, 1)} className="w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20"><Plus size={10} /></button>
+                      <button onClick={() => upd(item.product.id, 1)} className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 active:scale-90"><Plus size={12} /></button>
                     </div>
                     <span className="text-sm font-black">{(item.product.sellPrice * item.qty * (1 - item.discount / 100)).toFixed(3)}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-muted-foreground shrink-0">خصم:</span>
-                    <input type="number" value={item.discount} min={0} max={100} onChange={e => updd(item.product.id, Number(e.target.value))} className="w-14 h-6 rounded-lg border border-border bg-input-background text-xs text-center focus:outline-none" />
+                    <input type="number" value={item.discount} min={0} max={100} onChange={e => updd(item.product.id, Number(e.target.value))} className="w-14 h-7 rounded-lg border border-border bg-input-background text-xs text-center focus:outline-none" />
                     <span className="text-xs text-muted-foreground">%</span>
                   </div>
                 </div>
@@ -740,6 +767,7 @@ async function fetchOpenFoodFacts(barcode: string): Promise<OFFProduct | null> {
 
 function ProductsMgr() {
   const sid = useStoreId();
+  const modules = useStoreModules();
   const { data: prodsRaw, loading: prodsLoading, refresh: refreshProds } = useApi<unknown[]>("/products", []);
   const [prods, setProds] = useState<Product[]>([]);
   useEffect(() => { setProds(normList<Product>(prodsRaw)); }, [prodsRaw]);
@@ -873,8 +901,8 @@ function ProductsMgr() {
       {showAdd && (
         <Modal title="إضافة منتج جديد" sub="ادخل الباركود للجلب التلقائي من Open Food Facts أو أدخل البيانات يدوياً" onClose={() => setShowAdd(false)} size="lg">
 
-          {/* Open Food Facts Section */}
-          <div className="mb-5 p-4 bg-gradient-to-l from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl">
+          {/* Open Food Facts Section — supermarket only */}
+          {modules.openFoodFacts && <div className="mb-5 p-4 bg-gradient-to-l from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center"><Scan size={14} className="text-blue-600" /></div>
               <div>
@@ -916,7 +944,7 @@ function ProductsMgr() {
                 </div>
               </div>
             )}
-          </div>
+          </div>}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <F label="الاسم بالعربية" req><TInput value={f.nameAr} onChange={v => setF({ ...f, nameAr: v })} placeholder="أرز بسمتي" /></F>
@@ -1444,6 +1472,42 @@ function ReturnScreen() {
 
 function StoreReports() {
   const [period, setPeriod] = useState("week");
+  type PeriodSummary = { total?: number; count?: number; profit?: number; returns?: number; discounts?: number };
+  type WeekPoint = { day: string; مبيعات: number; أرباح: number };
+  type TopProduct = { nameAr: string; total: number; pct?: number };
+  type PayBreakdown = { method: string; total: number; pct: number };
+  type TaxData = { taxableSales?: number; taxAmount?: number; exemptSales?: number };
+  const { data: periodData, loading: periodLoading } = useApi<PeriodSummary>(`/reports/period?range=${period}`, {});
+  const { data: weekChartRaw } = useApi<WeekPoint[]>("/reports/weekly", []);
+  const { data: topProducts } = useApi<TopProduct[]>("/reports/top-products?limit=5", []);
+  const { data: payBreakdown } = useApi<PayBreakdown[]>("/reports/payment-methods", []);
+  const { data: taxData } = useApi<TaxData>("/reports/tax", {});
+  const defaultWeek: WeekPoint[] = [
+    { day: "السبت", مبيعات: 0, أرباح: 0 }, { day: "الأحد", مبيعات: 0, أرباح: 0 },
+    { day: "الاثنين", مبيعات: 0, أرباح: 0 }, { day: "الثلاثاء", مبيعات: 0, أرباح: 0 },
+    { day: "الأربعاء", مبيعات: 0, أرباح: 0 }, { day: "الخميس", مبيعات: 0, أرباح: 0 },
+    { day: "الجمعة", مبيعات: 0, أرباح: 0 },
+  ];
+  const weekChartData = (weekChartRaw && weekChartRaw.length > 0) ? weekChartRaw : defaultWeek;
+  const maxTopSales = topProducts.length > 0 ? Math.max(...topProducts.map(p => p.total)) : 1;
+  const PAY_ICONS: Record<string, { ic: React.ReactNode; c: string }> = {
+    نقدي:    { ic: <Banknote size={18} />,   c: "#059669" },
+    كليك:    { ic: <CreditCard size={18} />, c: "#1D4ED8" },
+    مختلط:   { ic: <Layers size={18} />,    c: "#D97706" },
+    "بطاقة ائتمانية": { ic: <CreditCard size={18} />, c: "#7C3AED" },
+    "تحويل بنكي":     { ic: <Banknote size={18} />,   c: "#0891B2" },
+    شيك:     { ic: <FileText size={18} />,  c: "#DB2777" },
+  };
+  const taxable = taxData?.taxableSales || 0;
+  const taxAmt  = taxData?.taxAmount    || 0;
+  const exempt  = taxData?.exemptSales  || 0;
+  const printTax = () => {
+    const w = window.open("", "_blank", "width=500,height=700,scrollbars=yes");
+    if (!w) { showToast("يُرجى السماح بالنوافذ المنبثقة للطباعة", "warning"); return; }
+    w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير الضريبة</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;direction:rtl;text-align:right;padding:32px;color:#111}h1{text-align:center;font-size:20px;margin-bottom:4px}p.sub{text-align:center;color:#666;font-size:12px;margin-bottom:24px}.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px}.row.total{font-weight:bold;font-size:15px;border-bottom:none;padding-top:14px}.footer{margin-top:24px;text-align:center;font-size:11px;color:#999}</style></head><body><h1>تقرير الضريبة</h1><p class="sub">${new Date().toLocaleDateString("ar-JO",{year:"numeric",month:"long",day:"numeric"})}</p><div class="row"><span>مبيعات خاضعة للضريبة</span><span>${taxable.toFixed(3)} JOD</span></div><div class="row"><span>ضريبة القيمة المضافة 16%</span><span>${taxAmt.toFixed(3)} JOD</span></div><div class="row"><span>مبيعات معفاة من الضريبة</span><span>${exempt.toFixed(3)} JOD</span></div><div class="row total"><span>إجمالي الضرائب المحصّلة</span><span>${taxAmt.toFixed(3)} JOD</span></div><div class="footer">Sowwanjo POS — نظام نقاط البيع</div></body></html>`);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 400);
+  };
   return (
     <div className="p-5 space-y-5 overflow-y-auto h-full">
       <Hdr title="التقارير والإحصائيات" action={<><Btn v="secondary" s="sm" icon={<Download size={13} />} onClick={() => showToast("جاري إعداد تقرير PDF...", "info")}>PDF</Btn><Btn v="secondary" s="sm" icon={<Download size={13} />} onClick={() => showToast("جاري تصدير ملف Excel...", "info")}>Excel</Btn></>} />
@@ -1451,16 +1515,16 @@ function StoreReports() {
         {[["week","أسبوع"],["month","شهر"],["year","سنة"]].map(([vv,l]) => <button key={vv} onClick={() => setPeriod(vv)} className={`px-4 h-8 rounded-xl text-xs font-bold transition-all ${period === vv ? "bg-card shadow-sm" : "text-muted-foreground"}`}>{l}</button>)}
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI icon={<ShoppingCart size={18} />} label="المبيعات" value="1,840 JOD" sub="158 فاتورة" color="#1D4ED8" trend={15} />
-        <KPI icon={<TrendingUp size={18} />} label="الربح الصافي" value="412 JOD" sub="هامش 22.4%" color="#059669" trend={8} />
-        <KPI icon={<RotateCcw size={18} />} label="المرتجعات" value="45 JOD" color="#DC2626" />
-        <KPI icon={<Percent size={18} />} label="الخصومات" value="38 JOD" color="#D97706" />
+        <KPI icon={<ShoppingCart size={18} />} label="المبيعات" value={periodLoading ? "..." : `${(periodData.total || 0).toFixed(3)} JOD`} sub={`${periodData.count || 0} فاتورة`} color="#1D4ED8" />
+        <KPI icon={<TrendingUp size={18} />} label="الربح الصافي" value={periodLoading ? "..." : `${(periodData.profit || 0).toFixed(3)} JOD`} color="#059669" />
+        <KPI icon={<RotateCcw size={18} />} label="المرتجعات" value={periodLoading ? "..." : `${(periodData.returns || 0).toFixed(3)} JOD`} color="#DC2626" />
+        <KPI icon={<Percent size={18} />} label="الخصومات" value={periodLoading ? "..." : `${(periodData.discounts || 0).toFixed(3)} JOD`} color="#D97706" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">المبيعات والأرباح</p>
           <ResponsiveContainer width="100%" height={190}>
-            <LineChart data={weekData}>
+            <LineChart data={weekChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
               <XAxis dataKey="day" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} />
@@ -1472,44 +1536,52 @@ function StoreReports() {
         </div>
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">أكثر المنتجات مبيعاً</p>
-          <div className="space-y-3">
-            {[{ n: "أرز بسمتي 5كغ", r: 213.75, p: 95 }, { n: "زيت زيتون 750مل", r: 240.0, p: 80 }, { n: "حليب طازج 1 لتر", r: 97.5, p: 65 }, { n: "لبنة 500 غرام", r: 42.0, p: 45 }, { n: "صدر دجاج 1كغ", r: 104.5, p: 35 }].map((pp, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="text-xs font-black text-muted-foreground w-4 shrink-0">{i + 1}</span>
-                <div className="flex-1"><div className="flex justify-between mb-1"><span className="text-xs font-bold">{pp.n}</span><span className="text-xs font-black">{pp.r.toFixed(3)} JOD</span></div><div className="h-1.5 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${pp.p}%` }} /></div></div>
-              </div>
-            ))}
-          </div>
+          {topProducts.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8">لا توجد مبيعات بعد</p>
+          ) : (
+            <div className="space-y-3">
+              {topProducts.map((pp, i) => {
+                const pct = Math.round((pp.total / maxTopSales) * 100);
+                return (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="text-xs font-black text-muted-foreground w-4 shrink-0">{i + 1}</span>
+                    <div className="flex-1"><div className="flex justify-between mb-1"><span className="text-xs font-bold">{pp.nameAr}</span><span className="text-xs font-black">{pp.total.toFixed(3)} JOD</span></div><div className="h-1.5 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} /></div></div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">طرق الدفع</p>
-          <div className="grid grid-cols-3 gap-3">
-            {[{ m: "نقدي", a: 1240.5, p: 67, ic: <Banknote size={18} />, c: "#059669" }, { m: "كليك", a: 520.25, p: 28, ic: <CreditCard size={18} />, c: "#1D4ED8" }, { m: "مختلط", a: 79.25, p: 5, ic: <Layers size={18} />, c: "#D97706" }].map(x => (
-              <div key={x.m} className="text-center p-4 rounded-2xl bg-muted/40 border border-border">
-                <div className="w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center" style={{ backgroundColor: `${x.c}15` }}><span style={{ color: x.c }}>{x.ic}</span></div>
-                <p className="text-2xl font-black">{x.p}%</p>
-                <p className="text-xs font-bold mt-0.5">{x.m}</p>
-                <p className="text-xs text-muted-foreground">{x.a.toFixed(3)} JOD</p>
-              </div>
-            ))}
-          </div>
+          {payBreakdown.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8">لا توجد بيانات دفع بعد</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              {payBreakdown.map(x => {
+                const meta = PAY_ICONS[x.method] || { ic: <CreditCard size={18} />, c: "#6B7280" };
+                return (
+                  <div key={x.method} className="text-center p-4 rounded-2xl bg-muted/40 border border-border">
+                    <div className="w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center" style={{ backgroundColor: `${meta.c}15` }}><span style={{ color: meta.c }}>{meta.ic}</span></div>
+                    <p className="text-2xl font-black">{x.pct}%</p>
+                    <p className="text-xs font-bold mt-0.5">{x.method}</p>
+                    <p className="text-xs text-muted-foreground">{x.total.toFixed(3)} JOD</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">تقرير الضريبة</p>
           <div className="space-y-3">
-            {[["مبيعات خاضعة للضريبة", "1,584.482 JOD"], ["ضريبة القيمة المضافة 16%", "253.517 JOD"], ["مبيعات معفاة من الضريبة", "255.518 JOD"], ["إجمالي الضرائب المحصّلة", "253.517 JOD"]].map(([l, vv]) => (
+            {[["مبيعات خاضعة للضريبة", `${taxable.toFixed(3)} JOD`], ["ضريبة القيمة المضافة 16%", `${taxAmt.toFixed(3)} JOD`], ["مبيعات معفاة من الضريبة", `${exempt.toFixed(3)} JOD`], ["إجمالي الضرائب المحصّلة", `${taxAmt.toFixed(3)} JOD`]].map(([l, vv]) => (
               <div key={l} className="flex justify-between border-b border-border/60 pb-2 last:border-0">
                 <span className="text-sm text-muted-foreground">{l}</span><span className="font-bold">{vv}</span>
               </div>
             ))}
           </div>
-          <Btn v="secondary" full cls="mt-4" icon={<Printer size={13} />} onClick={() => {
-            const w = window.open("", "_blank", "width=500,height=700,scrollbars=yes");
-            if (!w) { showToast("يُرجى السماح بالنوافذ المنبثقة للطباعة", "warning"); return; }
-            w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير الضريبة</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;direction:rtl;text-align:right;padding:32px;color:#111}h1{text-align:center;font-size:20px;margin-bottom:4px}p.sub{text-align:center;color:#666;font-size:12px;margin-bottom:24px}.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px}.row.total{font-weight:bold;font-size:15px;border-bottom:none;padding-top:14px}.footer{margin-top:24px;text-align:center;font-size:11px;color:#999}</style></head><body><h1>تقرير الضريبة</h1><p class="sub">${new Date().toLocaleDateString("ar-JO",{year:"numeric",month:"long",day:"numeric"})}</p><div class="row"><span>مبيعات خاضعة للضريبة</span><span>1,584.482 JOD</span></div><div class="row"><span>ضريبة القيمة المضافة 16%</span><span>253.517 JOD</span></div><div class="row"><span>مبيعات معفاة من الضريبة</span><span>255.518 JOD</span></div><div class="row total"><span>إجمالي الضرائب المحصّلة</span><span>253.517 JOD</span></div><div class="footer">Sowwanjo POS — نظام نقاط البيع</div></body></html>`);
-            w.document.close();
-            setTimeout(() => { w.focus(); w.print(); }, 400);
-          }}>طباعة تقرير الضريبة</Btn>
+          <Btn v="secondary" full cls="mt-4" icon={<Printer size={13} />} onClick={printTax}>طباعة تقرير الضريبة</Btn>
         </div>
       </div>
     </div>
