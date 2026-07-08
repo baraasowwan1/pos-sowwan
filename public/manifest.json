@@ -1,0 +1,28 @@
+{
+  "name": "Sowwanjo POS — لوحة الإدارة",
+  "short_name": "Sowwanjo",
+  "description": "نظام نقاط البيع السحابي متعدد المتاجر",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0F172A",
+  "theme_color": "#0F172A",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%230F172A'/%3E%3Crect x='40' y='60' width='112' height='80' rx='12' fill='%233B82F6' opacity='0.2' stroke='%233B82F6' stroke-width='4'/%3E%3Cpath d='M70 100 L96 76 L122 100' stroke='%2360A5FA' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='96' y1='76' x2='96' y2='124' stroke='%2360A5FA' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230F172A'/%3E%3Crect x='100' y='160' width='312' height='220' rx='28' fill='%233B82F6' opacity='0.2' stroke='%233B82F6' stroke-width='10'/%3E%3Cpath d='M180 270 L256 196 L332 270' stroke='%2360A5FA' stroke-width='16' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='256' y1='196' x2='256' y2='340' stroke='%2360A5FA' stroke-width='16' stroke-linecap='round'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "screenshots": []
+}
