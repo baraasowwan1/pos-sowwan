@@ -17,7 +17,7 @@ import {
   ArrowUpRight, ArrowDownRight, Clipboard, Copy, Power, Monitor,
   Info, ChevronLeft, Grid3X3, List, Hash, Tag,
 } from "lucide-react";
-import { apiFetch, getToken, useLS, norm, jod, dateAr, showToast, apiCreateStore, apiGetStores, apiUpdateStore, apiDeleteStore, apiResetPass, SBadge, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, PLANS, CAT, ST, weekData, monthData, hourData, StoreData, Plan, StoreCategory, STORES } from "./lib";
+import { apiFetch, getToken, useLS, norm, jod, dateAr, showToast, apiCreateStore, apiGetStores, apiUpdateStore, apiDeleteStore, apiResetPass, SBadge, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, PLANS, CAT, ST, weekData, monthData, hourData, STORES } from "./lib";
 import type { StoreData, Plan, StoreCategory } from "./lib";
 
 const SA_NAV = [
@@ -1012,6 +1012,12 @@ function SAPlans() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ nameAr: "", price: "", yearlyPrice: "", maxBranches: "1", maxUsers: "3", maxProducts: "500", maxInvoices: "1000", maxTerminals: "1", storage: "1 غيغابايت", apiAccess: false, badge: "", color: "#1D4ED8", features: "" });
 
+  // Real subscriptions from API
+  const [subs, setSubs] = useState<StoreData[]>([]);
+  const [assignStore, setAssignStore] = useState<StoreData | null>(null);
+  const [assignForm, setAssignForm] = useState({ plan: "", months: "1" });
+  const [assigning, setAssigning] = useState(false);
+
   const loadPlans = () => {
     setLoading(true);
     apiFetch("/plans", {}, getToken())
@@ -1020,6 +1026,12 @@ function SAPlans() {
       .finally(() => setLoading(false));
   };
   useEffect(() => { loadPlans(); }, []);
+
+  useEffect(() => {
+    apiFetch("/stores", {}, getToken())
+      .then(d => { if (Array.isArray(d)) setSubs((d as (StoreData & {_id?:string})[]).map(s => ({ ...s, id: s._id || s.id || "" }))); })
+      .catch(() => {});
+  }, []);
 
   const openEdit = (p: Plan) => {
     setEditPlan(p);
@@ -1056,7 +1068,17 @@ function SAPlans() {
     } catch { showToast("فشل الحذف", "error"); }
   };
 
-  const storedStores: StoreData[] = (() => { try { const s = localStorage.getItem("sowwanjo_sa_stores"); return s ? JSON.parse(s) : []; } catch { return []; } })();
+  const doAssign = async () => {
+    if (!assignStore || !assignForm.plan) { showToast("اختر الخطة أولاً", "error"); return; }
+    setAssigning(true);
+    try {
+      await apiFetch(`/stores/${assignStore.id}/assign-plan`, { method: "PATCH", body: JSON.stringify({ plan: assignForm.plan, months: parseInt(assignForm.months) }) }, getToken());
+      showToast(`تم تجديد اشتراك ${assignStore.nameAr} بنجاح ✓`, "success");
+      setSubs(prev => prev.map(s => s.id === assignStore.id ? { ...s, plan: assignForm.plan, status: "active" } : s));
+      setAssignStore(null);
+    } catch { showToast("فشل تعيين الخطة", "error"); }
+    finally { setAssigning(false); }
+  };
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
@@ -1104,24 +1126,45 @@ function SAPlans() {
       )}
 
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
-        <div className="p-5 border-b border-border font-bold text-foreground">اشتراكات المتاجر الحالية ({storedStores.length})</div>
+        <div className="p-5 border-b border-border font-bold text-foreground">اشتراكات المتاجر الحالية ({subs.length})</div>
         <div className="divide-y divide-border/60">
-          {storedStores.length === 0 ? (
+          {subs.length === 0 ? (
             <p className="text-center py-6 text-sm text-muted-foreground">لا يوجد متاجر بعد</p>
-          ) : storedStores.map((s: StoreData) => (
+          ) : subs.map((s: StoreData) => (
             <div key={s.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/20">
               <div className="flex-1 min-w-0"><p className="text-sm font-bold">{s.nameAr}</p><p className="text-xs text-muted-foreground">{s.email}</p></div>
-              <span className="hidden sm:block text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">{s.plan}</span>
+              <span className="hidden sm:block text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">{s.plan || "—"}</span>
               <SBadge status={s.status} />
-              <div className="hidden md:block text-xs text-muted-foreground">انتهاء: {s.expiresAt}</div>
+              <div className="hidden md:block text-xs text-muted-foreground">انتهاء: {s.expiresAt || "—"}</div>
               <div className="flex gap-1.5">
-                <Btn v="secondary" s="xs" onClick={() => showToast(`تم تجديد اشتراك ${s.nameAr}`, "success")}>تجديد</Btn>
-                <Btn v="ghost" s="xs" icon={<TrendingUp size={11} />} onClick={() => showToast("تم طلب الترقية", "info")}>ترقية</Btn>
+                <Btn v="secondary" s="xs" onClick={() => { setAssignStore(s); setAssignForm({ plan: s.plan || (plans[0]?.nameAr || ""), months: "1" }); }}>تجديد / تغيير</Btn>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {assignStore && (
+        <Modal title={`تجديد / تعيين خطة — ${assignStore.nameAr}`} onClose={() => setAssignStore(null)} size="sm">
+          <div className="space-y-4">
+            <F label="الخطة">
+              <select value={assignForm.plan} onChange={e => setAssignForm(f => ({ ...f, plan: e.target.value }))} className="w-full rounded-xl border border-border bg-input-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/25">
+                <option value="">اختر خطة</option>
+                {plans.map(p => <option key={p.id} value={p.nameAr}>{p.nameAr} — {p.price} JOD/شهر</option>)}
+              </select>
+            </F>
+            <F label="مدة التجديد (بالأشهر)">
+              <select value={assignForm.months} onChange={e => setAssignForm(f => ({ ...f, months: e.target.value }))} className="w-full rounded-xl border border-border bg-input-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/25">
+                {[1,3,6,12].map(m => <option key={m} value={m}>{m} {m === 1 ? "شهر" : "أشهر"}</option>)}
+              </select>
+            </F>
+            <div className="flex gap-3">
+              <Btn v="secondary" cls="flex-1" onClick={() => setAssignStore(null)}>إلغاء</Btn>
+              <Btn cls="flex-1" disabled={assigning} onClick={doAssign} icon={<CreditCard size={14} />}>{assigning ? "جاري الحفظ..." : "تطبيق الخطة"}</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {showForm && (
         <Modal title={editPlan ? "تعديل الخطة" : "خطة جديدة"} sub="أدخل تفاصيل خطة الاشتراك" onClose={() => setShowForm(false)}>
