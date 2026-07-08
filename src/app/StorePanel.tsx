@@ -23,6 +23,7 @@ import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
 const STORE_NAV = [
   { id: "dashboard",  label: "الرئيسية",       icon: <LayoutDashboard size={15} /> },
   { id: "pos",        label: "نقطة البيع",      icon: <ShoppingCart size={15} /> },
+  { id: "sales",      label: "المبيعات",         icon: <FileText size={15} /> },
   { id: "products",   label: "المنتجات",         icon: <Package size={15} /> },
   { id: "inventory",  label: "المخزون",          icon: <Boxes size={15} /> },
   { id: "customers",  label: "العملاء",           icon: <Users size={15} /> },
@@ -111,8 +112,8 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
   const storeBottomNav = [
     { id: "dashboard", label: "الرئيسية", icon: <LayoutDashboard size={19} /> },
     { id: "pos",       label: "البيع",    icon: <ShoppingCart size={19} /> },
-    { id: "products",  label: "المنتجات", icon: <Package size={19} /> },
-    { id: "reports",   label: "التقارير", icon: <BarChart2 size={19} /> },
+    { id: "sales",     label: "فواتير",   icon: <FileText size={19} /> },
+    { id: "reports",   label: "تقارير",   icon: <BarChart2 size={19} /> },
     { id: "settings",  label: "إعدادات",  icon: <Settings size={19} /> },
   ];
 
@@ -243,6 +244,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
         <main className="flex-1 overflow-hidden" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 3.5rem)" }}>
           {screen === "dashboard" && <StoreDash store={store} />}
           {screen === "pos"       && <POSTerm store={store} />}
+          {screen === "sales"     && <SalesScreen store={store} />}
           {screen === "products"  && <ProductsMgr />}
           {screen === "inventory" && <InvScreen />}
           {screen === "customers" && <CustScreen />}
@@ -250,7 +252,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
           {screen === "purchases" && <PurchScreen />}
           {screen === "expenses"  && <ExpScreen />}
           {screen === "returns"   && <ReturnScreen />}
-          {screen === "reports"   && <StoreReports />}
+          {screen === "reports"   && <StoreReports store={store} />}
           {screen === "employees" && <EmpScreen />}
           {screen === "branches"  && <BranchScreen />}
           {screen === "loyalty"   && <LoyaltyScreen />}
@@ -763,6 +765,193 @@ async function fetchOpenFoodFacts(barcode: string): Promise<OFFProduct | null> {
     if (data.status !== 1 || !data.product) return null;
     return data.product as OFFProduct;
   } catch { return null; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SALES / INVOICES SCREEN — شاشة المبيعات والفواتير
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SaleRecord {
+  id: string; invoiceNo: string; createdAt: string;
+  items: { nameAr: string; qty: number; unitPrice: number; discount: number; total: number }[];
+  subtotal: number; discountAmt: number; taxAmt: number; total: number;
+  payMethod: string; cashIn?: number; change?: number; status: string;
+  customerName?: string;
+}
+
+interface SalesStats { today: { total: number; count: number }; month: { total: number; count: number }; totalSales: number; }
+
+function SalesScreen({ store }: { store: StoreData }) {
+  const { data: salesRaw, loading, refresh } = useApi<unknown[]>("/sales?limit=200", []);
+  const { data: stats } = useApi<SalesStats>("/sales/stats", { today: { total: 0, count: 0 }, month: { total: 0, count: 0 }, totalSales: 0 });
+  const [sales, setSales] = useState<SaleRecord[]>([]);
+  const [search, setSearch] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [payFilter, setPayFilter] = useState("الكل");
+  const [viewSale, setViewSale] = useState<SaleRecord | null>(null);
+
+  useEffect(() => { setSales(normList<SaleRecord>(salesRaw)); }, [salesRaw]);
+
+  const PAY_OPTS = ["الكل", "نقدي", "بطاقة", "كليك", "مختلط"];
+
+  const filtered = sales.filter(s => {
+    const q = search.toLowerCase();
+    const matchQ = !q || s.invoiceNo?.toLowerCase().includes(q) || s.customerName?.toLowerCase().includes(q);
+    const matchPay = payFilter === "الكل" || s.payMethod === payFilter;
+    const d = s.createdAt ? new Date(s.createdAt) : null;
+    const matchFrom = !fromDate || (d && d >= new Date(fromDate));
+    const matchTo   = !toDate   || (d && d <= new Date(toDate + "T23:59:59"));
+    return matchQ && matchPay && matchFrom && matchTo;
+  });
+
+  const PM: Record<string, string> = { نقدي: "bg-emerald-100 text-emerald-700", بطاقة: "bg-blue-100 text-blue-700", كليك: "bg-purple-100 text-purple-700", مختلط: "bg-orange-100 text-orange-700" };
+
+  const reprintSale = (s: SaleRecord) => {
+    const tax  = Number(localStorage.getItem(`sowwanjo_sett_tax_${store.id}`) || 16);
+    const paper = localStorage.getItem(`sowwanjo_sett_paper_${store.id}`) || "80mm";
+    printReceipt({
+      invNo: s.invoiceNo, storeName: store.nameAr, storePhone: store.phone,
+      items: s.items.map(i => ({ name: i.nameAr, qty: i.qty, price: i.unitPrice, discount: i.discount || 0 })),
+      subtotal: s.subtotal, discountAmt: s.discountAmt || 0, taxAmt: s.taxAmt || 0, taxRate: tax,
+      total: s.total, payMethod: s.payMethod,
+      cashIn: s.cashIn, change: s.change,
+      date: s.createdAt ? new Date(s.createdAt).toLocaleDateString("ar-JO") : "",
+      time: s.createdAt ? new Date(s.createdAt).toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" }) : "",
+    }, paper);
+  };
+
+  return (
+    <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
+      <Hdr title="المبيعات والفواتير" action={
+        <Btn v="secondary" s="sm" icon={<RefreshCw size={13} />} onClick={refresh}>تحديث</Btn>
+      } />
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <KPI icon={<ShoppingCart size={18} />} label="مبيعات اليوم" value={`${(stats.today.total || 0).toFixed(3)} JOD`} sub={`${stats.today.count || 0} فاتورة`} color="#1D4ED8" />
+        <KPI icon={<TrendingUp size={18} />} label="مبيعات الشهر" value={`${(stats.month.total || 0).toFixed(3)} JOD`} sub={`${stats.month.count || 0} فاتورة`} color="#059669" />
+        <KPI icon={<FileText size={18} />} label="إجمالي الفواتير" value={String(stats.totalSales || 0)} color="#7C3AED" />
+        <KPI icon={<DollarSign size={18} />} label="متوسط الفاتورة" value={stats.month.count ? `${((stats.month.total || 0) / stats.month.count).toFixed(3)} JOD` : "0.000 JOD"} color="#D97706" />
+      </div>
+
+      {/* Filters */}
+      <div className="bg-card rounded-2xl border border-border p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="relative lg:col-span-1">
+            <Search size={13} className="absolute top-1/2 -translate-y-1/2 right-3 text-muted-foreground" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث برقم الفاتورة..." className="w-full h-10 rounded-xl border border-border bg-input-background text-sm pr-8 pl-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+          </div>
+          <TInput value={fromDate} onChange={setFromDate} type="date" placeholder="من تاريخ" />
+          <TInput value={toDate} onChange={setToDate} type="date" placeholder="إلى تاريخ" />
+          <SInput value={payFilter} onChange={setPayFilter} options={PAY_OPTS.map(p => ({ value: p, label: p }))} />
+        </div>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-2">
+        {loading && <p className="text-center text-muted-foreground py-6 text-sm">جاري التحميل...</p>}
+        {!loading && filtered.length === 0 && (
+          <div className="bg-card rounded-2xl border border-border">
+            <Empty icon={<FileText size={28} />} title="لا توجد فواتير" desc="ستظهر هنا جميع عمليات البيع بعد إنجازها من نقطة البيع" />
+          </div>
+        )}
+        {filtered.map(s => (
+          <div key={s.id} className="bg-card rounded-2xl border border-border p-4">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div>
+                <p className="font-black text-primary text-sm">{s.invoiceNo}</p>
+                <p className="text-xs text-muted-foreground">{s.createdAt ? new Date(s.createdAt).toLocaleDateString("ar-JO", { year: "numeric", month: "short", day: "numeric" }) : ""}</p>
+              </div>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${PM[s.payMethod] || "bg-gray-100 text-gray-600"}`}>{s.payMethod}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">{s.items?.length || 0} أصناف</p>
+              <p className="font-black text-base">{s.total?.toFixed(3)} JOD</p>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <Btn v="secondary" s="xs" full icon={<Eye size={11} />} onClick={() => setViewSale(s)}>عرض</Btn>
+              <Btn v="ghost" s="xs" full icon={<Printer size={11} />} onClick={() => reprintSale(s)}>طباعة</Btn>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block bg-card rounded-2xl border border-border overflow-hidden">
+        {loading ? (
+          <p className="text-center text-muted-foreground py-10 text-sm">جاري تحميل الفواتير...</p>
+        ) : filtered.length === 0 ? (
+          <Empty icon={<FileText size={28} />} title="لا توجد فواتير" desc="ستظهر هنا جميع عمليات البيع بعد إنجازها من نقطة البيع" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 border-b border-border">
+                <tr>
+                  {["رقم الفاتورة","التاريخ","الأصناف","المجموع الفرعي","الضريبة","الإجمالي","طريقة الدفع",""].map(h => (
+                    <th key={h} className="text-right font-bold text-muted-foreground text-xs px-4 py-3">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {filtered.map(s => (
+                  <tr key={s.id} className="hover:bg-muted/20 transition-colors">
+                    <td className="px-4 py-3 font-black text-primary">{s.invoiceNo}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{s.createdAt ? new Date(s.createdAt).toLocaleDateString("ar-JO", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                    <td className="px-4 py-3">{s.items?.length || 0} صنف</td>
+                    <td className="px-4 py-3">{(s.subtotal || 0).toFixed(3)}</td>
+                    <td className="px-4 py-3">{(s.taxAmt || 0).toFixed(3)}</td>
+                    <td className="px-4 py-3 font-black">{(s.total || 0).toFixed(3)} JOD</td>
+                    <td className="px-4 py-3"><span className={`text-xs font-bold px-2.5 py-1 rounded-full ${PM[s.payMethod] || "bg-gray-100 text-gray-600"}`}>{s.payMethod}</span></td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1">
+                        <Btn v="ghost" s="xs" icon={<Eye size={10} />} onClick={() => setViewSale(s)}>عرض</Btn>
+                        <Btn v="secondary" s="xs" icon={<Printer size={10} />} onClick={() => reprintSale(s)}>طباعة</Btn>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Invoice detail modal */}
+      {viewSale && (
+        <Modal title={`فاتورة ${viewSale.invoiceNo}`} sub={viewSale.createdAt ? new Date(viewSale.createdAt).toLocaleString("ar-JO") : ""} onClose={() => setViewSale(null)}>
+          <div className="space-y-4">
+            <div className="border border-border rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    {["المنتج","الكمية","السعر","الخصم","المجموع"].map(h => <th key={h} className="text-right px-3 py-2 text-xs font-bold text-muted-foreground">{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {(viewSale.items || []).map((it, i) => (
+                    <tr key={i}>
+                      <td className="px-3 py-2 font-bold">{it.nameAr}</td>
+                      <td className="px-3 py-2">{it.qty}</td>
+                      <td className="px-3 py-2">{(it.unitPrice || 0).toFixed(3)}</td>
+                      <td className="px-3 py-2">{(it.discount || 0).toFixed(3)}</td>
+                      <td className="px-3 py-2 font-black">{(it.total || 0).toFixed(3)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="space-y-2 border-t border-border pt-3">
+              {[["المجموع الفرعي", `${(viewSale.subtotal||0).toFixed(3)} JOD`], ["الخصم", `${(viewSale.discountAmt||0).toFixed(3)} JOD`], ["الضريبة", `${(viewSale.taxAmt||0).toFixed(3)} JOD`], ["الإجمالي", `${(viewSale.total||0).toFixed(3)} JOD`], ["طريقة الدفع", viewSale.payMethod]].map(([l, v]) => (
+                <div key={l} className="flex justify-between text-sm"><span className="text-muted-foreground">{l}</span><span className="font-bold">{v}</span></div>
+              ))}
+            </div>
+            <Btn full icon={<Printer size={14} />} onClick={() => { reprintSale(viewSale); setViewSale(null); }}>إعادة طباعة الفاتورة</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
 }
 
 function ProductsMgr() {
@@ -1376,34 +1565,155 @@ function SuppScreen() {
   );
 }
 
+interface PurchOrder { id: string; sup: string; items: number; total: number; status: string; notes?: string; createdAt?: string; }
+
 function PurchScreen() {
-  const sid = useStoreId();
-  const [orders, setOrders] = useLS<{id:string;sup:string;date:string;items:number;total:number;status:string}[]>(sk(sid, "purchases"), []);
-  const SC: Record<string, string> = { مكتمل: "bg-emerald-100 text-emerald-700", "قيد الاستلام": "bg-blue-100 text-blue-700" };
+  const { data: ordersRaw, loading, refresh } = useApi<unknown[]>("/purchases", []);
+  const [orders, setOrders] = useState<PurchOrder[]>([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [viewOrder, setViewOrder] = useState<PurchOrder | null>(null);
+  const [nf, setNf] = useState({ sup: "", items: "", total: "", notes: "", status: "قيد الاستلام" });
+
+  useEffect(() => { setOrders(normList<PurchOrder>(ordersRaw)); }, [ordersRaw]);
+
+  const SC: Record<string, string> = { مكتمل: "bg-emerald-100 text-emerald-700", "قيد الاستلام": "bg-blue-100 text-blue-700", ملغي: "bg-red-100 text-red-700" };
+
+  const totalAll = orders.reduce((a, o) => a + (o.total || 0), 0);
+  const pending = orders.filter(o => o.status === "قيد الاستلام").length;
+  const thisMonth = orders.filter(o => {
+    if (!o.createdAt) return false;
+    const d = new Date(o.createdAt);
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+
+  const addOrder = async () => {
+    if (!nf.sup || !nf.total) return;
+    try {
+      await storeApi.post("/purchases", { sup: nf.sup, items: parseInt(nf.items) || 0, total: parseFloat(nf.total) || 0, notes: nf.notes, status: nf.status });
+      await refresh();
+      showToast("تم إضافة طلب الشراء ✅", "success");
+      setShowAdd(false);
+      setNf({ sup: "", items: "", total: "", notes: "", status: "قيد الاستلام" });
+    } catch { showToast("خطأ في حفظ طلب الشراء", "error"); }
+  };
+
+  const updateStatus = async (id: string, status: string) => {
+    try {
+      await storeApi.put(`/purchases/${id}`, { status });
+      await refresh();
+      showToast(`تم تحديث الحالة إلى: ${status}`, "success");
+    } catch { showToast("خطأ في تحديث الحالة", "error"); }
+  };
+
+  const printOrder = (o: PurchOrder) => {
+    const w = window.open("", "_blank", "width=500,height=600");
+    if (!w) { showToast("يُرجى السماح بالنوافذ المنبثقة", "warning"); return; }
+    w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>طلب شراء</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Cairo',Arial,sans-serif;direction:rtl;padding:32px;color:#111;font-size:14px}h1{text-align:center;font-size:18px;margin-bottom:4px}p.sub{text-align:center;color:#666;font-size:12px;margin-bottom:24px}.row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #e5e7eb}.row:last-child{border:none;font-weight:bold}.footer{margin-top:24px;text-align:center;font-size:11px;color:#999}</style></head><body><h1>طلب شراء</h1><p class="sub">${new Date(o.createdAt || Date.now()).toLocaleDateString("ar-JO",{year:"numeric",month:"long",day:"numeric"})}</p><div class="row"><span>المورد</span><span>${o.sup}</span></div><div class="row"><span>عدد الأصناف</span><span>${o.items}</span></div><div class="row"><span>الحالة</span><span>${o.status}</span></div>${o.notes ? `<div class="row"><span>ملاحظات</span><span>${o.notes}</span></div>` : ""}<div class="row"><span>الإجمالي</span><span>${(o.total||0).toFixed(3)} JOD</span></div><div class="footer">Sowwanjo POS</div></body></html>`);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 400);
+  };
+
   return (
     <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
-      <Hdr title="طلبات الشراء" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => showToast("فتح نموذج طلب شراء جديد", "info")}>طلب شراء جديد</Btn>} />
-      <div className="grid grid-cols-3 gap-4">
-        <KPI icon={<ClipboardList size={18} />} label="طلبات الشهر" value="15" color="#1D4ED8" />
-        <KPI icon={<DollarSign size={18} />} label="إجمالي المشتريات" value="6,240 JOD" color="#059669" />
-        <KPI icon={<Truck size={18} />} label="قيد الاستلام" value="3" color="#D97706" />
+      <Hdr title="طلبات الشراء" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowAdd(true)}>طلب شراء جديد</Btn>} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <KPI icon={<ClipboardList size={18} />} label="طلبات الشهر" value={String(thisMonth.length)} color="#1D4ED8" />
+        <KPI icon={<DollarSign size={18} />} label="إجمالي المشتريات" value={`${totalAll.toFixed(3)} JOD`} color="#059669" />
+        <KPI icon={<Truck size={18} />} label="قيد الاستلام" value={String(pending)} color="#D97706" />
+        <KPI icon={<Check size={18} />} label="مكتملة" value={String(orders.filter(o => o.status === "مكتمل").length)} color="#7C3AED" />
       </div>
-      {orders.length === 0 ? (
-        <div className="bg-card rounded-2xl border border-border">
-          <Empty icon={<Clipboard size={28} />} title="لا توجد طلبات شراء بعد" desc='أضف طلب شراء جديد من الزر أعلاه' />
-        </div>
-      ) : (
-      <div className="bg-card rounded-2xl border border-border divide-y divide-border/60 overflow-hidden">
+
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-2">
+        {loading && <p className="text-center text-muted-foreground py-6 text-sm">جاري التحميل...</p>}
+        {!loading && orders.length === 0 && (
+          <div className="bg-card rounded-2xl border border-border">
+            <Empty icon={<Clipboard size={28} />} title="لا توجد طلبات شراء بعد" desc="أضف طلب شراء جديد من الزر أعلاه" />
+          </div>
+        )}
         {orders.map(o => (
-          <div key={o.id} className="flex items-center gap-4 px-5 py-4 hover:bg-muted/20">
-            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0"><Clipboard size={16} className="text-muted-foreground" /></div>
-            <div className="flex-1 min-w-0"><p className="font-bold">{o.id}</p><p className="text-xs text-muted-foreground">{o.sup} • {o.date} • {o.items} أصناف</p></div>
-            <p className="font-black hidden sm:block">{o.total.toFixed(3)} JOD</p>
-            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${SC[o.status] || "bg-gray-100 text-gray-600"}`}>{o.status}</span>
-            <div className="flex gap-1"><Btn v="ghost" s="xs" icon={<Eye size={10} />} onClick={() => showToast(`${o.id}: ${o.items} أصناف، المجموع ${o.total.toFixed(3)} JOD`, "info")}>عرض</Btn><Btn v="secondary" s="xs" icon={<Printer size={10} />} onClick={() => showToast(`جاري طباعة طلب ${o.id}...`, "info")}>طباعة</Btn></div>
+          <div key={o.id} className="bg-card rounded-2xl border border-border p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-bold">{o.sup}</p>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${SC[o.status] || "bg-gray-100 text-gray-600"}`}>{o.status}</span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2">{o.items} أصناف • {o.createdAt ? new Date(o.createdAt).toLocaleDateString("ar-JO") : ""}</p>
+            <div className="flex items-center justify-between">
+              <p className="font-black">{(o.total||0).toFixed(3)} JOD</p>
+              <div className="flex gap-1">
+                <Btn v="ghost" s="xs" icon={<Eye size={10} />} onClick={() => setViewOrder(o)}>عرض</Btn>
+                <Btn v="secondary" s="xs" icon={<Printer size={10} />} onClick={() => printOrder(o)}>طباعة</Btn>
+              </div>
+            </div>
           </div>
         ))}
       </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block bg-card rounded-2xl border border-border overflow-hidden">
+        {loading ? <p className="text-center py-10 text-muted-foreground text-sm">جاري التحميل...</p>
+        : orders.length === 0 ? <Empty icon={<Clipboard size={28} />} title="لا توجد طلبات شراء بعد" desc="أضف طلب شراء جديد من الزر أعلاه" />
+        : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 border-b border-border">
+                <tr>{["المورد","التاريخ","عدد الأصناف","الإجمالي","الحالة",""].map(h => <th key={h} className="text-right font-bold text-muted-foreground text-xs px-4 py-3">{h}</th>)}</tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {orders.map(o => (
+                  <tr key={o.id} className="hover:bg-muted/20">
+                    <td className="px-4 py-3 font-bold">{o.sup}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{o.createdAt ? new Date(o.createdAt).toLocaleDateString("ar-JO") : "—"}</td>
+                    <td className="px-4 py-3">{o.items}</td>
+                    <td className="px-4 py-3 font-black">{(o.total||0).toFixed(3)} JOD</td>
+                    <td className="px-4 py-3">
+                      <select value={o.status} onChange={e => updateStatus(o.id, e.target.value)}
+                        className={`text-xs font-bold px-2.5 py-1 rounded-full border-0 cursor-pointer ${SC[o.status] || "bg-gray-100 text-gray-600"}`}>
+                        {["قيد الاستلام","مكتمل","ملغي"].map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1">
+                        <Btn v="ghost" s="xs" icon={<Eye size={10} />} onClick={() => setViewOrder(o)}>عرض</Btn>
+                        <Btn v="secondary" s="xs" icon={<Printer size={10} />} onClick={() => printOrder(o)}>طباعة</Btn>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Add order modal */}
+      {showAdd && (
+        <Modal title="طلب شراء جديد" onClose={() => setShowAdd(false)} size="sm">
+          <div className="space-y-4">
+            <F label="اسم المورد" req><TInput value={nf.sup} onChange={v => setNf({...nf, sup: v})} placeholder="اسم الشركة أو المورد" /></F>
+            <F label="عدد الأصناف"><TInput value={nf.items} onChange={v => setNf({...nf, items: v})} type="number" placeholder="0" /></F>
+            <F label="الإجمالي (JOD)" req><TInput value={nf.total} onChange={v => setNf({...nf, total: v})} type="number" placeholder="0.000" /></F>
+            <F label="الحالة"><SInput value={nf.status} onChange={v => setNf({...nf, status: v})} options={["قيد الاستلام","مكتمل"].map(s => ({value:s,label:s}))} /></F>
+            <F label="ملاحظات"><TInput value={nf.notes} onChange={v => setNf({...nf, notes: v})} placeholder="ملاحظات اختيارية..." /></F>
+            <div className="flex gap-3 justify-end">
+              <Btn v="secondary" onClick={() => setShowAdd(false)}>إلغاء</Btn>
+              <Btn onClick={addOrder} disabled={!nf.sup || !nf.total} icon={<Plus size={14} />}>إضافة الطلب</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* View order modal */}
+      {viewOrder && (
+        <Modal title="تفاصيل طلب الشراء" onClose={() => setViewOrder(null)} size="sm">
+          <div className="space-y-3">
+            {[["المورد", viewOrder.sup], ["عدد الأصناف", String(viewOrder.items)], ["الإجمالي", `${(viewOrder.total||0).toFixed(3)} JOD`], ["الحالة", viewOrder.status], ...(viewOrder.notes ? [["ملاحظات", viewOrder.notes]] : []), ["تاريخ الطلب", viewOrder.createdAt ? new Date(viewOrder.createdAt).toLocaleDateString("ar-JO") : "—"]].map(([l,v]) => (
+              <div key={l} className="flex justify-between border-b border-border/60 pb-2 last:border-0 text-sm"><span className="text-muted-foreground">{l}</span><span className="font-bold">{v}</span></div>
+            ))}
+            <Btn full icon={<Printer size={14} />} onClick={() => { printOrder(viewOrder); setViewOrder(null); }}>طباعة الطلب</Btn>
+          </div>
+        </Modal>
       )}
     </div>
   );
@@ -1552,7 +1862,7 @@ function ReturnScreen() {
   );
 }
 
-function StoreReports() {
+function StoreReports({ store }: { store?: StoreData }) {
   const [period, setPeriod] = useState("week");
   type PeriodSummary = { total?: number; count?: number; profit?: number; returns?: number; discounts?: number };
   type WeekPoint = { day: string; مبيعات: number; أرباح: number };
@@ -1584,11 +1894,20 @@ function StoreReports() {
   const taxAmt  = taxData?.taxAmount    || 0;
   const exempt  = taxData?.exemptSales  || 0;
   const printTax = () => {
-    const w = window.open("", "_blank", "width=500,height=700,scrollbars=yes");
-    if (!w) { showToast("يُرجى السماح بالنوافذ المنبثقة للطباعة", "warning"); return; }
-    w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير الضريبة</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;direction:rtl;text-align:right;padding:32px;color:#111}h1{text-align:center;font-size:20px;margin-bottom:4px}p.sub{text-align:center;color:#666;font-size:12px;margin-bottom:24px}.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px}.row.total{font-weight:bold;font-size:15px;border-bottom:none;padding-top:14px}.footer{margin-top:24px;text-align:center;font-size:11px;color:#999}</style></head><body><h1>تقرير الضريبة</h1><p class="sub">${new Date().toLocaleDateString("ar-JO",{year:"numeric",month:"long",day:"numeric"})}</p><div class="row"><span>مبيعات خاضعة للضريبة</span><span>${taxable.toFixed(3)} JOD</span></div><div class="row"><span>ضريبة القيمة المضافة 16%</span><span>${taxAmt.toFixed(3)} JOD</span></div><div class="row"><span>مبيعات معفاة من الضريبة</span><span>${exempt.toFixed(3)} JOD</span></div><div class="row total"><span>إجمالي الضرائب المحصّلة</span><span>${taxAmt.toFixed(3)} JOD</span></div><div class="footer">Sowwanjo POS — نظام نقاط البيع</div></body></html>`);
+    const storeName = store?.nameAr || "المتجر";
+    const storePhone = store?.phone || "";
+    const dateStr = new Date().toLocaleDateString("ar-JO", { year: "numeric", month: "long", day: "numeric" });
+    const monthStr = new Date().toLocaleDateString("ar-JO", { year: "numeric", month: "long" });
+    const html = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير الضريبة - ${storeName}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Cairo','Tahoma',Arial,sans-serif;direction:rtl;text-align:right;padding:32px;color:#111;font-size:14px}h1{text-align:center;font-size:22px;margin-bottom:4px;font-weight:900}h2{text-align:center;font-size:14px;color:#555;margin-bottom:2px;font-weight:normal}p.sub{text-align:center;color:#888;font-size:12px;margin-bottom:28px;margin-top:2px}.section{border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:16px}.section-title{font-size:13px;font-weight:bold;color:#374151;margin-bottom:12px;border-bottom:1px solid #f3f4f6;padding-bottom:8px}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px}.row:last-child{border-bottom:none}.row.total{font-weight:bold;font-size:15px;color:#1d4ed8;padding-top:12px}.footer{margin-top:24px;text-align:center;font-size:11px;color:#9ca3af;line-height:1.6}@media print{body{padding:16px}}</style></head><body><h1>${storeName}</h1>${storePhone ? `<h2>${storePhone}</h2>` : ""}<p class="sub">تقرير ضريبة القيمة المضافة — ${monthStr}<br>تاريخ الطباعة: ${dateStr}</p><div class="section"><div class="section-title">ملخص الضريبة</div><div class="row"><span>المبيعات الإجمالية</span><span>${(taxable + taxAmt).toFixed(3)} JOD</span></div><div class="row"><span>مبيعات خاضعة للضريبة</span><span>${taxable.toFixed(3)} JOD</span></div><div class="row"><span>مبيعات معفاة من الضريبة</span><span>${exempt.toFixed(3)} JOD</span></div><div class="row total"><span>ضريبة القيمة المضافة المحصّلة</span><span>${taxAmt.toFixed(3)} JOD</span></div></div><div class="footer">Sowwanjo POS — نظام نقاط البيع السحابي<br>هذا التقرير مُولَّد تلقائياً من النظام</div></body></html>`;
+    const w = window.open("", "_blank", "width=560,height=750,scrollbars=yes,resizable=yes");
+    if (!w) {
+      showToast("يُرجى السماح بالنوافذ المنبثقة في إعدادات المتصفح ثم أعد المحاولة", "warning");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
     w.document.close();
-    setTimeout(() => { w.focus(); w.print(); }, 400);
+    setTimeout(() => { try { w.focus(); w.print(); } catch { showToast("تعذّر فتح نافذة الطباعة", "error"); } }, 600);
   };
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto h-full">
@@ -1657,7 +1976,7 @@ function StoreReports() {
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">تقرير الضريبة</p>
           <div className="space-y-3">
-            {[["مبيعات خاضعة للضريبة", `${taxable.toFixed(3)} JOD`], ["ضريبة القيمة المضافة 16%", `${taxAmt.toFixed(3)} JOD`], ["مبيعات معفاة من الضريبة", `${exempt.toFixed(3)} JOD`], ["إجمالي الضرائب المحصّلة", `${taxAmt.toFixed(3)} JOD`]].map(([l, vv]) => (
+            {[["المبيعات الإجمالية", `${(taxable + taxAmt + exempt).toFixed(3)} JOD`], ["مبيعات خاضعة للضريبة", `${taxable.toFixed(3)} JOD`], ["مبيعات معفاة من الضريبة", `${exempt.toFixed(3)} JOD`], ["ضريبة القيمة المضافة المحصّلة", `${taxAmt.toFixed(3)} JOD`]].map(([l, vv]) => (
               <div key={l} className="flex justify-between border-b border-border/60 pb-2 last:border-0">
                 <span className="text-sm text-muted-foreground">{l}</span><span className="font-bold">{vv}</span>
               </div>
@@ -1860,15 +2179,34 @@ function BranchScreen() {
 
 function LoyaltyScreen() {
   const sid = useStoreId();
-  const [coupons, setCoupons] = useLS<{code:string;desc:string;uses:number;exp:string;type:string}[]>(sk(sid, "coupons"), []);
+  const [coupons, setCoupons] = useLS<{code:string;desc:string;uses:number;exp:string;type:string;value:string}[]>(sk(sid, "coupons"), []);
+  const { data: custsRaw } = useApi<unknown[]>("/customers", []);
+  const [custs, setCusts] = useState<{id:string;name:string;points?:number}[]>([]);
   const [showNew, setShowNew] = useState(false);
-  const [nf, setNf] = useState({ code: "", desc: "", exp: "", type: "نسبة" });
+  const [nf, setNf] = useState({ code: "", desc: "", exp: "", type: "نسبة", value: "" });
+
+  useEffect(() => { setCusts(normList<{id:string;name:string;points?:number}>(custsRaw)); }, [custsRaw]);
+
+  // Derived stats
+  const totalPoints = custs.reduce((a, c) => a + (c.points || 0), 0);
+  const activeCoupons = coupons.filter(c => !c.exp || new Date(c.exp) >= new Date());
+
+  const TIERS = [
+    { l: "عادي",   min: 0,    max: 199,   icon: "🥉" },
+    { l: "فضي",    min: 200,  max: 499,   icon: "🥈" },
+    { l: "ذهبي",   min: 500,  max: 999,   icon: "🥇" },
+    { l: "بلاتيني",min: 1000, max: 99999, icon: "💎" },
+  ];
+  const tierCounts = TIERS.map(t => ({
+    ...t,
+    count: custs.filter(c => (c.points || 0) >= t.min && (c.points || 0) <= t.max).length,
+  }));
 
   const addCoupon = () => {
     if (!nf.code || !nf.desc) return;
     setCoupons(p => [...p, { ...nf, uses: 0 }]);
     showToast(`تم إضافة القسيمة ${nf.code}`);
-    setShowNew(false); setNf({ code: "", desc: "", exp: "", type: "نسبة" });
+    setShowNew(false); setNf({ code: "", desc: "", exp: "", type: "نسبة", value: "" });
   };
   const delCoupon = (code: string) => { setCoupons(p => p.filter(c => c.code !== code)); showToast("تم حذف القسيمة", "warning"); };
   const copyCoupon = (code: string) => { navigator.clipboard?.writeText(code); showToast(`تم نسخ الكود: ${code}`, "info"); };
@@ -1876,40 +2214,63 @@ function LoyaltyScreen() {
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto h-full">
       <Hdr title="نظام الولاء والمكافآت" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowNew(true)}>قسيمة جديدة</Btn>} />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI icon={<Star size={18} />} label="نقاط مُصدرة" value="48,250" color="#D97706" />
-        <KPI icon={<Wallet size={18} />} label="رصيد المحافظ" value="1,240 JOD" color="#1D4ED8" />
-        <KPI icon={<Tag size={18} />} label="قسائم نشطة" value={String(coupons.length)} color="#059669" />
-        <KPI icon={<Users size={18} />} label="أعضاء الولاء" value="142" color="#7C3AED" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <KPI icon={<Star size={18} />} label="إجمالي النقاط" value={totalPoints.toLocaleString("ar-JO")} color="#D97706" />
+        <KPI icon={<Users size={18} />} label="أعضاء الولاء" value={String(custs.length)} color="#7C3AED" />
+        <KPI icon={<Tag size={18} />} label="قسائم نشطة" value={String(activeCoupons.length)} color="#059669" />
+        <KPI icon={<Hash size={18} />} label="إجمالي القسائم" value={String(coupons.length)} color="#1D4ED8" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">مستويات العضوية</p>
-          <div className="space-y-3">
-            {[{ l: "عادي", min: 0, max: 199, count: 72, icon: "🥉" }, { l: "فضي", min: 200, max: 499, count: 45, icon: "🥈" }, { l: "ذهبي", min: 500, max: 999, count: 18, icon: "🥇" }, { l: "بلاتيني", min: 1000, max: 99999, count: 7, icon: "💎" }].map(m => (
-              <div key={m.l} className="flex items-center gap-3 border border-border rounded-xl p-3">
-                <span className="text-xl shrink-0">{m.icon}</span>
-                <div className="flex-1"><div className="flex justify-between mb-0.5"><span className="font-bold text-sm">{m.l}</span><span className="text-xs text-muted-foreground">{m.count} عضو</span></div><p className="text-xs text-muted-foreground">{m.min} — {m.max === 99999 ? "∞" : m.max} نقطة</p></div>
-              </div>
-            ))}
-          </div>
+          {custs.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">لا يوجد عملاء بعد — أضف عملاء من قسم العملاء</p>
+          ) : (
+            <div className="space-y-3">
+              {tierCounts.map(m => (
+                <div key={m.l} className="flex items-center gap-3 border border-border rounded-xl p-3">
+                  <span className="text-xl shrink-0">{m.icon}</span>
+                  <div className="flex-1">
+                    <div className="flex justify-between mb-1">
+                      <span className="font-bold text-sm">{m.l}</span>
+                      <span className="text-xs text-muted-foreground font-bold">{m.count} عميل</span>
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full">
+                      <div className="h-full bg-primary rounded-full transition-all" style={{ width: custs.length ? `${Math.round((m.count / custs.length) * 100)}%` : "0%" }} />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{m.min} — {m.max === 99999 ? "∞" : m.max} نقطة</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">القسائم النشطة</p>
-          <div className="space-y-3">
-            {coupons.map(c => (
-              <div key={c.code} className="border border-border rounded-xl p-3 flex items-center gap-3">
-                <div className="flex-1">
-                  <span className="font-mono font-black text-primary">{c.code}</span>
-                  <p className="text-xs text-muted-foreground">{c.desc} • {c.uses} استخدام • ينتهي {c.exp}</p>
-                </div>
-                <div className="flex gap-1">
-                  <button onClick={() => copyCoupon(c.code)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-100 text-blue-500"><Copy size={11} /></button>
-                  <button onClick={() => delCoupon(c.code)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500"><Trash2 size={11} /></button>
-                </div>
-              </div>
-            ))}
-          </div>
+          {activeCoupons.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">لا توجد قسائم — أضف قسيمة جديدة</p>
+          ) : (
+            <div className="space-y-3">
+              {activeCoupons.map(c => {
+                const expired = c.exp && new Date(c.exp) < new Date();
+                return (
+                  <div key={c.code} className={`border rounded-xl p-3 flex items-center gap-3 ${expired ? "border-red-200 bg-red-50" : "border-border"}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-black text-primary">{c.code}</span>
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{c.value} {c.type === "نسبة" ? "%" : "JOD"}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{c.desc} • {c.uses} استخدام{c.exp ? ` • ينتهي ${c.exp}` : ""}</p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => copyCoupon(c.code)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-100 text-blue-500 transition-colors"><Copy size={11} /></button>
+                      <button onClick={() => delCoupon(c.code)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500 transition-colors"><Trash2 size={11} /></button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <Btn full v="secondary" cls="mt-4" icon={<Plus size={13} />} onClick={() => setShowNew(true)}>إضافة قسيمة جديدة</Btn>
         </div>
       </div>
@@ -1920,8 +2281,12 @@ function LoyaltyScreen() {
             <F label="كود القسيمة" req><TInput value={nf.code} onChange={v=>setNf({...nf,code:v.toUpperCase()})} placeholder="PROMO20" /></F>
             <F label="وصف القسيمة" req><TInput value={nf.desc} onChange={v=>setNf({...nf,desc:v})} placeholder="خصم 20% على المشتريات" /></F>
             <F label="نوع الخصم"><SInput value={nf.type} onChange={v=>setNf({...nf,type:v})} options={[{value:"نسبة",label:"نسبة مئوية %"},{value:"مبلغ",label:"مبلغ ثابت JOD"}]} /></F>
+            <F label={`قيمة الخصم ${nf.type === "نسبة" ? "(%)" : "(JOD)"}`} req><TInput value={nf.value} onChange={v=>setNf({...nf,value:v})} type="number" placeholder={nf.type === "نسبة" ? "20" : "5.000"} /></F>
             <F label="تاريخ الانتهاء"><TInput value={nf.exp} onChange={v=>setNf({...nf,exp:v})} type="date" /></F>
-            <div className="flex gap-3 justify-end"><Btn v="secondary" onClick={()=>setShowNew(false)}>إلغاء</Btn><Btn onClick={addCoupon} disabled={!nf.code||!nf.desc} icon={<Plus size={14}/>}>إضافة القسيمة</Btn></div>
+            <div className="flex gap-3 justify-end">
+              <Btn v="secondary" onClick={()=>setShowNew(false)}>إلغاء</Btn>
+              <Btn onClick={addCoupon} disabled={!nf.code||!nf.desc||!nf.value} icon={<Plus size={14}/>}>إضافة القسيمة</Btn>
+            </div>
           </div>
         </Modal>
       )}
