@@ -32,7 +32,7 @@ const clearToken = () => { try { localStorage.removeItem("sowwanjo_jwt"); } catc
 
 // دخول المتجر من Backend
 async function apiLoginStore(email: string, password: string) {
-  return apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }) as Promise<{token:string;store:{id:string;nameAr:string;category:string;plan:string;status:string}}>;
+  return apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }) as Promise<{token:string;store:Record<string,string>}>;
 }
 
 // دخول المدير العام من Backend
@@ -624,23 +624,31 @@ function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store", id?:
         if (!res?.store?.id) throw { error: "بيانات المتجر غير مكتملة" };
         setToken(res.token);
         // تطبيع وحفظ بيانات المتجر في localStorage
+        const s = res.store as Record<string,string>;
         const normalizedStore = {
-          id:       (res.store as {_id?: string; id: string})._id || res.store.id,
-          nameAr:   res.store.nameAr   || "متجري",
-          nameEn:   res.store.nameEn   || "",
-          category: res.store.category || "supermarket",
-          owner:    res.store.owner    || "",
-          email:    res.store.email    || "",
-          phone:    res.store.phone    || "",
-          city:     res.store.city     || "",
-          status:   res.store.status   || "active",
-          plan:     res.store.plan     || "مبتدئ",
-          taxNo:    "",
+          id:             s._id || s.id,
+          nameAr:         s.nameAr   || "متجري",
+          nameEn:         s.nameEn   || "",
+          category:       s.category || "supermarket",
+          owner:          s.owner    || "",
+          email:          s.email    || "",
+          phone:          s.phone    || "",
+          city:           s.city     || "",
+          status:         s.status   || "active",
+          plan:           s.plan     || "مبتدئ",
+          taxNo:          "",
           users:    0, products: 0, sales: 0, revenue: 0, branches: 1,
           createdAt:new Date().toISOString().split("T")[0],
-          expiresAt:res.store.expiresAt
-            ? new Date(res.store.expiresAt).toISOString().split("T")[0]
+          expiresAt:s.expiresAt
+            ? new Date(s.expiresAt).toISOString().split("T")[0]
             : new Date(Date.now() + 365*86400000).toISOString().split("T")[0],
+          // White-label branding
+          appName:        s.appName        || "",
+          primaryColor:   s.primaryColor   || "",
+          logoUrl:        s.logoUrl        || "",
+          iconUrl:        s.iconUrl        || "",
+          splashLogoUrl:  s.splashLogoUrl  || "",
+          receiptLogoUrl: s.receiptLogoUrl || "",
         };
         try {
           localStorage.setItem(
@@ -648,6 +656,13 @@ function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store", id?:
             JSON.stringify(normalizedStore)
           );
         } catch {}
+        // Apply white-label branding immediately
+        applyStoreBranding({
+          app_name:      normalizedStore.appName || undefined,
+          primary_color: normalizedStore.primaryColor || undefined,
+          logo_url:      normalizedStore.logoUrl || undefined,
+          icon_url:      normalizedStore.iconUrl || undefined,
+        });
         onLogin("store", normalizedStore.id);
       }
     } catch (err: unknown) {
@@ -4041,7 +4056,129 @@ function StoreSetts({ store }: { store: StoreData }) {
 // ROOT
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── White-label branding helpers ──────────────────────────────────────────────
+interface StoreBranding {
+  app_name?: string;
+  primary_color?: string;
+  logo_url?: string;
+  icon_url?: string;
+  splash_logo_url?: string;
+}
+
+function applyStoreBranding(branding: StoreBranding) {
+  // Title
+  if (branding.app_name) document.title = branding.app_name;
+
+  // Theme color
+  const color = branding.primary_color || "#0F172A";
+  const tc = document.querySelector("meta[name=theme-color]") as HTMLMetaElement | null;
+  if (tc) tc.content = color;
+
+  // CSS variable for primary color (Tailwind uses this)
+  document.documentElement.style.setProperty("--brand-color", color);
+
+  // Dynamic manifest for store branding
+  if (branding.app_name || branding.icon_url || branding.primary_color) {
+    const manifest = {
+      name: branding.app_name || "Sowwanjo POS",
+      short_name: branding.app_name?.split(" ")[0] || "متجري",
+      start_url: "/",
+      display: "standalone",
+      background_color: color,
+      theme_color: color,
+      lang: "ar",
+      dir: "rtl",
+      icons: branding.icon_url
+        ? [
+            { src: branding.icon_url, sizes: "any", type: "image/png", purpose: "any maskable" },
+          ]
+        : [
+            { src: "/icons/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
+            { src: "/icons/icon-maskable.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
+          ],
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
+    const url = URL.createObjectURL(blob);
+    let ml = document.querySelector("link[rel=manifest]") as HTMLLinkElement | null;
+    if (!ml) { ml = document.createElement("link") as HTMLLinkElement; ml.rel = "manifest"; document.head.appendChild(ml); }
+    // Revoke old blob URL if any
+    if (ml.href.startsWith("blob:")) URL.revokeObjectURL(ml.href);
+    ml.href = url;
+  }
+}
+
+function resetSABranding() {
+  document.title = "Sowwanjo POS — لوحة الإدارة";
+  const tc = document.querySelector("meta[name=theme-color]") as HTMLMetaElement | null;
+  if (tc) tc.content = "#0F172A";
+  document.documentElement.style.removeProperty("--brand-color");
+  // Restore static manifest
+  let ml = document.querySelector("link[rel=manifest]") as HTMLLinkElement | null;
+  if (!ml) { ml = document.createElement("link") as HTMLLinkElement; ml.rel = "manifest"; document.head.appendChild(ml); }
+  if (ml.href.startsWith("blob:")) URL.revokeObjectURL(ml.href);
+  ml.href = "/manifest.json";
+}
+
+// ── Splash screen ─────────────────────────────────────────────────────────────
+function SplashScreen({ onDone }: { onDone: () => void }) {
+  const [fade, setFade] = useState(false);
+  useEffect(() => {
+    const t1 = setTimeout(() => setFade(true), 1400);
+    const t2 = setTimeout(() => onDone(), 1800);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [onDone]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center transition-opacity duration-400"
+      style={{
+        background: "linear-gradient(160deg,#0A0F1E 0%,#0F172A 50%,#162040 100%)",
+        opacity: fade ? 0 : 1,
+        pointerEvents: fade ? "none" : "auto",
+      }}
+    >
+      {/* Grid */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)", backgroundSize: "48px 48px" }} />
+      {/* Glow */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full opacity-15" style={{ background: "radial-gradient(circle,#3B82F6 0%,transparent 70%)" }} />
+
+      <div className="relative z-10 flex flex-col items-center gap-6">
+        {/* Logo icon */}
+        <div className="w-24 h-24 rounded-[28px] bg-blue-500/20 border border-blue-400/30 flex items-center justify-center" style={{ boxShadow: "0 0 40px rgba(59,130,246,0.3)" }}>
+          <Store size={44} className="text-blue-400" />
+        </div>
+        <div className="text-center">
+          <p className="text-white font-black text-3xl tracking-tight mb-1">Sowwanjo POS</p>
+          <p className="text-blue-300/60 text-sm font-medium">نظام نقاط البيع السحابي</p>
+        </div>
+        {/* Animated dots */}
+        <div className="flex gap-2 mt-2">
+          {[0,1,2].map(i => (
+            <div key={i} className="w-2 h-2 rounded-full bg-blue-400/60" style={{ animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+          ))}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes bounce {
+          0%,80%,100%{transform:translateY(0);opacity:.4}
+          40%{transform:translateY(-8px);opacity:1}
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export default function App() {
+  const [splash, setSplash] = useState(() => {
+    // Show splash only on fresh load (not on hot-reload in dev)
+    try { return sessionStorage.getItem("sowwanjo_splashed") !== "1"; } catch { return true; }
+  });
+  const hideSplash = useCallback(() => {
+    try { sessionStorage.setItem("sowwanjo_splashed", "1"); } catch {}
+    setSplash(false);
+  }, []);
+
   // ── PWA meta tags injection ──────────────────────────────────
   useEffect(() => {
     // Viewport for mobile
@@ -4088,10 +4225,24 @@ export default function App() {
   const login = useCallback((type: "superadmin" | "store", id?: string) => {
     if (type === "superadmin") {
       localStorage.setItem("sowwanjo_session", JSON.stringify({ type: "superadmin" }));
+      resetSABranding();
       setView("superadmin");
     } else {
       const sid = id || "";
       localStorage.setItem("sowwanjo_session", JSON.stringify({ type: "store", id: sid }));
+      // Apply store branding from cached store info
+      try {
+        const raw = localStorage.getItem(`sowwanjo_storeinfo_${sid}`);
+        if (raw) {
+          const info = JSON.parse(raw);
+          applyStoreBranding({
+            app_name: info.appName || info.nameAr || undefined,
+            primary_color: info.primaryColor || undefined,
+            logo_url: info.logoUrl || undefined,
+            icon_url: info.iconUrl || undefined,
+          });
+        }
+      } catch {}
       setStoreId(sid);
       setView("store");
     }
@@ -4100,15 +4251,17 @@ export default function App() {
   const logout = useCallback(() => {
     localStorage.removeItem("sowwanjo_session");
     clearToken(); // مسح JWT token
+    resetSABranding();
     setView("login");
     setStoreId("");
   }, []);
 
   return (
     <div className="size-full" style={{ fontFamily: "'Cairo','Inter',sans-serif" }}>
-      {view === "login"      && <LoginScreen onLogin={login} />}
-      {view === "superadmin" && <SuperAdminLayout onLogout={logout} />}
-      {view === "store"      && (
+      {splash && <SplashScreen onDone={hideSplash} />}
+      {!splash && view === "login"      && <LoginScreen onLogin={login} />}
+      {!splash && view === "superadmin" && <SuperAdminLayout onLogout={logout} />}
+      {!splash && view === "store"      && (
         <StoreCtx.Provider value={storeId}>
           <StoreLayout storeId={storeId} onLogout={logout} />
         </StoreCtx.Provider>
