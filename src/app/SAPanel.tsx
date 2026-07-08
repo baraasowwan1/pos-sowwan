@@ -1244,28 +1244,50 @@ function SAReports() {
         {stores.length === 0 ? (
           <p className="text-center py-8 text-sm text-muted-foreground">لا يوجد متاجر مسجلة بعد</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead><tr className="border-b border-border bg-muted/40">{["المتجر","الفئة","الخطة","الحالة","الإيرادات","الفواتير","المنتجات","المستخدمون"].map(h => <th key={h} className="text-right p-3 font-bold text-muted-foreground text-xs">{h}</th>)}</tr></thead>
-              <tbody className="divide-y divide-border/60">
-                {stores.sort((a,b) => (b.revenue||0)-(a.revenue||0)).map(s => {
-                  const cat = CAT[s.category as StoreCategory] || CAT["supermarket"];
-                  return (
-                    <tr key={s.id} className="hover:bg-muted/20">
-                      <td className="p-3 font-bold text-xs">{s.nameAr}</td>
-                      <td className="p-3"><span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ color: cat.color, backgroundColor: cat.bg }}>{cat.label}</span></td>
-                      <td className="p-3 text-xs font-bold text-primary">{s.plan}</td>
-                      <td className="p-3"><SBadge status={s.status} /></td>
-                      <td className="p-3 text-xs font-bold">{jod(s.revenue || 0)}</td>
-                      <td className="p-3 text-xs text-muted-foreground">{(s.sales||0).toLocaleString()}</td>
-                      <td className="p-3 text-xs text-muted-foreground">{(s.products||0).toLocaleString()}</td>
-                      <td className="p-3 text-xs text-muted-foreground">{s.users||0}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <>
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-border/60">
+              {stores.sort((a,b) => (b.revenue||0)-(a.revenue||0)).map(s => {
+                const cat = CAT[s.category as StoreCategory] || CAT["supermarket"];
+                return (
+                  <div key={s.id} className="p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: cat.bg }}><span style={{ color: cat.color }}>{cat.icon}</span></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm truncate">{s.nameAr}</p>
+                      <p className="text-xs text-muted-foreground">{cat.label} • {s.plan}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-black text-primary">{jod(s.revenue || 0)}</p>
+                      <SBadge status={s.status} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="border-b border-border bg-muted/40">{["المتجر","الفئة","الخطة","الحالة","الإيرادات","الفواتير","المنتجات","المستخدمون"].map(h => <th key={h} className="text-right p-3 font-bold text-muted-foreground text-xs">{h}</th>)}</tr></thead>
+                <tbody className="divide-y divide-border/60">
+                  {stores.sort((a,b) => (b.revenue||0)-(a.revenue||0)).map(s => {
+                    const cat = CAT[s.category as StoreCategory] || CAT["supermarket"];
+                    return (
+                      <tr key={s.id} className="hover:bg-muted/20">
+                        <td className="p-3 font-bold text-xs">{s.nameAr}</td>
+                        <td className="p-3"><span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ color: cat.color, backgroundColor: cat.bg }}>{cat.label}</span></td>
+                        <td className="p-3 text-xs font-bold text-primary">{s.plan}</td>
+                        <td className="p-3"><SBadge status={s.status} /></td>
+                        <td className="p-3 text-xs font-bold">{jod(s.revenue || 0)}</td>
+                        <td className="p-3 text-xs text-muted-foreground">{(s.sales||0).toLocaleString()}</td>
+                        <td className="p-3 text-xs text-muted-foreground">{(s.products||0).toLocaleString()}</td>
+                        <td className="p-3 text-xs text-muted-foreground">{s.users||0}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>
