@@ -82,6 +82,32 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
   };
   const cat = CAT[store.category as StoreCategory] || CAT["supermarket"];
   const [storeMobileMenu, setStoreMobileMenu] = useState(false);
+
+  // ── Announcements ────────────────────────────────────────────────────────
+  type AnnItem = { _id: string; title: string; message: string; type: string; createdAt: string };
+  const [announcements, setAnnouncements] = useState<AnnItem[]>([]);
+  const [showAnn, setShowAnn] = useState(false);
+  const [seenIds, setSeenIds] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`sowwanjo_ann_seen_${storeId}`) || "[]"); } catch { return []; }
+  });
+  useEffect(() => {
+    storeApi.get("/announcements/for-store")
+      .then(d => { if (Array.isArray(d)) setAnnouncements(d as AnnItem[]); })
+      .catch(() => {});
+  }, []);
+  const unreadCount = announcements.filter(a => !seenIds.includes(a._id)).length;
+  const markAllSeen = () => {
+    const ids = announcements.map(a => a._id);
+    setSeenIds(ids);
+    try { localStorage.setItem(`sowwanjo_ann_seen_${storeId}`, JSON.stringify(ids)); } catch {}
+  };
+  const ANN_TYPE_COLOR: Record<string, string> = {
+    info: "bg-blue-50 border-blue-200 text-blue-700",
+    warning: "bg-amber-50 border-amber-200 text-amber-700",
+    success: "bg-emerald-50 border-emerald-200 text-emerald-700",
+    danger: "bg-red-50 border-red-200 text-red-700",
+  };
+
   const storeBottomNav = [
     { id: "dashboard", label: "الرئيسية", icon: <LayoutDashboard size={19} /> },
     { id: "pos",       label: "البيع",    icon: <ShoppingCart size={19} /> },
@@ -164,7 +190,45 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
             <span className="hidden sm:flex items-center gap-1.5 text-xs bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> نشط
             </span>
-            <button className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground"><Bell size={16} /></button>
+            {/* Announcements Bell */}
+            <div className="relative">
+              <button onClick={() => { setShowAnn(!showAnn); if (!showAnn) markAllSeen(); }}
+                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground relative">
+                <Bell size={16} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border border-card">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+              {showAnn && (
+                <div className="absolute left-0 top-full mt-2 w-80 max-w-[calc(100vw-1rem)] bg-card rounded-2xl border border-border shadow-2xl z-50 overflow-hidden">
+                  <div className="flex justify-between items-center px-4 py-3 border-b border-border">
+                    <span className="font-bold text-sm flex items-center gap-2">
+                      <Bell size={13} /> الإعلانات
+                      {unreadCount > 0 && <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">{unreadCount}</span>}
+                    </span>
+                    <button onClick={() => setShowAnn(false)} className="text-xs text-muted-foreground hover:text-foreground"><X size={14} /></button>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto">
+                    {announcements.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Bell size={28} className="mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">لا توجد إعلانات</p>
+                      </div>
+                    ) : announcements.map(a => (
+                      <div key={a._id} className={`px-4 py-3 border-b border-border/50 last:border-0 ${!seenIds.includes(a._id) ? "bg-primary/3" : ""}`}>
+                        <div className={`text-xs font-bold px-2 py-0.5 rounded-full border inline-block mb-1 ${ANN_TYPE_COLOR[a.type] || ANN_TYPE_COLOR.info}`}>
+                          {a.title}
+                        </div>
+                        <p className="text-xs text-foreground leading-relaxed">{a.message}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">{new Date(a.createdAt).toLocaleDateString("ar-JO")}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
         <main className="flex-1 overflow-hidden" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 3.5rem)" }}>
@@ -200,19 +264,36 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
   );
 }
 function StoreDash({ store }: { store: StoreData }) {
+  type DashSummary = { today?: { total: number; count: number }; month?: { total: number; count: number }; totalProducts?: number; monthExpenses?: number; totalCustomers?: number; lowStock?: number; todayReturns?: number };
+  const { data: summary, loading: sumLoading } = useApi<DashSummary>("/reports/summary", {});
+  const { data: recentSales, loading: salesLoading } = useApi<{_id:string;invoiceNo:string;customerName:string;total:number;payMethod:string;createdAt:string}[]>("/sales?limit=5&sort=-createdAt", []);
+  const { data: lowStockProds } = useApi<{_id:string;nameAr:string;quantity:number;minStock:number}[]>("/inventory?lowStock=true&limit=6", []);
+
   return (
     <div className="p-5 space-y-5 overflow-y-auto h-full">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI icon={<ShoppingCart size={18} />} label="مبيعات اليوم" value="0.000 JOD" sub="0 فاتورة" color="#1D4ED8" trend={12} />
-        <KPI icon={<DollarSign size={18} />} label="إيرادات الشهر" value="0.000 JOD" color="#059669" trend={18} />
-        <KPI icon={<Package size={18} />} label="المنتجات" value={String(store.products || 0)} sub="5 منخفضة المخزون" color="#D97706" />
-        <KPI icon={<Users size={18} />} label="العملاء" value="0" sub="لا يوجد عملاء بعد" color="#7C3AED" trend={8} />
+        <KPI icon={<ShoppingCart size={18} />} label="مبيعات اليوم"
+          value={sumLoading ? "..." : `${(summary.today?.total || 0).toFixed(3)} JOD`}
+          sub={`${summary.today?.count || 0} فاتورة`} color="#1D4ED8" />
+        <KPI icon={<DollarSign size={18} />} label="إيرادات الشهر"
+          value={sumLoading ? "..." : `${(summary.month?.total || 0).toFixed(3)} JOD`}
+          color="#059669" />
+        <KPI icon={<Package size={18} />} label="المنتجات"
+          value={sumLoading ? "..." : String(summary.totalProducts || store.products || 0)}
+          sub={summary.lowStock ? `${summary.lowStock} منخفضة المخزون` : "المخزون جيد"} color="#D97706" />
+        <KPI icon={<Users size={18} />} label="العملاء"
+          value={sumLoading ? "..." : String(summary.totalCustomers || 0)}
+          sub="إجمالي العملاء" color="#7C3AED" />
       </div>
       <div className="grid grid-cols-3 gap-4">
-        {[{ c: "bg-emerald-50 border-emerald-200", ic: <CheckCircle size={20} className="text-emerald-600" />, n: "38", l: "فواتير اليوم", tc: "text-emerald-700" },
-          { c: "bg-amber-50 border-amber-200", ic: <AlertTriangle size={20} className="text-amber-600" />, n: "5", l: "مخزون منخفض", tc: "text-amber-700" },
-          { c: "bg-blue-50 border-blue-200", ic: <RotateCcw size={20} className="text-blue-600" />, n: "3", l: "مرتجعات اليوم", tc: "text-blue-700" }].map(x => (
-          <div key={x.l} className={`${x.c} border rounded-2xl p-4 flex items-center gap-3`}>{x.ic}<div><p className={`text-xl font-black ${x.tc}`}>{x.n}</p><p className={`text-xs ${x.tc}`}>{x.l}</p></div></div>
+        {[
+          { c: "bg-emerald-50 border-emerald-200", ic: <CheckCircle size={20} className="text-emerald-600" />, n: String(summary.today?.count || 0),  l: "فواتير اليوم", tc: "text-emerald-700" },
+          { c: "bg-amber-50 border-amber-200",     ic: <AlertTriangle size={20} className="text-amber-600" />,  n: String(summary.lowStock || 0),       l: "مخزون منخفض",  tc: "text-amber-700" },
+          { c: "bg-blue-50 border-blue-200",        ic: <RotateCcw size={20} className="text-blue-600" />,      n: String(summary.todayReturns || 0),   l: "مرتجعات اليوم",tc: "text-blue-700" },
+        ].map(x => (
+          <div key={x.l} className={`${x.c} border rounded-2xl p-4 flex items-center gap-3`}>
+            {x.ic}<div><p className={`text-xl font-black ${x.tc}`}>{x.n}</p><p className={`text-xs ${x.tc}`}>{x.l}</p></div>
+          </div>
         ))}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -252,10 +333,20 @@ function StoreDash({ store }: { store: StoreData }) {
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-3">أحدث الفواتير</p>
           <div className="space-y-2">
-            {[{ id: "INV-0234", n: "أحمد سالم", a: 12.75, m: "نقدي", t: "10:45", c: "text-emerald-600" }, { id: "INV-0233", n: "منى حسين", a: 8.5, m: "كليك", t: "10:21", c: "text-blue-600" }, { id: "INV-0232", n: "عمر طاهر", a: 24.3, m: "نقدي", t: "09:58", c: "text-emerald-600" }, { id: "INV-0231", n: "ريم كمال", a: 6.25, m: "كليك", t: "09:34", c: "text-blue-600" }].map(inv => (
-              <div key={inv.id} className="flex items-center justify-between py-2 border-b border-border/60 last:border-0">
-                <div><p className="text-sm font-bold">{inv.id}</p><p className="text-xs text-muted-foreground">{inv.n} • {inv.t}</p></div>
-                <div className="text-right"><p className="text-sm font-bold">{inv.a.toFixed(3)} JOD</p><p className={`text-xs font-bold ${inv.c}`}>{inv.m}</p></div>
+            {salesLoading ? (
+              <div className="space-y-2">{[1,2,3].map(i=><div key={i} className="h-10 bg-muted animate-pulse rounded-xl"/>)}</div>
+            ) : recentSales.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">لا توجد فواتير بعد — ابدأ بإصدار أول فاتورة</p>
+            ) : recentSales.map(inv => (
+              <div key={inv._id} className="flex items-center justify-between py-2 border-b border-border/60 last:border-0">
+                <div>
+                  <p className="text-sm font-bold">{inv.invoiceNo || inv._id.slice(-6).toUpperCase()}</p>
+                  <p className="text-xs text-muted-foreground">{inv.customerName || "عميل نقدي"} • {new Date(inv.createdAt).toLocaleTimeString("ar-JO", {hour:"2-digit",minute:"2-digit"})}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold">{Number(inv.total).toFixed(3)} JOD</p>
+                  <p className="text-xs font-bold text-emerald-600">{inv.payMethod}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -263,17 +354,18 @@ function StoreDash({ store }: { store: StoreData }) {
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-3">تنبيهات المخزون</p>
           <div className="space-y-2">
-            {PRODUCTS.filter(p => p.stock <= p.minStock + 15).slice(0, 5).length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">لا توجد منتجات منخفضة المخزون</p>
-            ) : null}
-            {PRODUCTS.filter(p => p.stock <= p.minStock + 15).slice(0, 5).map(p => (
-              <div key={p.id} className="flex items-center gap-3 py-2 border-b border-border/60 last:border-0">
-                <div className={`w-2 h-2 rounded-full shrink-0 ${p.stock <= p.minStock ? "bg-red-500" : "bg-amber-400"}`} />
+            {lowStockProds.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">لا توجد منتجات منخفضة المخزون 🎉</p>
+            ) : lowStockProds.map(p => (
+              <div key={p._id} className="flex items-center gap-3 py-2 border-b border-border/60 last:border-0">
+                <div className={`w-2 h-2 rounded-full shrink-0 ${p.quantity <= p.minStock ? "bg-red-500" : "bg-amber-400"}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold truncate">{p.nameAr}</p>
                   <div className="flex items-center gap-1 mt-0.5">
-                    <div className="flex-1 h-1 bg-muted rounded-full"><div className="h-full rounded-full" style={{ width: `${Math.min(100, (p.stock / p.minStock) * 100)}%`, backgroundColor: p.stock <= p.minStock ? "#DC2626" : "#D97706" }} /></div>
-                    <span className={`text-xs font-bold shrink-0 ${p.stock <= p.minStock ? "text-red-600" : "text-amber-600"}`}>{p.stock}/{p.minStock}</span>
+                    <div className="flex-1 h-1 bg-muted rounded-full">
+                      <div className="h-full rounded-full" style={{ width: `${Math.min(100, p.minStock > 0 ? (p.quantity / p.minStock) * 100 : 0)}%`, backgroundColor: p.quantity <= p.minStock ? "#DC2626" : "#D97706" }} />
+                    </div>
+                    <span className={`text-xs font-bold shrink-0 ${p.quantity <= p.minStock ? "text-red-600" : "text-amber-600"}`}>{p.quantity}/{p.minStock}</span>
                   </div>
                 </div>
                 <Btn v="secondary" s="xs" onClick={() => showToast(`تم إرسال طلب توريد لـ "${p.nameAr}"`, "success")}>طلب</Btn>
@@ -302,7 +394,7 @@ function POSTerm({ store }: { store: StoreData }) {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("الكل");
   const [disc, setDisc] = useState(0);
-  const [pay, setPay] = useState<"cash" | "click" | "split">("cash");
+  const [pay, setPay] = useState<"cash" | "click" | "card" | "transfer" | "check" | "split">("cash");
   const [cash, setCash] = useState("");
   const [showPay, setShowPay] = useState(false);
   const [ok, setOk] = useState(false);
@@ -340,7 +432,7 @@ function POSTerm({ store }: { store: StoreData }) {
     storePhone: store.phone || '',
     items: cart.map(i => ({ name: i.product.nameAr, qty: i.qty, price: i.product.sellPrice, discount: i.discount })),
     subtotal: sub, discountAmt: da, taxAmt: ta, taxRate: TAX, total,
-    payMethod: pay === "cash" ? "نقدي" : pay === "click" ? "كليك" : "مختلط",
+    payMethod: pay === "cash" ? "نقدي" : pay === "click" ? "كليك" : pay === "card" ? "بطاقة ائتمانية" : pay === "transfer" ? "تحويل بنكي" : pay === "check" ? "شيك" : "مختلط",
     change: change > 0 ? change : undefined,
     cashIn: pay === "cash" ? parseFloat(cash || "0") : undefined,
     date: new Date().toLocaleDateString("ar-JO"),
@@ -491,7 +583,11 @@ function POSTerm({ store }: { store: StoreData }) {
             <div className="space-y-1">
               <label className="text-xs font-bold text-muted-foreground">الدفع</label>
               <div className="flex gap-1">
-                {(["cash","click","split"] as const).map(m => <button key={m} onClick={() => setPay(m)} className={`px-1.5 h-8 rounded-xl text-xs font-bold transition-all ${pay === m ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"}`}>{m === "cash" ? "نقدي" : m === "click" ? "كليك" : "مختلط"}</button>)}
+                {(["cash","card","click","transfer","check","split"] as const).map(m => (
+                  <button key={m} onClick={() => setPay(m)} className={`px-1.5 h-8 rounded-xl text-[10px] font-bold transition-all whitespace-nowrap ${pay === m ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"}`}>
+                    {m === "cash" ? "نقدي" : m === "click" ? "كليك" : m === "card" ? "بطاقة" : m === "transfer" ? "تحويل" : m === "check" ? "شيك" : "مختلط"}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -521,8 +617,20 @@ function POSTerm({ store }: { store: StoreData }) {
               <p className="text-5xl font-black text-white">{total.toFixed(3)}</p>
               <p className="text-blue-200 font-bold mt-1">دينار أردني</p>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {(["cash","click","split"] as const).map(m => <button key={m} onClick={() => setPay(m)} className={`h-12 rounded-2xl text-sm font-black border-2 transition-all ${pay === m ? "border-primary bg-primary text-white" : "border-border hover:border-primary/40"}`}>{m === "cash" ? "💵 نقدي" : m === "click" ? "💳 كليك" : "🔀 مختلط"}</button>)}
+            <div className="grid grid-cols-3 gap-2 grid-rows-2">
+              {([
+                { id: "cash",     label: "💵 نقدي" },
+                { id: "card",     label: "💳 بطاقة ائتمانية" },
+                { id: "click",    label: "📱 كليك" },
+                { id: "transfer", label: "🏦 تحويل بنكي" },
+                { id: "check",    label: "📝 شيك" },
+                { id: "split",    label: "🔀 مختلط" },
+              ] as const).map(m => (
+                <button key={m.id} onClick={() => setPay(m.id as typeof pay)}
+                  className={`h-12 rounded-2xl text-sm font-black border-2 transition-all ${pay === m.id ? "border-primary bg-primary text-white" : "border-border hover:border-primary/40"}`}>
+                  {m.label}
+                </button>
+              ))}
             </div>
             {pay === "cash" && (
               <div className="space-y-3">
@@ -541,8 +649,40 @@ function POSTerm({ store }: { store: StoreData }) {
                 </div>
               </div>
             )}
-            {pay === "click" && <div className="text-center py-6 bg-blue-50 border-2 border-blue-200 rounded-2xl"><CreditCard size={36} className="mx-auto mb-3 text-blue-500" /><p className="font-bold text-blue-700">في انتظار الدفع عبر كليك</p><p className="text-xs text-blue-500 mt-1">اطلب من العميل إتمام الدفع</p></div>}
-            {pay === "split" && <div className="space-y-2"><div className="flex justify-between items-center p-3 border border-border rounded-xl"><span className="text-sm font-semibold">نقدي</span><TInput value={cash} onChange={setCash} placeholder="0.000" type="number" /></div><div className="flex justify-between items-center p-3 bg-blue-50 border border-blue-200 rounded-xl"><span className="text-sm font-semibold text-blue-700">كليك</span><span className="font-bold text-blue-700">{Math.max(0, total - parseFloat(cash || "0")).toFixed(3)} JOD</span></div></div>}
+            {pay === "click" && (
+              <div className="text-center py-6 bg-blue-50 border-2 border-blue-200 rounded-2xl">
+                <CreditCard size={36} className="mx-auto mb-3 text-blue-500" />
+                <p className="font-bold text-blue-700">في انتظار الدفع عبر كليك</p>
+                <p className="text-xs text-blue-500 mt-1">اطلب من العميل إتمام الدفع</p>
+              </div>
+            )}
+            {pay === "card" && (
+              <div className="text-center py-6 bg-indigo-50 border-2 border-indigo-200 rounded-2xl">
+                <CreditCard size={36} className="mx-auto mb-3 text-indigo-500" />
+                <p className="font-bold text-indigo-700">ادفع عبر بطاقة الائتمان / الخصم</p>
+                <p className="text-xs text-indigo-500 mt-1">أدخل البطاقة في القارئ وأكمل الدفع</p>
+              </div>
+            )}
+            {pay === "transfer" && (
+              <div className="text-center py-6 bg-teal-50 border-2 border-teal-200 rounded-2xl">
+                <Landmark size={36} className="mx-auto mb-3 text-teal-500" />
+                <p className="font-bold text-teal-700">تحويل بنكي</p>
+                <p className="text-xs text-teal-500 mt-1">تأكد من استلام إشعار التحويل قبل التأكيد</p>
+              </div>
+            )}
+            {pay === "check" && (
+              <div className="text-center py-6 bg-amber-50 border-2 border-amber-200 rounded-2xl">
+                <FileText size={36} className="mx-auto mb-3 text-amber-500" />
+                <p className="font-bold text-amber-700">دفع بالشيك</p>
+                <p className="text-xs text-amber-500 mt-1">تحقق من صحة الشيك قبل التأكيد</p>
+              </div>
+            )}
+            {pay === "split" && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center p-3 border border-border rounded-xl"><span className="text-sm font-semibold">نقدي</span><TInput value={cash} onChange={setCash} placeholder="0.000" type="number" /></div>
+                <div className="flex justify-between items-center p-3 bg-blue-50 border border-blue-200 rounded-xl"><span className="text-sm font-semibold text-blue-700">كليك / بطاقة</span><span className="font-bold text-blue-700">{Math.max(0, total - parseFloat(cash || "0")).toFixed(3)} JOD</span></div>
+              </div>
+            )}
             <div className="flex gap-3">
               <Btn v="secondary" onClick={() => setShowPay(false)} cls="flex-1">إلغاء</Btn>
               <Btn onClick={() => { doPay(); setShowPay(false); }} cls="flex-1" v="success" icon={<CheckCircle size={15} />} disabled={pay === "cash" && parseFloat(cash || "0") < total}>تأكيد الدفع</Btn>
@@ -1363,7 +1503,13 @@ function StoreReports() {
               </div>
             ))}
           </div>
-          <Btn v="secondary" full cls="mt-4" icon={<Printer size={13} />} onClick={() => showToast("جاري طباعة تقرير الضريبة...", "info")}>طباعة تقرير الضريبة</Btn>
+          <Btn v="secondary" full cls="mt-4" icon={<Printer size={13} />} onClick={() => {
+            const w = window.open("", "_blank", "width=500,height=700,scrollbars=yes");
+            if (!w) { showToast("يُرجى السماح بالنوافذ المنبثقة للطباعة", "warning"); return; }
+            w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير الضريبة</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;direction:rtl;text-align:right;padding:32px;color:#111}h1{text-align:center;font-size:20px;margin-bottom:4px}p.sub{text-align:center;color:#666;font-size:12px;margin-bottom:24px}.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px}.row.total{font-weight:bold;font-size:15px;border-bottom:none;padding-top:14px}.footer{margin-top:24px;text-align:center;font-size:11px;color:#999}</style></head><body><h1>تقرير الضريبة</h1><p class="sub">${new Date().toLocaleDateString("ar-JO",{year:"numeric",month:"long",day:"numeric"})}</p><div class="row"><span>مبيعات خاضعة للضريبة</span><span>1,584.482 JOD</span></div><div class="row"><span>ضريبة القيمة المضافة 16%</span><span>253.517 JOD</span></div><div class="row"><span>مبيعات معفاة من الضريبة</span><span>255.518 JOD</span></div><div class="row total"><span>إجمالي الضرائب المحصّلة</span><span>253.517 JOD</span></div><div class="footer">Sowwanjo POS — نظام نقاط البيع</div></body></html>`);
+            w.document.close();
+            setTimeout(() => { w.focus(); w.print(); }, 400);
+          }}>طباعة تقرير الضريبة</Btn>
         </div>
       </div>
     </div>
@@ -1647,6 +1793,30 @@ function StoreSetts({ store }: { store: StoreData }) {
   const [printPhone,   setPrintPhone]   = useState(true);
   const [printBarcode, setPrintBarcode] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [logo, setLogo] = useState<string>(() => {
+    try { return localStorage.getItem(`sowwanjo_logo_${sid}`) || ""; } catch { return ""; }
+  });
+  const logoRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoUpload = (e: { target: HTMLInputElement }) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 800_000) { showToast("يجب أن يكون حجم الشعار أقل من 800KB", "error"); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const b64 = reader.result as string;
+      setLogo(b64);
+      try { localStorage.setItem(`sowwanjo_logo_${sid}`, b64); } catch {}
+      showToast("تم رفع الشعار بنجاح ✅", "success");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeLogo = () => {
+    setLogo("");
+    try { localStorage.removeItem(`sowwanjo_logo_${sid}`); } catch {}
+    showToast("تم حذف الشعار", "info");
+  };
 
   // تطبيق الإعدادات المجلوبة من Backend
   useEffect(() => {
@@ -1692,6 +1862,31 @@ function StoreSetts({ store }: { store: StoreData }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
           <p className="font-bold flex items-center gap-2"><Store size={13} /> معلومات المتجر</p>
+          {/* Logo upload */}
+          <div>
+            <p className="text-xs font-bold text-muted-foreground mb-2">شعار المتجر</p>
+            <div className="flex items-center gap-3">
+              <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => logoRef.current?.click()}>
+                {logo ? (
+                  <img src={logo} alt="شعار المتجر" className="w-full h-full object-contain" />
+                ) : (
+                  <div className="text-center">
+                    <Upload size={20} className="mx-auto mb-1 text-muted-foreground" />
+                    <p className="text-[9px] text-muted-foreground">رفع شعار</p>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Btn v="secondary" s="sm" icon={<Upload size={13} />} onClick={() => logoRef.current?.click()}>
+                  {logo ? "تغيير الشعار" : "رفع الشعار"}
+                </Btn>
+                {logo && <Btn v="ghost" s="sm" icon={<Trash2 size={13} />} onClick={removeLogo}>حذف</Btn>}
+                <p className="text-[10px] text-muted-foreground">PNG, JPG — أقل من 800KB</p>
+              </div>
+            </div>
+            <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+          </div>
+
           <F label="اسم المتجر بالعربية"><TInput value={sName} onChange={setSName} /></F>
           <F label="رقم الهاتف"><TInput value={phone} onChange={setPhone} icon={<Phone size={13} />} /></F>
           <F label="البريد الإلكتروني"><TInput value={store.email} readOnly /></F>
