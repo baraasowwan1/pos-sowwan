@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0F172A"/>
+  <!-- Store body -->
+  <rect x="96" y="176" width="320" height="220" rx="24" fill="none" stroke="#3B82F6" stroke-width="16" opacity="0.35"/>
+  <rect x="96" y="176" width="320" height="220" rx="24" fill="#3B82F6" opacity="0.08"/>
+  <!-- Roof triangle -->
+  <path d="M80 200 L256 88 L432 200" stroke="#60A5FA" stroke-width="20" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Door -->
+  <rect x="208" y="276" width="96" height="120" rx="12" fill="#3B82F6" opacity="0.4"/>
+  <!-- Windows -->
+  <rect x="120" y="228" width="80" height="64" rx="10" fill="#60A5FA" opacity="0.25"/>
+  <rect x="312" y="228" width="80" height="64" rx="10" fill="#60A5FA" opacity="0.25"/>
+  <!-- Glow dot -->
+  <circle cx="256" cy="88" r="14" fill="#60A5FA" opacity="0.9"/>
+</svg>
