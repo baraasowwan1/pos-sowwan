@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Full bleed background for maskable (safe zone is inner 80%) -->
+  <rect width="512" height="512" fill="#0F172A"/>
+  <!-- Store body -->
+  <rect x="128" y="208" width="256" height="180" rx="20" fill="none" stroke="#3B82F6" stroke-width="14" opacity="0.35"/>
+  <rect x="128" y="208" width="256" height="180" rx="20" fill="#3B82F6" opacity="0.08"/>
+  <!-- Roof -->
+  <path d="M112 228 L256 124 L400 228" stroke="#60A5FA" stroke-width="18" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Door -->
+  <rect x="216" y="298" width="80" height="90" rx="10" fill="#3B82F6" opacity="0.4"/>
+  <!-- Windows -->
+  <rect x="144" y="238" width="68" height="50" rx="8" fill="#60A5FA" opacity="0.25"/>
+  <rect x="300" y="238" width="68" height="50" rx="8" fill="#60A5FA" opacity="0.25"/>
+  <!-- Top dot -->
+  <circle cx="256" cy="124" r="12" fill="#60A5FA" opacity="0.9"/>
+</svg>
