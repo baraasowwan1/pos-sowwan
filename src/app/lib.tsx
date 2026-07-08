@@ -604,7 +604,7 @@ export function useLS<T>(key: string, initial: T): [T, (v: T | ((prev: T) => T))
 }
 
 // Store-scoped localStorage key
-const sk = (storeId: string, name: string) => `sowwanjo_${storeId}_${name}`;
+export const sk = (storeId: string, name: string) => `sowwanjo_${storeId}_${name}`;
 
 // ── Store Context — passes storeId to all child screens ───────────────────────
 export const StoreCtx = createContext<string>("");
