@@ -862,7 +862,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
           )}
 
           <p className="text-center text-xs text-muted-foreground mt-6">
-            جميع الحقوق محفوظة © 2025 Sowwanjo<br />
+            جميع الحقوق محفوظة © 2026 Sowwanjo<br />
             <span className="opacity-60">مدعوم بالدينار الأردني JOD • عربي RTL</span>
           </p>
         </div>
