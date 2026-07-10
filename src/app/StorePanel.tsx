@@ -89,6 +89,12 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
     try { localStorage.setItem(`sowwanjo_store_screen_${storeId}`, s); } catch {}
   };
   const cat = CAT[store.category as StoreCategory] || CAT["supermarket"];
+  const storeCategory = store.category as StoreCategory;
+  const visibleNav = STORE_NAV.filter(n => {
+    if (n.id === "print_jobs" || n.id === "print_mats" || n.id === "print_prices") return storeCategory === "print_shop";
+    if (n.id === "flower_orders" || n.id === "bouquet" || n.id === "delivery_mgmt") return storeCategory === "flower_shop";
+    return true;
+  });
   const [storeMobileMenu, setStoreMobileMenu] = useState(false);
 
   // ── Announcements ────────────────────────────────────────────────────────
@@ -141,7 +147,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
           </div>
         </div>
         <nav className="flex-1 px-1 py-2 space-y-0.5 overflow-y-auto">
-          {STORE_NAV.map(n => (
+          {visibleNav.map(n => (
             <button key={n.id} onClick={() => navTo(n.id)}
               className={`w-full flex items-center gap-2.5 md:h-10 lg:h-9 rounded-xl text-xs font-semibold transition-all justify-center md:px-1.5 ${col ? "lg:justify-center lg:px-1.5" : "lg:justify-start lg:px-2.5"} ${screen === n.id ? "bg-white/10 text-white" : "text-white/45 hover:bg-white/5 hover:text-white/80"}`}
               title={n.label}>
@@ -178,7 +184,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
               <button onClick={() => setStoreMobileMenu(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 text-white shrink-0"><X size={14} /></button>
             </div>
             <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto">
-              {STORE_NAV.map(n => (
+              {visibleNav.map(n => (
                 <button key={n.id} onClick={() => { navTo(n.id); setStoreMobileMenu(false); }}
                   className={`w-full flex items-center gap-2.5 h-10 rounded-xl px-3 text-sm font-semibold transition-all ${screen === n.id ? "bg-white/10 text-white" : "text-white/50 hover:bg-white/5 hover:text-white/80"}`}>
                   <span className="shrink-0">{n.icon}</span>
@@ -201,7 +207,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
           <div className="flex items-center gap-2">
             <button onClick={() => setStoreMobileMenu(true)} className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground"><Menu size={18} /></button>
             <button onClick={() => setCol(!col)} className="hidden md:flex w-8 h-8 items-center justify-center rounded-xl hover:bg-muted text-muted-foreground"><Menu size={15} /></button>
-            <div><p className="text-sm font-bold">{STORE_NAV.find(n => n.id === screen)?.label}</p><p className="text-xs text-muted-foreground hidden sm:block">{dateAr()} • {timeAr()}</p></div>
+            <div><p className="text-sm font-bold">{visibleNav.find(n => n.id === screen)?.label || STORE_NAV.find(n => n.id === screen)?.label}</p><p className="text-xs text-muted-foreground hidden sm:block">{dateAr()} • {timeAr()}</p></div>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="hidden sm:flex items-center gap-1.5 text-xs bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full font-bold">
@@ -1283,8 +1289,8 @@ function ProductsMgr() {
           </div>}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <F label="الاسم بالعربية" req><TInput value={f.nameAr} onChange={v => setF({ ...f, nameAr: v })} placeholder="أرز بسمتي" /></F>
-            <F label="الاسم بالإنجليزية"><TInput value={f.nameEn} onChange={v => setF({ ...f, nameEn: v })} placeholder="Basmati Rice" /></F>
+            <F label="الاسم بالعربية" req><TInput value={f.nameAr} onChange={v => setF({ ...f, nameAr: v })} placeholder="مثال: كوكا كولا" /></F>
+            <F label="الاسم بالإنجليزية"><TInput value={f.nameEn} onChange={v => setF({ ...f, nameEn: v })} placeholder="Example: Coca Cola" /></F>
             <F label="الباركود"><TInput value={f.barcode} onChange={v => setF({ ...f, barcode: v })} placeholder="6291003XXXXXX" icon={<Scan size={13} />} /></F>
             <F label="الـ SKU"><TInput value={f.sku} onChange={v => setF({ ...f, sku: v })} placeholder="RICE-BAS-5KG" /></F>
             <F label="الفئة" req><TInput value={f.category} onChange={v => setF({ ...f, category: v })} placeholder="حبوب وأرز" /></F>
