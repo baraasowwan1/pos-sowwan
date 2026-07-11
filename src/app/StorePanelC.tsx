@@ -1,0 +1,1136 @@
+// StorePanelC — Reports, Employees, Branches, Loyalty, Print Shop, Settings
+import { useState, useEffect } from "react";
+import {
+  AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from "recharts";
+import {
+  Store, ShoppingCart, Package, Users, BarChart2, Settings, LogOut, Plus,
+  Search, Bell, CreditCard, FileText, TrendingUp, TrendingDown, AlertCircle,
+  Check, X, Edit2, Trash2, Eye, EyeOff, ArrowLeft, Lock, Unlock, RefreshCw,
+  Download, Upload, Printer, Minus, Percent, DollarSign, ChevronRight,
+  Layers, Shield, Activity, Phone, Mail, Star, CheckCircle,
+  XCircle, AlertTriangle, Menu, Zap, Coffee, Scissors,
+  Cpu, ShoppingBag, Send, Archive, RotateCcw, Scan, Wallet,
+  Building2, Boxes, Truck, LayoutDashboard, UserCheck, ClipboardList,
+  Banknote, Landmark, Handshake, Globe, MapPin, Key, User,
+  ArrowUpRight, ArrowDownRight, Clipboard, Copy, Power, Monitor,
+  Info, ChevronLeft, Grid3X3, List, Hash, Tag, Ruler, Calculator, FlipHorizontal,
+  Flower2, Gift, Bike,
+} from "lucide-react";
+import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules } from "./lib";
+import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
+
+function StoreReports() {
+  const [period, setPeriod] = useState("month");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const { data: salesRaw, loading: sLoading } = useApi<unknown[]>("/sales", []);
+  const { data: retsRaw } = useApi<unknown[]>("/returns", []);
+
+  const sales = normList<{id:string;total:number;discount:number;tax:number;payMethod:string;paymentMethod:string;createdAt:string;items:{name:string;qty:number;price:number}[]}>(salesRaw);
+  const rets  = normList<{id:string;amount:number;status:string}>(retsRaw);
+
+  const now = new Date();
+  const filtered = sales.filter(s => {
+    const d = new Date(s.createdAt);
+    if (period === "today") { return d.toDateString() === now.toDateString(); }
+    if (period === "yesterday") { const y = new Date(now); y.setDate(y.getDate()-1); return d.toDateString() === y.toDateString(); }
+    if (period === "week") { const w = new Date(now); w.setDate(w.getDate()-7); return d >= w; }
+    if (period === "lastweek") { const e = new Date(now); e.setDate(e.getDate()-7); const s2 = new Date(now); s2.setDate(s2.getDate()-14); return d >= s2 && d < e; }
+    if (period === "month") return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+    if (period === "lastmonth") { const lm = new Date(now.getFullYear(), now.getMonth()-1, 1); const le = new Date(now.getFullYear(), now.getMonth(), 0); return d >= lm && d <= le; }
+    if (period === "year") return d.getFullYear()===now.getFullYear();
+    if (period === "custom") {
+      const from = customFrom ? new Date(customFrom) : null;
+      const to = customTo ? new Date(customTo + "T23:59:59") : null;
+      return (!from || d >= from) && (!to || d <= to);
+    }
+    return d.getFullYear()===now.getFullYear();
+  });
+
+  const totalSales    = filtered.reduce((a, s) => a + (s.total || 0), 0);
+  const totalDiscount = filtered.reduce((a, s) => a + (s.discount || 0), 0);
+  const totalTax      = filtered.reduce((a, s) => a + (s.tax || 0), 0);
+  const totalRets     = rets.filter(r => r.status === "معتمد").reduce((a, r) => a + (r.amount || 0), 0);
+
+  const payGroups = filtered.reduce((acc: Record<string, number>, s) => {
+    const m = s.payMethod || s.paymentMethod || "cash";
+    const label = m === "cash" ? "نقدي" : m === "cliq" ? "كليك" : m === "card" ? "بطاقة" : m;
+    acc[label] = (acc[label] || 0) + s.total;
+    return acc;
+  }, {});
+  const payTotal = Object.values(payGroups).reduce((a, v) => a + v, 0) || 1;
+
+  const prodMap: Record<string, number> = {};
+  filtered.forEach(s => s.items?.forEach(it => { prodMap[it.name] = (prodMap[it.name] || 0) + (it.price * it.qty); }));
+  const topProds = Object.entries(prodMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const topMax = topProds[0]?.[1] || 1;
+
+  const dayMap: Record<string, number> = {};
+  filtered.forEach(s => {
+    const key = new Date(s.createdAt).toLocaleDateString("ar-JO", { weekday: "short" });
+    dayMap[key] = (dayMap[key] || 0) + s.total;
+  });
+  const chartData = Object.entries(dayMap).map(([day, مبيعات]) => ({ day, مبيعات }));
+
+  const printTax = () => {
+    const taxable = totalSales - totalTax;
+    const w = window.open("", "_blank", "width=420,height=600");
+    if (!w) { showToast("يُرجى السماح بالنوافذ المنبثقة", "warning"); return; }
+    w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>تقرير الضريبة</title><style>*{font-family:Cairo,sans-serif;margin:0;padding:0}body{padding:20px}h2{text-align:center;margin-bottom:16px}table{width:100%;border-collapse:collapse}td{padding:10px;border-bottom:1px solid #e5e7eb}td:last-child{font-weight:900;text-align:left}@media print{button{display:none}}</style></head><body><h2>تقرير الضريبة — ${period === "month" ? now.toLocaleDateString("ar-JO", { month: "long", year: "numeric" }) : period === "week" ? "آخر 7 أيام" : "السنة الحالية"}</h2><table><tr><td>إجمالي المبيعات</td><td>${totalSales.toFixed(3)} JOD</td></tr><tr><td>مبيعات خاضعة للضريبة</td><td>${taxable.toFixed(3)} JOD</td></tr><tr><td>ضريبة القيمة المضافة 16%</td><td>${totalTax.toFixed(3)} JOD</td></tr><tr><td>الخصومات</td><td>${totalDiscount.toFixed(3)} JOD</td></tr></table><br><button onclick="window.print()">طباعة</button></body></html>`);
+    w.document.close();
+  };
+
+  return (
+    <div className="p-5 space-y-5 overflow-y-auto h-full">
+      <Hdr title="التقارير والإحصائيات" action={<Btn v="secondary" s="sm" icon={<Printer size={13} />} onClick={printTax}>طباعة تقرير الضريبة</Btn>} />
+      <div className="flex flex-wrap gap-1.5 items-center">
+        <div className="flex bg-muted rounded-2xl p-1 border border-border flex-wrap gap-0.5">
+          {([["today","اليوم"],["yesterday","أمس"],["week","أسبوع"],["lastweek","الأسبوع الماضي"],["month","هذا الشهر"],["lastmonth","الشهر الماضي"],["year","هذه السنة"],["custom","مخصص"]] as [string,string][]).map(([vv,l]) => (
+            <button key={vv} onClick={() => setPeriod(vv)} className={`px-3 h-8 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${period === vv ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{l}</button>
+          ))}
+        </div>
+        {period === "custom" && (
+          <div className="flex items-center gap-2">
+            <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="h-8 rounded-xl border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary" />
+            <span className="text-xs text-muted-foreground">—</span>
+            <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="h-8 rounded-xl border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+        )}
+      </div>
+      {sLoading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{[0,1,2,3].map(i => <div key={i} className="bg-card rounded-2xl border border-border h-24 animate-pulse" />)}</div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KPI icon={<ShoppingCart size={18} />} label="إجمالي المبيعات" value={`${totalSales.toFixed(3)} JOD`} sub={`${filtered.length} فاتورة`} color="#1D4ED8" />
+          <KPI icon={<TrendingUp size={18} />} label="ضريبة القيمة المضافة" value={`${totalTax.toFixed(3)} JOD`} color="#059669" />
+          <KPI icon={<RotateCcw size={18} />} label="المرتجعات المعتمدة" value={`${totalRets.toFixed(3)} JOD`} color="#DC2626" />
+          <KPI icon={<Percent size={18} />} label="إجمالي الخصومات" value={`${totalDiscount.toFixed(3)} JOD`} color="#D97706" />
+        </div>
+      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <p className="font-bold mb-4">مبيعات الفترة</p>
+          {chartData.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">لا توجد مبيعات في هذه الفترة</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={190}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} />
+                <Tooltip formatter={(v: number) => [`${v.toFixed(3)} JOD`]} />
+                <Line type="monotone" dataKey="مبيعات" stroke="#1D4ED8" strokeWidth={2.5} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <p className="font-bold mb-4">أكثر المنتجات مبيعاً</p>
+          {topProds.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">لا توجد مبيعات بعد</div>
+          ) : (
+            <div className="space-y-3">
+              {topProds.map(([name, rev], i) => (
+                <div key={name} className="flex items-center gap-3">
+                  <span className="text-xs font-black text-muted-foreground w-4 shrink-0">{i + 1}</span>
+                  <div className="flex-1"><div className="flex justify-between mb-1"><span className="text-xs font-bold">{name}</span><span className="text-xs font-black">{rev.toFixed(3)} JOD</span></div><div className="h-1.5 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${Math.round((rev / topMax) * 100)}%` }} /></div></div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <p className="font-bold mb-4">طرق الدفع</p>
+          {Object.keys(payGroups).length === 0 ? (
+            <div className="h-24 flex items-center justify-center text-muted-foreground text-sm">لا توجد مبيعات بعد</div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              {Object.entries(payGroups).map(([method, amount]) => (
+                <div key={method} className="text-center p-4 rounded-2xl bg-muted/40 border border-border">
+                  <p className="text-2xl font-black">{Math.round((amount / payTotal) * 100)}%</p>
+                  <p className="text-xs font-bold mt-0.5">{method}</p>
+                  <p className="text-xs text-muted-foreground">{amount.toFixed(3)} JOD</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <p className="font-bold mb-4">ملخص الضريبة</p>
+          <div className="space-y-3">
+            {[["إجمالي المبيعات", `${totalSales.toFixed(3)} JOD`], ["مبيعات قبل الضريبة", `${(totalSales - totalTax).toFixed(3)} JOD`], ["ضريبة القيمة المضافة 16%", `${totalTax.toFixed(3)} JOD`], ["الخصومات الممنوحة", `${totalDiscount.toFixed(3)} JOD`]].map(([l, vv]) => (
+              <div key={l} className="flex justify-between border-b border-border/60 pb-2 last:border-0">
+                <span className="text-sm text-muted-foreground">{l}</span><span className="font-bold">{vv}</span>
+              </div>
+            ))}
+          </div>
+          <Btn v="secondary" full cls="mt-4" icon={<Printer size={13} />} onClick={printTax}>طباعة تقرير الضريبة</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+function EmpScreen() {
+  const sid = useStoreId();
+  const { data: empsRaw, refresh: refreshEmps } = useApi<unknown[]>("/users", []);
+  const [emps, setEmps] = useState<{id:string;name:string;role:string;phone:string;sales:number;status:string;branch:string}[]>([]);
+  useEffect(() => { setEmps(normList<{id:string;name:string;role:string;phone:string;sales:number;status:string;branch:string}>(empsRaw)); }, [empsRaw]);
+  const [showNew, setShowNew] = useState(false);
+  const [editEmp, setEditEmp] = useState<{id:number;name:string;role:string;phone:string;sales:number;status:string;branch:string}|null>(null);
+  const [nf, setNf] = useState({ name: '', role: 'كاشير', phone: '', branch: 'الفرع الرئيسي' });
+  const RC: Record<string, { c: string; b: string }> = { مدير: { c: "#1D4ED8", b: "#DBEAFE" }, كاشير: { c: "#059669", b: "#D1FAE5" }, "مسؤول مخزون": { c: "#D97706", b: "#FEF3C7" } };
+  const addEmp = async () => {
+    if (!nf.name || !nf.phone) return;
+    try {
+      await storeApi.post("/users", { name: nf.name, phone: nf.phone, role: nf.role, email: `${nf.phone.replace(/[^0-9]/g,"")}@store.jo` });
+      await refreshEmps();
+      showToast(`تم إضافة "${nf.name}" وحفظه في قاعدة البيانات ✅`);
+    } catch (e) { showToast((e as {error?:string}).error || "خطأ في إضافة الموظف", "error"); return; }
+    setShowNew(false); setNf({ name: '', role: 'كاشير', phone: '', branch: 'الفرع الرئيسي' });
+  };
+  const delEmp = async (id: string) => { await storeApi.delete(`/users/${id}`); await refreshEmps(); showToast("تم حذف الموظف", "warning"); };
+  const saveEdit = async () => { if (!editEmp) return; await storeApi.put(`/users/${editEmp.id}`, { name: editEmp.name, role: editEmp.role, status: editEmp.status }); await refreshEmps(); showToast("تم حفظ تعديلات الموظف"); setEditEmp(null); };
+
+  return (
+    <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
+      <Hdr title="الموظفون والصلاحيات" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowNew(true)}>موظف جديد</Btn>} />
+      {emps.length === 0 && (
+        <div className="bg-card rounded-2xl border border-border mb-4">
+          <Empty icon={<UserCheck size={28} />} title="لا يوجد موظفون بعد" desc='أضف موظفاً جديداً من زر "موظف جديد"' />
+        </div>
+      )}
+      <div className="grid grid-cols-1 gap-3">
+        {emps.map(e => {
+          const rc = RC[e.role] || { c: "#64748B", b: "#E2E8F0" };
+          return (
+            <div key={e.id} className="bg-card rounded-2xl border border-border p-4 flex items-center gap-4 hover:shadow-sm">
+              <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 font-black text-white text-lg" style={{ backgroundColor: rc.c }}>{e.name[0]}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-bold">{e.name}</p>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: rc.b, color: rc.c }}>{e.role}</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${e.status === "نشط" ? "text-emerald-700 bg-emerald-100" : "text-amber-700 bg-amber-100"}`}>{e.status}</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{e.phone} • {e.branch}</p>
+              </div>
+              {e.sales > 0 && <div className="hidden sm:block text-right shrink-0"><p className="text-sm font-black">{e.sales.toFixed(3)} JOD</p><p className="text-xs text-muted-foreground">مبيعات الشهر</p></div>}
+              <div className="flex gap-1 shrink-0">
+                <button onClick={() => showToast(`صلاحيات "${e.name}" — الدور: ${e.role}`, "info")} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-primary/10 text-primary"><Shield size={13} /></button>
+                <button onClick={() => setEditEmp({ ...e })} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-blue-100 text-blue-500"><Edit2 size={13} /></button>
+                <button onClick={() => delEmp(e.id)} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-red-100 text-red-500"><Trash2 size={13} /></button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="bg-card rounded-2xl border border-border p-5">
+        <p className="font-bold mb-4">مصفوفة الصلاحيات</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead><tr className="border-b border-border"><th className="text-right p-2 font-bold text-muted-foreground">الصلاحية</th>{["مالك","مدير","كاشير","مخزون","محاسب"].map(r => <th key={r} className="p-2 font-bold text-muted-foreground text-center">{r}</th>)}</tr></thead>
+            <tbody className="divide-y divide-border/60">
+              {[["الوصول لنقطة البيع",true,true,true,false,false],["إضافة وتعديل منتجات",true,true,false,true,false],["عرض التقارير",true,true,false,false,true],["إدارة المستخدمين",true,false,false,false,false],["تطبيق الخصومات",true,true,true,false,false],["معالجة المرتجعات",true,true,false,false,false],["تصدير البيانات",true,true,false,false,true],["تغيير إعدادات المتجر",true,false,false,false,false]].map(([p,...vs]) => (
+                <tr key={String(p)} className="hover:bg-muted/20">
+                  <td className="p-2 font-medium">{p}</td>
+                  {(vs as boolean[]).map((vv, i) => <td key={i} className="p-2 text-center">{vv ? <CheckCircle size={12} className="text-emerald-500 mx-auto" /> : <X size={12} className="text-muted-foreground/30 mx-auto" />}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showNew && (
+        <Modal title="إضافة موظف جديد" onClose={() => setShowNew(false)} size="sm">
+          <div className="space-y-4">
+            <F label="الاسم الكامل" req><TInput value={nf.name} onChange={v=>setNf({...nf,name:v})} placeholder="محمد أحمد السالم" /></F>
+            <F label="رقم الهاتف" req><TInput value={nf.phone} onChange={v=>setNf({...nf,phone:v})} placeholder="+962-79-XXX-XXXX" icon={<Phone size={13}/>} /></F>
+            <F label="الدور الوظيفي"><SInput value={nf.role} onChange={v=>setNf({...nf,role:v})} options={["مدير","كاشير","مسؤول مخزون","محاسب"].map(r=>({value:r,label:r}))} /></F>
+            <F label="الفرع"><SInput value={nf.branch} onChange={v=>setNf({...nf,branch:v})} options={["الفرع الرئيسي","فرع مرج الحمام","فرع الزرقاء"].map(b=>({value:b,label:b}))} /></F>
+            <div className="flex gap-3 justify-end"><Btn v="secondary" onClick={()=>setShowNew(false)}>إلغاء</Btn><Btn onClick={addEmp} disabled={!nf.name||!nf.phone} icon={<Plus size={14}/>}>إضافة الموظف</Btn></div>
+          </div>
+        </Modal>
+      )}
+      {editEmp && (
+        <Modal title="تعديل بيانات الموظف" onClose={() => setEditEmp(null)} size="sm">
+          <div className="space-y-4">
+            <F label="الاسم الكامل"><TInput value={editEmp.name} onChange={v=>setEditEmp({...editEmp,name:v})} /></F>
+            <F label="رقم الهاتف"><TInput value={editEmp.phone} onChange={v=>setEditEmp({...editEmp,phone:v})} /></F>
+            <F label="الدور الوظيفي"><SInput value={editEmp.role} onChange={v=>setEditEmp({...editEmp,role:v})} options={["مدير","كاشير","مسؤول مخزون","محاسب"].map(r=>({value:r,label:r}))} /></F>
+            <F label="الحالة"><SInput value={editEmp.status} onChange={v=>setEditEmp({...editEmp,status:v})} options={["نشط","إجازة","موقوف"].map(s=>({value:s,label:s}))} /></F>
+            <div className="flex gap-3 justify-end"><Btn v="secondary" onClick={()=>setEditEmp(null)}>إلغاء</Btn><Btn onClick={saveEdit} icon={<Check size={14}/>}>حفظ التعديلات</Btn></div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function BranchScreen() {
+  const sid = useStoreId();
+  const { data: branchesRaw, refresh: refreshBranches } = useApi<unknown[]>("/branches", []);
+  const [branches, setBranches] = useState<{id:string;name:string;city:string;manager:string;terminals:number;employees:number;sales:number;status:string}[]>([]);
+  useEffect(() => { setBranches(normList<{id:string;name:string;city:string;manager:string;terminals:number;employees:number;sales:number;status:string}>(branchesRaw)); }, [branchesRaw]);
+  const { data: termsRaw, refresh: refreshTerms } = useApi<unknown[]>("/branches/terminals", []);
+  const [terms, setTerms] = useState<{id:string;name:string;cashier:string;branch:string;status:string;sales:number}[]>([]);
+  useEffect(() => { setTerms(normList<{id:string;name:string;cashier:string;branch:string;status:string;sales:number}>(termsRaw)); }, [termsRaw]);
+  const [showBranch, setShowBranch] = useState(false);
+  const [showTerm, setShowTerm] = useState(false);
+  const [viewBranch, setViewBranch] = useState<typeof branches[0] | null>(null);
+  const [nb, setNb] = useState({ name: "", city: "", manager: "" });
+  const [nt, setNt] = useState({ name: "", cashier: "", branch: "الفرع الرئيسي" });
+
+  const toggleBranch = async (id: string) => { const b = branches.find(x=>x.id===id); await storeApi.put(`/branches/${id}`, { status: b?.status === "نشط" ? "غير نشط" : "نشط" }); await refreshBranches(); showToast("تم تغيير حالة الفرع"); setViewBranch(null); };
+  const toggleTerm = async (id: string) => { const t = terms.find(x=>x.id===id); await storeApi.put(`/branches/terminals/${id}`, { status: t?.status === "نشط" ? "مغلق" : "نشط" }); await refreshTerms(); showToast(t?.status === "نشط" ? "تم إغلاق الجهاز" : "تم فتح الجهاز"); };
+  const addBranch = async () => { if (!nb.name) return; try { await storeApi.post("/branches", { ...nb, status: "نشط" }); await refreshBranches(); showToast(`تم إنشاء فرع "${nb.name}" ✅`); } catch { showToast("خطأ في إنشاء الفرع","error"); return; } setShowBranch(false); setNb({name:"",city:"",manager:""}); };
+  const addTerm = async () => { if (!nt.name) return; try { await storeApi.post("/branches/terminals", { ...nt, status: "مغلق" }); await refreshTerms(); showToast(`تم إضافة جهاز "${nt.name}" ✅`); } catch { showToast("خطأ في إضافة الجهاز","error"); return; } setShowTerm(false); setNt({name:"",cashier:"",branch:"الفرع الرئيسي"}); };
+
+  return (
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto h-full">
+      <Hdr title="الفروع والأجهزة" action={<><Btn v="secondary" s="sm" icon={<Monitor size={13} />} onClick={() => setShowTerm(true)}>جهاز جديد</Btn><Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowBranch(true)}>فرع جديد</Btn></>} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {branches.map(b => (
+          <div key={b.id} className={`bg-card rounded-2xl border-2 p-5 ${b.status === "نشط" ? "border-border" : "border-border opacity-60"}`}>
+            <div className="flex items-start justify-between mb-3">
+              <div><p className="font-bold">{b.name}</p><p className="text-xs text-muted-foreground">{b.city}</p></div>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${b.status === "نشط" ? "text-emerald-700 bg-emerald-100" : "text-gray-600 bg-gray-100"}`}>{b.status}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+              <div className="bg-muted/60 rounded-xl p-2 text-center"><p className="font-black text-base">{b.terminals}</p><p className="text-muted-foreground">أجهزة</p></div>
+              <div className="bg-muted/60 rounded-xl p-2 text-center"><p className="font-black text-base">{b.employees}</p><p className="text-muted-foreground">موظفون</p></div>
+            </div>
+            <p className="text-xs text-muted-foreground">المدير: {b.manager}</p>
+            <p className="text-sm font-black text-primary mt-1">{b.sales.toFixed(3)} JOD</p>
+            <div className="flex gap-2 mt-3">
+              <Btn v="secondary" s="xs" full icon={<Eye size={10} />} onClick={() => setViewBranch(b)}>عرض</Btn>
+              <Btn v={b.status === "نشط" ? "danger" : "success"} s="xs" full icon={<Power size={10}/>} onClick={() => toggleBranch(b.id)}>{b.status === "نشط" ? "إيقاف" : "تفعيل"}</Btn>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="bg-card rounded-2xl border border-border divide-y divide-border/60 overflow-hidden">
+        {terms.map(t => (
+          <div key={t.id} className="flex items-center gap-4 px-5 py-4 hover:bg-muted/20">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${t.status === "نشط" ? "bg-emerald-100" : "bg-gray-100"}`}>
+              <Monitor size={16} className={t.status === "نشط" ? "text-emerald-600" : "text-gray-400"} />
+            </div>
+            <div className="flex-1 min-w-0"><p className="font-bold">{t.name}</p><p className="text-xs text-muted-foreground">{t.id} • {t.branch} • {t.cashier}</p></div>
+            <div className="hidden sm:block text-right"><p className="text-sm font-black">{t.sales.toFixed(3)} JOD</p><p className="text-xs text-muted-foreground">مبيعات اليوم</p></div>
+            <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${t.status === "نشط" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600"}`}>{t.status}</span>
+            {t.status === "نشط" ? <Btn v="danger" s="xs" icon={<Power size={10} />} onClick={() => toggleTerm(t.id)}>إغلاق</Btn> : <Btn v="success" s="xs" icon={<Power size={10} />} onClick={() => toggleTerm(t.id)}>فتح</Btn>}
+          </div>
+        ))}
+      </div>
+
+      {viewBranch && (
+        <Modal title={viewBranch.name} sub={viewBranch.city} onClose={() => setViewBranch(null)} size="sm">
+          <div className="space-y-3 text-sm">
+            {[["المدير",viewBranch.manager],["الحالة",viewBranch.status],["الأجهزة",viewBranch.terminals],["الموظفون",viewBranch.employees],["المبيعات",`${viewBranch.sales.toFixed(3)} JOD`]].map(([l,v])=>(
+              <div key={String(l)} className="flex justify-between border-b border-border/60 pb-2"><span className="text-muted-foreground">{l}</span><span className="font-bold">{v}</span></div>
+            ))}
+            <Btn full v={viewBranch.status === "نشط" ? "danger" : "success"} onClick={() => toggleBranch(viewBranch.id)} icon={<Power size={14}/>}>
+              {viewBranch.status === "نشط" ? "إيقاف الفرع" : "تفعيل الفرع"}
+            </Btn>
+          </div>
+        </Modal>
+      )}
+      {showBranch && (
+        <Modal title="إضافة فرع جديد" onClose={() => setShowBranch(false)} size="sm">
+          <div className="space-y-4">
+            <F label="اسم الفرع" req><TInput value={nb.name} onChange={v=>setNb({...nb,name:v})} placeholder="فرع..." /></F>
+            <F label="المدينة"><TInput value={nb.city} onChange={v=>setNb({...nb,city:v})} placeholder="عمّان" /></F>
+            <F label="مدير الفرع"><TInput value={nb.manager} onChange={v=>setNb({...nb,manager:v})} /></F>
+            <div className="flex gap-3 justify-end"><Btn v="secondary" onClick={()=>setShowBranch(false)}>إلغاء</Btn><Btn onClick={addBranch} disabled={!nb.name} icon={<Plus size={14}/>}>إنشاء الفرع</Btn></div>
+          </div>
+        </Modal>
+      )}
+      {showTerm && (
+        <Modal title="إضافة جهاز POS جديد" onClose={() => setShowTerm(false)} size="sm">
+          <div className="space-y-4">
+            <F label="اسم الجهاز" req><TInput value={nt.name} onChange={v=>setNt({...nt,name:v})} placeholder="كاشير 1" /></F>
+            <F label="الكاشير المسؤول"><TInput value={nt.cashier} onChange={v=>setNt({...nt,cashier:v})} /></F>
+            <F label="الفرع"><SInput value={nt.branch} onChange={v=>setNt({...nt,branch:v})} options={branches.map(b=>({value:b.name,label:b.name}))} /></F>
+            <div className="flex gap-3 justify-end"><Btn v="secondary" onClick={()=>setShowTerm(false)}>إلغاء</Btn><Btn onClick={addTerm} disabled={!nt.name} icon={<Plus size={14}/>}>إضافة الجهاز</Btn></div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function LoyaltyScreen() {
+  const sid = useStoreId();
+  const [coupons, setCoupons] = useLS<{code:string;desc:string;uses:number;exp:string;type:string;value:string}[]>(sk(sid, "coupons"), []);
+  const { data: custsRaw } = useApi<unknown[]>("/customers", []);
+  const [custs, setCusts] = useState<{id:string;name:string;points?:number}[]>([]);
+  const [showNew, setShowNew] = useState(false);
+  const [nf, setNf] = useState({ code: "", desc: "", exp: "", type: "نسبة", value: "" });
+
+  useEffect(() => { setCusts(normList<{id:string;name:string;points?:number}>(custsRaw)); }, [custsRaw]);
+
+  // Derived stats
+  const totalPoints = custs.reduce((a, c) => a + (c.points || 0), 0);
+  const activeCoupons = coupons.filter(c => !c.exp || new Date(c.exp) >= new Date());
+
+  const TIERS = [
+    { l: "عادي",   min: 0,    max: 199,   icon: "🥉" },
+    { l: "فضي",    min: 200,  max: 499,   icon: "🥈" },
+    { l: "ذهبي",   min: 500,  max: 999,   icon: "🥇" },
+    { l: "بلاتيني",min: 1000, max: 99999, icon: "💎" },
+  ];
+  const tierCounts = TIERS.map(t => ({
+    ...t,
+    count: custs.filter(c => (c.points || 0) >= t.min && (c.points || 0) <= t.max).length,
+  }));
+
+  const addCoupon = () => {
+    if (!nf.code || !nf.desc) return;
+    setCoupons(p => [...p, { ...nf, uses: 0 }]);
+    showToast(`تم إضافة القسيمة ${nf.code}`);
+    setShowNew(false); setNf({ code: "", desc: "", exp: "", type: "نسبة", value: "" });
+  };
+  const delCoupon = (code: string) => { setCoupons(p => p.filter(c => c.code !== code)); showToast("تم حذف القسيمة", "warning"); };
+  const copyCoupon = (code: string) => { navigator.clipboard?.writeText(code); showToast(`تم نسخ الكود: ${code}`, "info"); };
+
+  return (
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto h-full">
+      <Hdr title="نظام الولاء والمكافآت" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowNew(true)}>قسيمة جديدة</Btn>} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <KPI icon={<Star size={18} />} label="إجمالي النقاط" value={totalPoints.toLocaleString("ar-JO")} color="#D97706" />
+        <KPI icon={<Users size={18} />} label="أعضاء الولاء" value={String(custs.length)} color="#7C3AED" />
+        <KPI icon={<Tag size={18} />} label="قسائم نشطة" value={String(activeCoupons.length)} color="#059669" />
+        <KPI icon={<Hash size={18} />} label="إجمالي القسائم" value={String(coupons.length)} color="#1D4ED8" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <p className="font-bold mb-4">مستويات العضوية</p>
+          {custs.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">لا يوجد عملاء بعد — أضف عملاء من قسم العملاء</p>
+          ) : (
+            <div className="space-y-3">
+              {tierCounts.map(m => (
+                <div key={m.l} className="flex items-center gap-3 border border-border rounded-xl p-3">
+                  <span className="text-xl shrink-0">{m.icon}</span>
+                  <div className="flex-1">
+                    <div className="flex justify-between mb-1">
+                      <span className="font-bold text-sm">{m.l}</span>
+                      <span className="text-xs text-muted-foreground font-bold">{m.count} عميل</span>
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full">
+                      <div className="h-full bg-primary rounded-full transition-all" style={{ width: custs.length ? `${Math.round((m.count / custs.length) * 100)}%` : "0%" }} />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{m.min} — {m.max === 99999 ? "∞" : m.max} نقطة</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <p className="font-bold mb-4">القسائم النشطة</p>
+          {activeCoupons.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">لا توجد قسائم — أضف قسيمة جديدة</p>
+          ) : (
+            <div className="space-y-3">
+              {activeCoupons.map(c => {
+                const expired = c.exp && new Date(c.exp) < new Date();
+                return (
+                  <div key={c.code} className={`border rounded-xl p-3 flex items-center gap-3 ${expired ? "border-red-200 bg-red-50" : "border-border"}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-black text-primary">{c.code}</span>
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{c.value} {c.type === "نسبة" ? "%" : "JOD"}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{c.desc} • {c.uses} استخدام{c.exp ? ` • ينتهي ${c.exp}` : ""}</p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => copyCoupon(c.code)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-100 text-blue-500 transition-colors"><Copy size={11} /></button>
+                      <button onClick={() => delCoupon(c.code)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500 transition-colors"><Trash2 size={11} /></button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <Btn full v="secondary" cls="mt-4" icon={<Plus size={13} />} onClick={() => setShowNew(true)}>إضافة قسيمة جديدة</Btn>
+        </div>
+      </div>
+
+      {showNew && (
+        <Modal title="إضافة قسيمة خصم جديدة" onClose={() => setShowNew(false)} size="sm">
+          <div className="space-y-4">
+            <F label="كود القسيمة" req><TInput value={nf.code} onChange={v=>setNf({...nf,code:v.toUpperCase()})} placeholder="PROMO20" /></F>
+            <F label="وصف القسيمة" req><TInput value={nf.desc} onChange={v=>setNf({...nf,desc:v})} placeholder="خصم 20% على المشتريات" /></F>
+            <F label="نوع الخصم"><SInput value={nf.type} onChange={v=>setNf({...nf,type:v})} options={[{value:"نسبة",label:"نسبة مئوية %"},{value:"مبلغ",label:"مبلغ ثابت JOD"}]} /></F>
+            <F label={`قيمة الخصم ${nf.type === "نسبة" ? "(%)" : "(JOD)"}`} req><TInput value={nf.value} onChange={v=>setNf({...nf,value:v})} type="number" placeholder={nf.type === "نسبة" ? "20" : "5.000"} /></F>
+            <F label="تاريخ الانتهاء"><TInput value={nf.exp} onChange={v=>setNf({...nf,exp:v})} type="date" /></F>
+            <div className="flex gap-3 justify-end">
+              <Btn v="secondary" onClick={()=>setShowNew(false)}>إلغاء</Btn>
+              <Btn onClick={addCoupon} disabled={!nf.code||!nf.desc||!nf.value} icon={<Plus size={14}/>}>إضافة القسيمة</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRINT SHOP SCREENS — مطبعة / ضغاطة
+// ─────────────────────────────────────────────────────────────────────────────
+
+type PrintMat = { id: string; name: string; type: string; unit: string; rollWidth: number; rollLength: number; totalArea: number; usedArea: number; costPerUnit: number; supplier: string; minStock: number; status: string };
+type PrintJob = { id: string; jobNo: string; customer: string; phone: string; status: string; total: number; createdAt: string; deadline?: string; items: { service: string; material: string; width: number; height: number; qty: number; area: number; pricePerSqm: number; subtotal: number; wastePercent: number; deductedArea: number }[]; designFee: number; cuttingFee: number; laminationFee: number; installFee: number; discount: number; tax: number; notes: string; assignedTo: string };
+type PrintPrice = { id: string; name: string; pricingType: string; pricePerUnit: number; minCharge: number; notes: string; active: boolean };
+
+const JOB_STATUSES: { value: string; label: string; color: string }[] = [
+  { value: "new",              label: "جديد",                color: "bg-blue-100 text-blue-700" },
+  { value: "waiting_design",   label: "انتظار التصميم",       color: "bg-purple-100 text-purple-700" },
+  { value: "design_ready",     label: "التصميم جاهز",         color: "bg-indigo-100 text-indigo-700" },
+  { value: "waiting_approval", label: "انتظار الموافقة",      color: "bg-amber-100 text-amber-700" },
+  { value: "approved",         label: "موافق عليه",           color: "bg-teal-100 text-teal-700" },
+  { value: "printing",         label: "قيد الطباعة",          color: "bg-cyan-100 text-cyan-700" },
+  { value: "cutting",          label: "قيد القص",             color: "bg-orange-100 text-orange-700" },
+  { value: "finishing",        label: "قيد التشطيب",          color: "bg-rose-100 text-rose-700" },
+  { value: "ready",            label: "جاهز للاستلام",        color: "bg-emerald-100 text-emerald-700" },
+  { value: "delivered",        label: "تم التسليم",           color: "bg-green-100 text-green-700" },
+  { value: "cancelled",        label: "ملغى",                 color: "bg-red-100 text-red-700" },
+];
+const statusLabel = (v: string) => JOB_STATUSES.find(s => s.value === v)?.label || v;
+const statusColor = (v: string) => JOB_STATUSES.find(s => s.value === v)?.color || "bg-gray-100 text-gray-700";
+
+// ── PrintJobsScreen ───────────────────────────────────────────────────────────
+function PrintJobsScreen({ store }: { store: StoreData }) {
+  const { data: jobsRaw, refresh, loading } = useApi<unknown[]>("/print-jobs", []);
+  const jobs = normList<PrintJob>(jobsRaw);
+  const { data: matsRaw } = useApi<unknown[]>("/print-materials", []);
+  const mats = normList<PrintMat>(matsRaw);
+
+  const [viewJob, setViewJob] = useState<PrintJob | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  // New job form
+  const emptyItem = () => ({ service: "", material: "", materialId: "", width: 1, height: 1, qty: 1, pricePerSqm: 0, wastePercent: 5 });
+  const [nf, setNf] = useState({ customer: "", phone: "", deadline: "", notes: "", assignedTo: "", designFee: "0", cuttingFee: "0", laminationFee: "0", installFee: "0", discount: "0", vatRate: "16" });
+  const [items, setItems] = useState([emptyItem()]);
+
+  const calcItem = (it: ReturnType<typeof emptyItem>) => {
+    const area = it.width * it.height * it.qty;
+    const deducted = area * (1 + it.wastePercent / 100);
+    const subtotal = area * it.pricePerSqm;
+    return { ...it, area: +area.toFixed(4), deductedArea: +deducted.toFixed(4), subtotal: +subtotal.toFixed(3) };
+  };
+  const calcedItems = items.map(calcItem);
+  const subtotalItems = calcedItems.reduce((a, i) => a + i.subtotal, 0);
+  const fees = (parseFloat(nf.designFee) || 0) + (parseFloat(nf.cuttingFee) || 0) + (parseFloat(nf.laminationFee) || 0) + (parseFloat(nf.installFee) || 0);
+  const disc = parseFloat(nf.discount) || 0;
+  const vatRate = (parseFloat(nf.vatRate) || 16) / 100;
+  const beforeTax = subtotalItems + fees - disc;
+  const tax = beforeTax * vatRate;
+  const total = beforeTax + tax;
+
+  const saveJob = async () => {
+    if (!nf.customer || calcedItems.length === 0) { showToast("الرجاء إدخال اسم العميل وبند واحد على الأقل", "error"); return; }
+    setSaving(true);
+    try {
+      await storeApi.post("/print-jobs", {
+        customer: nf.customer, phone: nf.phone, notes: nf.notes, assignedTo: nf.assignedTo,
+        deadline: nf.deadline || undefined,
+        items: calcedItems.map(i => ({ ...i, materialId: mats.find(m => m.name === i.material)?.id || undefined })),
+        designFee: parseFloat(nf.designFee) || 0,
+        cuttingFee: parseFloat(nf.cuttingFee) || 0,
+        laminationFee: parseFloat(nf.laminationFee) || 0,
+        installFee: parseFloat(nf.installFee) || 0,
+        discount: disc, tax, total,
+      });
+      showToast("تم إنشاء طلب الطباعة ✅");
+      setShowNew(false);
+      setItems([emptyItem()]);
+      setNf({ customer: "", phone: "", deadline: "", notes: "", assignedTo: "", designFee: "0", cuttingFee: "0", laminationFee: "0", installFee: "0", discount: "0", vatRate: "16" });
+      refresh();
+    } catch (e) { showToast((e as { error?: string }).error || "فشل الحفظ", "error"); }
+    finally { setSaving(false); }
+  };
+
+  const changeStatus = async (job: PrintJob, status: string) => {
+    await storeApi.patch(`/print-jobs/${job.id}/status`, { status });
+    showToast(`تم تغيير الحالة إلى: ${statusLabel(status)}`);
+    refresh();
+    if (viewJob?.id === job.id) setViewJob({ ...viewJob, status });
+  };
+
+  const printJobCard = (job: PrintJob) => {
+    const w = window.open("", "_blank", "width=480,height=700");
+    if (!w) return;
+    const rows = job.items.map(i => `<tr><td>${i.service}</td><td>${i.material||"—"}</td><td>${i.width}×${i.height}م</td><td>${i.qty}</td><td>${i.area.toFixed(3)} م²</td><td>${i.subtotal.toFixed(3)} JOD</td></tr>`).join("");
+    w.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><title>طلب طباعة ${job.jobNo}</title><style>body{font-family:'Cairo',Arial,sans-serif;padding:20px;font-size:12px}h2{text-align:center}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:6px;text-align:right}th{background:#f5f5f5}.total{font-weight:bold;font-size:14px}@media print{button{display:none}}</style></head><body>
+    <h2>طلب طباعة — ${store.nameAr}</h2><p>رقم الطلب: <b>${job.jobNo}</b> | العميل: <b>${job.customer}</b> | الهاتف: ${job.phone||"—"} | التاريخ: ${new Date(job.createdAt).toLocaleDateString("ar-JO")}${job.deadline ? " | الموعد: "+new Date(job.deadline).toLocaleDateString("ar-JO") : ""}</p>
+    <table><thead><tr><th>الخدمة</th><th>المادة</th><th>الأبعاد</th><th>الكمية</th><th>المساحة</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table>
+    <br><table><tr><td>إجمالي البنود</td><td>${subtotalItems.toFixed(3)} JOD</td></tr>${job.designFee?"<tr><td>رسوم تصميم</td><td>"+job.designFee.toFixed(3)+" JOD</td></tr>":""}${job.cuttingFee?"<tr><td>رسوم قص</td><td>"+job.cuttingFee.toFixed(3)+" JOD</td></tr>":""}${job.laminationFee?"<tr><td>رسوم تغليف</td><td>"+job.laminationFee.toFixed(3)+" JOD</td></tr>":""}${job.installFee?"<tr><td>رسوم تركيب</td><td>"+job.installFee.toFixed(3)+" JOD</td></tr>":""}${job.discount?"<tr><td>خصم</td><td>-"+job.discount.toFixed(3)+" JOD</td></tr>":""}<tr><td>ضريبة القيمة المضافة</td><td>${job.tax.toFixed(3)} JOD</td></tr><tr class="total"><td>الإجمالي النهائي</td><td>${job.total.toFixed(3)} JOD</td></tr></table>
+    <p>${job.notes ? "ملاحظات: "+job.notes : ""}</p><br><button onclick="window.print()">طباعة</button></body></html>`);
+    w.document.close();
+  };
+
+  const filtered = statusFilter === "all" ? jobs : jobs.filter(j => j.status === statusFilter);
+  const stats = { total: jobs.length, active: jobs.filter(j => !["delivered","cancelled"].includes(j.status)).length, ready: jobs.filter(j => j.status === "ready").length, revenue: jobs.filter(j => j.status === "delivered").reduce((a, j) => a + j.total, 0) };
+
+  return (
+    <div className="p-4 space-y-4 overflow-y-auto h-full">
+      <Hdr title="طلبات الطباعة" sub="إدارة أوامر الإنتاج وتتبع الحالة" action={<Btn icon={<Plus size={14} />} onClick={() => setShowNew(true)}>طلب جديد</Btn>} />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KPI icon={<Printer size={18} />} label="إجمالي الطلبات" value={String(stats.total)} color="#0891B2" />
+        <KPI icon={<Ruler size={18} />} label="طلبات نشطة" value={String(stats.active)} color="#D97706" />
+        <KPI icon={<CheckCircle size={18} />} label="جاهزة للاستلام" value={String(stats.ready)} color="#059669" />
+        <KPI icon={<DollarSign size={18} />} label="إيرادات مسلّمة" value={`${stats.revenue.toFixed(3)} JOD`} color="#7C3AED" />
+      </div>
+
+      {/* Status filter tabs */}
+      <div className="flex gap-2 flex-wrap">
+        {[{ value: "all", label: "الكل" }, ...JOB_STATUSES].map(s => (
+          <button key={s.value} onClick={() => setStatusFilter(s.value)}
+            className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${statusFilter === s.value ? "bg-primary text-white border-primary" : "bg-card border-border text-muted-foreground"}`}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? <div className="text-center py-12 text-muted-foreground">جاري التحميل...</div> :
+        filtered.length === 0 ? <Empty icon={<Printer size={28} />} title="لا توجد طلبات" desc="أنشئ أول طلب طباعة من الزر أعلاه" /> :
+        <div className="space-y-2">
+          {filtered.map(job => (
+            <div key={job.id} className="bg-card rounded-2xl border border-border p-4 flex items-center gap-4 hover:shadow-sm transition-shadow">
+              <div className="w-10 h-10 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0"><Printer size={16} className="text-cyan-600" /></div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2"><p className="font-bold text-sm">{job.jobNo}</p><span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor(job.status)}`}>{statusLabel(job.status)}</span></div>
+                <p className="text-xs text-muted-foreground">{job.customer} • {job.items?.length || 0} بنود • {job.total.toFixed(3)} JOD{job.deadline ? " • الموعد: "+new Date(job.deadline).toLocaleDateString("ar-JO") : ""}</p>
+              </div>
+              <div className="flex gap-1.5 shrink-0">
+                <Btn v="secondary" s="xs" icon={<Eye size={10} />} onClick={() => setViewJob(job)}>عرض</Btn>
+                <Btn v="ghost" s="xs" icon={<Printer size={10} />} onClick={() => printJobCard(job)} />
+                <select value={job.status} onChange={e => changeStatus(job, e.target.value)} className="text-xs rounded-lg border border-border bg-input px-2 py-1 text-foreground">
+                  {JOB_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+            </div>
+          ))}
+        </div>
+      }
+
+      {/* View Job Modal */}
+      {viewJob && (
+        <Modal title={`طلب ${viewJob.jobNo}`} sub={`${viewJob.customer} • ${statusLabel(viewJob.status)}`} onClose={() => setViewJob(null)}>
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-3">
+              {[["العميل", viewJob.customer], ["الهاتف", viewJob.phone||"—"], ["الحالة", statusLabel(viewJob.status)], ["المسؤول", viewJob.assignedTo||"—"], ["الموعد", viewJob.deadline ? new Date(viewJob.deadline).toLocaleDateString("ar-JO") : "—"], ["الإجمالي", `${viewJob.total.toFixed(3)} JOD`]].map(([l, v]) =>
+                <div key={l} className="bg-muted/40 rounded-xl p-2.5"><p className="text-xs text-muted-foreground">{l}</p><p className="font-bold">{v}</p></div>
+              )}
+            </div>
+            <table className="w-full text-xs border-collapse">
+              <thead><tr className="bg-muted/50">{["الخدمة","المادة","العرض×الارتفاع","الكمية","المساحة م²","السعر/م²","الإجمالي"].map(h => <th key={h} className="border border-border px-2 py-1 text-right font-bold">{h}</th>)}</tr></thead>
+              <tbody>{viewJob.items?.map((it, i) => <tr key={i}><td className="border border-border px-2 py-1">{it.service}</td><td className="border border-border px-2 py-1">{it.material||"—"}</td><td className="border border-border px-2 py-1">{it.width}×{it.height}م</td><td className="border border-border px-2 py-1">{it.qty}</td><td className="border border-border px-2 py-1">{it.area?.toFixed(3)}</td><td className="border border-border px-2 py-1">{it.pricePerSqm?.toFixed(3)}</td><td className="border border-border px-2 py-1 font-bold">{it.subtotal?.toFixed(3)}</td></tr>)}</tbody>
+            </table>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {[["رسوم تصميم", viewJob.designFee], ["رسوم قص", viewJob.cuttingFee], ["تغليف", viewJob.laminationFee], ["تركيب", viewJob.installFee]].filter(([,v]) => Number(v) > 0).map(([l,v]) => <div key={String(l)} className="flex justify-between bg-muted/30 rounded px-2 py-1"><span>{l}</span><span>{Number(v).toFixed(3)} JOD</span></div>)}
+              <div className="flex justify-between bg-primary/10 rounded px-2 py-1 font-black col-span-2"><span>الإجمالي النهائي</span><span>{viewJob.total.toFixed(3)} JOD</span></div>
+            </div>
+            {viewJob.notes && <p className="text-xs text-muted-foreground bg-muted/30 rounded-xl p-3">ملاحظات: {viewJob.notes}</p>}
+            <div className="flex gap-2">
+              <Btn v="secondary" cls="flex-1" icon={<Printer size={13} />} onClick={() => printJobCard(viewJob)}>طباعة الطلب</Btn>
+              <F label="تغيير الحالة"><select value={viewJob.status} onChange={e => changeStatus(viewJob, e.target.value)} className="w-full rounded-xl border border-border bg-input px-3 py-2 text-sm">
+                {JOB_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select></F>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* New Job Modal */}
+      {showNew && (
+        <Modal title="طلب طباعة جديد" sub="احسب المساحة والسعر تلقائياً" onClose={() => setShowNew(false)}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <F label="اسم العميل" req><TInput value={nf.customer} onChange={v => setNf(f => ({ ...f, customer: v }))} placeholder="اسم الزبون" /></F>
+              <F label="رقم الهاتف"><TInput value={nf.phone} onChange={v => setNf(f => ({ ...f, phone: v }))} /></F>
+              <F label="الموعد المطلوب"><TInput value={nf.deadline} onChange={v => setNf(f => ({ ...f, deadline: v }))} type="date" /></F>
+              <F label="المسؤول عن الطلب"><TInput value={nf.assignedTo} onChange={v => setNf(f => ({ ...f, assignedTo: v }))} /></F>
+            </div>
+
+            <div className="border border-border rounded-2xl overflow-hidden">
+              <div className="bg-muted/50 px-4 py-2 flex items-center justify-between"><p className="font-bold text-sm">بنود الطلب</p><Btn s="xs" v="ghost" icon={<Plus size={12} />} onClick={() => setItems(p => [...p, emptyItem()])}>إضافة بند</Btn></div>
+              <div className="divide-y divide-border">
+                {items.map((it, i) => {
+                  const c = calcItem(it);
+                  return (
+                    <div key={i} className="p-3 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <F label="الخدمة / المنتج"><TInput value={it.service} onChange={v => setItems(p => p.map((x, j) => j === i ? { ...x, service: v } : x))} placeholder="ستيكر / بانر / كروت..." /></F>
+                        <F label="المادة المستخدمة">
+                          <select value={it.material} onChange={e => setItems(p => p.map((x, j) => j === i ? { ...x, material: e.target.value } : x))} className="w-full rounded-xl border border-border bg-input px-3 py-2 text-sm">
+                            <option value="">بدون مادة</option>
+                            {mats.map(m => <option key={m.id} value={m.name}>{m.name} ({((m.totalArea||0)-(m.usedArea||0)).toFixed(1)} م² متبقي)</option>)}
+                          </select>
+                        </F>
+                        <F label="العرض (م)"><TInput value={String(it.width)} onChange={v => setItems(p => p.map((x, j) => j === i ? { ...x, width: parseFloat(v)||0 } : x))} type="number" placeholder="1.00" /></F>
+                        <F label="الارتفاع (م)"><TInput value={String(it.height)} onChange={v => setItems(p => p.map((x, j) => j === i ? { ...x, height: parseFloat(v)||0 } : x))} type="number" placeholder="1.00" /></F>
+                        <F label="الكمية"><TInput value={String(it.qty)} onChange={v => setItems(p => p.map((x, j) => j === i ? { ...x, qty: parseInt(v)||1 } : x))} type="number" /></F>
+                        <F label="السعر / م²"><TInput value={String(it.pricePerSqm)} onChange={v => setItems(p => p.map((x, j) => j === i ? { ...x, pricePerSqm: parseFloat(v)||0 } : x))} type="number" placeholder="0.000" /></F>
+                        <F label="نسبة الهدر %"><TInput value={String(it.wastePercent)} onChange={v => setItems(p => p.map((x, j) => j === i ? { ...x, wastePercent: parseFloat(v)||0 } : x))} type="number" placeholder="5" /></F>
+                        <div className="flex flex-col justify-end">
+                          <div className="bg-cyan-50 border border-cyan-200 rounded-xl px-3 py-2 text-center">
+                            <p className="text-xs text-cyan-600">م²: {c.area.toFixed(3)} — إجمالي: <b>{c.subtotal.toFixed(3)} JOD</b></p>
+                          </div>
+                        </div>
+                      </div>
+                      {items.length > 1 && <Btn v="ghost" s="xs" icon={<Trash2 size={11} />} onClick={() => setItems(p => p.filter((_, j) => j !== i))}>حذف البند</Btn>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <F label="رسوم التصميم (JOD)"><TInput value={nf.designFee} onChange={v => setNf(f => ({ ...f, designFee: v }))} type="number" /></F>
+              <F label="رسوم القص (JOD)"><TInput value={nf.cuttingFee} onChange={v => setNf(f => ({ ...f, cuttingFee: v }))} type="number" /></F>
+              <F label="رسوم التغليف (JOD)"><TInput value={nf.laminationFee} onChange={v => setNf(f => ({ ...f, laminationFee: v }))} type="number" /></F>
+              <F label="رسوم التركيب (JOD)"><TInput value={nf.installFee} onChange={v => setNf(f => ({ ...f, installFee: v }))} type="number" /></F>
+              <F label="الخصم (JOD)"><TInput value={nf.discount} onChange={v => setNf(f => ({ ...f, discount: v }))} type="number" /></F>
+              <F label="نسبة الضريبة %"><TInput value={nf.vatRate} onChange={v => setNf(f => ({ ...f, vatRate: v }))} type="number" /></F>
+            </div>
+
+            <F label="ملاحظات"><TInput value={nf.notes} onChange={v => setNf(f => ({ ...f, notes: v }))} placeholder="أي تعليمات خاصة..." /></F>
+
+            <div className="bg-gradient-to-l from-cyan-50 to-blue-50 border border-cyan-200 rounded-2xl p-4 space-y-1.5 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">إجمالي البنود</span><span className="font-bold">{subtotalItems.toFixed(3)} JOD</span></div>
+              {fees > 0 && <div className="flex justify-between"><span className="text-muted-foreground">رسوم إضافية</span><span>{fees.toFixed(3)} JOD</span></div>}
+              {disc > 0 && <div className="flex justify-between"><span className="text-muted-foreground">خصم</span><span className="text-red-600">-{disc.toFixed(3)} JOD</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">ضريبة</span><span>{tax.toFixed(3)} JOD</span></div>
+              <div className="flex justify-between border-t border-cyan-200 pt-1.5"><span className="font-black text-lg">الإجمالي النهائي</span><span className="font-black text-lg text-primary">{total.toFixed(3)} JOD</span></div>
+            </div>
+
+            <div className="flex gap-3"><Btn v="secondary" cls="flex-1" onClick={() => setShowNew(false)}>إلغاء</Btn><Btn cls="flex-1" disabled={saving} icon={<Printer size={14} />} onClick={saveJob}>{saving ? "جاري الحفظ..." : "حفظ الطلب"}</Btn></div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── PrintMatsScreen ───────────────────────────────────────────────────────────
+function PrintMatsScreen() {
+  const { data: matsRaw, refresh, loading } = useApi<unknown[]>("/print-materials", []);
+  const mats = normList<PrintMat>(matsRaw);
+  const [showNew, setShowNew] = useState(false);
+  const [editMat, setEditMat] = useState<PrintMat | null>(null);
+  const [saving, setSaving] = useState(false);
+  const emptyForm = () => ({ name: "", type: "sticker_roll", unit: "sqm", rollWidth: "1.22", rollLength: "50", costPerUnit: "0", supplier: "", minStock: "5" });
+  const [form, setForm] = useState(emptyForm());
+
+  const totalArea = (parseFloat(form.rollWidth) || 0) * (parseFloat(form.rollLength) || 0);
+
+  const save = async () => {
+    if (!form.name) { showToast("اسم المادة مطلوب", "error"); return; }
+    setSaving(true);
+    try {
+      const body = { name: form.name, type: form.type, unit: form.unit, rollWidth: parseFloat(form.rollWidth) || 0, rollLength: parseFloat(form.rollLength) || 0, costPerUnit: parseFloat(form.costPerUnit) || 0, supplier: form.supplier, minStock: parseFloat(form.minStock) || 5 };
+      if (editMat) {
+        await storeApi.put(`/print-materials/${editMat.id}`, body);
+        showToast("تم تحديث المادة ✅");
+      } else {
+        await storeApi.post("/print-materials", body);
+        showToast("تم إضافة المادة ✅");
+      }
+      setShowNew(false); setEditMat(null); setForm(emptyForm()); refresh();
+    } catch (e) { showToast((e as { error?: string }).error || "فشل الحفظ", "error"); }
+    finally { setSaving(false); }
+  };
+
+  const del = async (id: string) => {
+    if (!confirm("حذف هذه المادة؟")) return;
+    await storeApi.delete(`/print-materials/${id}`);
+    showToast("تم الحذف", "warning"); refresh();
+  };
+
+  const openEdit = (m: PrintMat) => {
+    setEditMat(m);
+    setForm({ name: m.name, type: m.type, unit: m.unit, rollWidth: String(m.rollWidth||0), rollLength: String(m.rollLength||0), costPerUnit: String(m.costPerUnit||0), supplier: m.supplier||"", minStock: String(m.minStock||5) });
+    setShowNew(true);
+  };
+
+  const TYPES = [["sticker_roll","رول ستيكر"],["vinyl","فينيل"],["banner","بانر"],["flex","فليكس"],["canvas","كانفاس"],["paper","ورق"],["photo_paper","ورق صور"],["business_card","ورق كروت"],["ink","حبر"],["lamination","لمينيشن"],["other","أخرى"]];
+
+  return (
+    <div className="p-4 space-y-4 overflow-y-auto h-full">
+      <Hdr title="مواد الطباعة" sub="إدارة الرولات والمواد الخام وتتبع الكميات" action={<Btn icon={<Plus size={14} />} onClick={() => { setEditMat(null); setForm(emptyForm()); setShowNew(true); }}>إضافة مادة</Btn>} />
+
+      {loading ? <div className="text-center py-12 text-muted-foreground">جاري التحميل...</div> :
+        mats.length === 0 ? <Empty icon={<Ruler size={28} />} title="لا توجد مواد بعد" desc="أضف أول مادة طباعة من الزر أعلاه" /> :
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {mats.map(m => {
+            const remaining = (m.totalArea || 0) - (m.usedArea || 0);
+            const pct = m.totalArea ? Math.max(0, Math.round((remaining / m.totalArea) * 100)) : 100;
+            const barColor = pct > 30 ? "bg-emerald-500" : pct > 10 ? "bg-amber-500" : "bg-red-500";
+            return (
+              <div key={m.id} className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-bold">{m.name}</p>
+                    <p className="text-xs text-muted-foreground">{m.supplier || "—"} • {m.unit}</p>
+                  </div>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${m.status === "active" ? "bg-emerald-100 text-emerald-700" : m.status === "low" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>
+                    {m.status === "active" ? "متوفر" : m.status === "low" ? "منخفض" : "نفد"}
+                  </span>
+                </div>
+                {m.rollWidth > 0 && (
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="bg-muted/40 rounded-xl p-2"><p className="font-black">{(m.totalArea||0).toFixed(1)}</p><p className="text-muted-foreground">إجمالي م²</p></div>
+                    <div className="bg-muted/40 rounded-xl p-2"><p className="font-black text-red-600">{(m.usedArea||0).toFixed(1)}</p><p className="text-muted-foreground">مستخدم م²</p></div>
+                    <div className="bg-muted/40 rounded-xl p-2"><p className="font-black text-emerald-600">{remaining.toFixed(1)}</p><p className="text-muted-foreground">متبقي م²</p></div>
+                  </div>
+                )}
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1"><span>المتبقي</span><span>{pct}%</span></div>
+                  <div className="h-2 bg-muted rounded-full"><div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} /></div>
+                </div>
+                <div className="flex gap-2">
+                  <Btn v="secondary" s="xs" cls="flex-1" icon={<Edit2 size={11} />} onClick={() => openEdit(m)}>تعديل</Btn>
+                  <Btn v="ghost" s="xs" icon={<Trash2 size={11} />} onClick={() => del(m.id)}>حذف</Btn>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      }
+
+      {showNew && (
+        <Modal title={editMat ? "تعديل المادة" : "إضافة مادة جديدة"} onClose={() => { setShowNew(false); setEditMat(null); }} size="sm">
+          <div className="space-y-3">
+            <F label="اسم المادة" req><TInput value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder="رول ستيكر أبيض 1.22م" /></F>
+            <div className="grid grid-cols-2 gap-3">
+              <F label="نوع المادة">
+                <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="w-full rounded-xl border border-border bg-input px-3 py-2 text-sm">
+                  {TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </F>
+              <F label="وحدة القياس">
+                <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} className="w-full rounded-xl border border-border bg-input px-3 py-2 text-sm">
+                  {[["sqm","متر مربع"],["meter","متر طولي"],["roll","رول"],["sheet","ورقة"],["piece","قطعة"],["liter","لتر"],["box","صندوق"]].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </F>
+              <F label="عرض الرول (م)"><TInput value={form.rollWidth} onChange={v => setForm(f => ({ ...f, rollWidth: v }))} type="number" placeholder="1.22" /></F>
+              <F label="طول الرول (م)"><TInput value={form.rollLength} onChange={v => setForm(f => ({ ...f, rollLength: v }))} type="number" placeholder="50" /></F>
+            </div>
+            {totalArea > 0 && <div className="bg-cyan-50 border border-cyan-200 rounded-xl px-4 py-2 text-center text-sm"><span className="text-cyan-700">إجمالي المساحة: <b>{totalArea.toFixed(2)} م²</b></span></div>}
+            <div className="grid grid-cols-2 gap-3">
+              <F label="التكلفة / وحدة (JOD)"><TInput value={form.costPerUnit} onChange={v => setForm(f => ({ ...f, costPerUnit: v }))} type="number" /></F>
+              <F label="حد التنبيه (م²)"><TInput value={form.minStock} onChange={v => setForm(f => ({ ...f, minStock: v }))} type="number" /></F>
+            </div>
+            <F label="المورد"><TInput value={form.supplier} onChange={v => setForm(f => ({ ...f, supplier: v }))} /></F>
+            <div className="flex gap-3"><Btn v="secondary" cls="flex-1" onClick={() => { setShowNew(false); setEditMat(null); }}>إلغاء</Btn><Btn cls="flex-1" disabled={saving} onClick={save}>{saving ? "جاري الحفظ..." : "حفظ"}</Btn></div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── PrintPricesScreen ─────────────────────────────────────────────────────────
+function PrintPricesScreen() {
+  const { data: pricesRaw, refresh } = useApi<unknown[]>("/print-price-lists", []);
+  const prices = normList<PrintPrice>(pricesRaw);
+  const [showNew, setShowNew] = useState(false);
+  const [editP, setEditP] = useState<PrintPrice | null>(null);
+  const [saving, setSaving] = useState(false);
+  const emptyForm = () => ({ name: "", pricingType: "sqm", pricePerUnit: "", minCharge: "0", notes: "" });
+  const [form, setForm] = useState(emptyForm());
+
+  const PRICING_TYPES = [["sqm","متر مربع (م²)"],["meter","متر طولي"],["piece","قطعة"],["sheet","ورقة"],["job","وظيفة ثابتة"],["design","تصميم"],["installation","تركيب"],["cutting","قص"],["lamination","تغليف"]];
+
+  const save = async () => {
+    if (!form.name || !form.pricePerUnit) { showToast("الاسم والسعر مطلوبان", "error"); return; }
+    setSaving(true);
+    try {
+      const body = { name: form.name, pricingType: form.pricingType, pricePerUnit: parseFloat(form.pricePerUnit), minCharge: parseFloat(form.minCharge) || 0, notes: form.notes, active: true };
+      if (editP) { await storeApi.put(`/print-price-lists/${editP.id}`, body); showToast("تم التحديث ✅"); }
+      else { await storeApi.post("/print-price-lists", body); showToast("تم إضافة السعر ✅"); }
+      setShowNew(false); setEditP(null); setForm(emptyForm()); refresh();
+    } catch { showToast("فشل الحفظ", "error"); }
+    finally { setSaving(false); }
+  };
+
+  const del = async (id: string) => {
+    if (!confirm("حذف هذا السعر؟")) return;
+    await storeApi.delete(`/print-price-lists/${id}`);
+    showToast("تم الحذف", "warning"); refresh();
+  };
+
+  return (
+    <div className="p-4 space-y-4 overflow-y-auto h-full">
+      <Hdr title="قائمة أسعار الطباعة" sub="حدد أسعار الخدمات للمتر المربع والقطعة والوظيفة الثابتة" action={<Btn icon={<Plus size={14} />} onClick={() => { setEditP(null); setForm(emptyForm()); setShowNew(true); }}>سعر جديد</Btn>} />
+
+      {prices.length === 0 ? <Empty icon={<Calculator size={28} />} title="لا توجد أسعار بعد" desc="أضف أسعار خدماتك من الزر أعلاه" /> :
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="divide-y divide-border">
+            {prices.map(p => (
+              <div key={p.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/20">
+                <div className="w-9 h-9 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0"><Hash size={14} className="text-cyan-600" /></div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm">{p.name}</p>
+                  <p className="text-xs text-muted-foreground">{PRICING_TYPES.find(([v]) => v === p.pricingType)?.[1] || p.pricingType}{p.minCharge > 0 ? ` • حد أدنى: ${p.minCharge.toFixed(3)} JOD` : ""}</p>
+                </div>
+                <p className="font-black text-primary">{p.pricePerUnit.toFixed(3)} JOD</p>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${p.active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>{p.active ? "نشط" : "معطّل"}</span>
+                <div className="flex gap-1.5">
+                  <Btn v="ghost" s="xs" icon={<Edit2 size={10} />} onClick={() => { setEditP(p); setForm({ name: p.name, pricingType: p.pricingType, pricePerUnit: String(p.pricePerUnit), minCharge: String(p.minCharge||0), notes: p.notes||"" }); setShowNew(true); }} />
+                  <Btn v="ghost" s="xs" icon={<Trash2 size={10} />} onClick={() => del(p.id)} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      }
+
+      {showNew && (
+        <Modal title={editP ? "تعديل السعر" : "سعر جديد"} onClose={() => { setShowNew(false); setEditP(null); }} size="sm">
+          <div className="space-y-3">
+            <F label="اسم الخدمة" req><TInput value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder="طباعة ستيكر / بانر / كروت..." /></F>
+            <F label="نوع التسعير">
+              <select value={form.pricingType} onChange={e => setForm(f => ({ ...f, pricingType: e.target.value }))} className="w-full rounded-xl border border-border bg-input px-3 py-2 text-sm">
+                {PRICING_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </F>
+            <div className="grid grid-cols-2 gap-3">
+              <F label="السعر / وحدة (JOD)" req><TInput value={form.pricePerUnit} onChange={v => setForm(f => ({ ...f, pricePerUnit: v }))} type="number" placeholder="0.000" /></F>
+              <F label="الحد الأدنى (JOD)"><TInput value={form.minCharge} onChange={v => setForm(f => ({ ...f, minCharge: v }))} type="number" placeholder="0" /></F>
+            </div>
+            <F label="ملاحظات"><TInput value={form.notes} onChange={v => setForm(f => ({ ...f, notes: v }))} /></F>
+            <div className="flex gap-3"><Btn v="secondary" cls="flex-1" onClick={() => { setShowNew(false); setEditP(null); }}>إلغاء</Btn><Btn cls="flex-1" disabled={saving} onClick={save}>{saving ? "جاري الحفظ..." : "حفظ"}</Btn></div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function StoreSetts({ store }: { store: StoreData }) {
+  const sid = useStoreId();
+  // يجلب الإعدادات من Backend عند الفتح
+  const { data: settingsRaw, refresh: refreshSettings } = useApi<Record<string,unknown>>("/settings", {});
+
+  const [sName,        setSName]        = useState(store.nameAr);
+  const [phone,        setPhone]        = useState(store.phone);
+  const [address,      setAddress]      = useState("شارع الثقافة، الجبيهة، عمّان، الأردن");
+  const [lang,         setLang]         = useState("ar");
+  const [rl,           setRl]           = useState("both");
+  const [tax,          setTax]          = useState("16");
+  const [paper,        setPaper]        = useState("80mm");
+  const [printCopies,  setPrintCopies]  = useState("1");
+  const [printLogo,    setPrintLogo]    = useState(true);
+  const [printTax,     setPrintTax]     = useState(true);
+  const [printPhone,   setPrintPhone]   = useState(true);
+  const [printBarcode, setPrintBarcode] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  // White-label branding state
+  const [brandColor,   setBrandColor]   = useState(() => { try { const r = localStorage.getItem(`sowwanjo_storeinfo_${sid}`); return r ? (JSON.parse(r).primaryColor || "") : ""; } catch { return ""; } });
+  const [brandAppName, setBrandAppName] = useState(() => { try { const r = localStorage.getItem(`sowwanjo_storeinfo_${sid}`); return r ? (JSON.parse(r).appName || "") : ""; } catch { return ""; } });
+  const [logo, setLogo] = useState<string>(() => {
+    try { return localStorage.getItem(`sowwanjo_logo_${sid}`) || ""; } catch { return ""; }
+  });
+  const logoRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoUpload = (e: { target: HTMLInputElement }) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 800_000) { showToast("يجب أن يكون حجم الشعار أقل من 800KB", "error"); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const b64 = reader.result as string;
+      setLogo(b64);
+      try { localStorage.setItem(`sowwanjo_logo_${sid}`, b64); } catch {}
+      showToast("تم رفع الشعار بنجاح ✅", "success");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeLogo = () => {
+    setLogo("");
+    try { localStorage.removeItem(`sowwanjo_logo_${sid}`); } catch {}
+    showToast("تم حذف الشعار", "info");
+  };
+
+  // تطبيق الإعدادات المجلوبة من Backend
+  useEffect(() => {
+    if (!settingsRaw || Object.keys(settingsRaw).length === 0) return;
+    if (settingsRaw.storeName) setSName(settingsRaw.storeName as string);
+    if (settingsRaw.phone)     setPhone(settingsRaw.phone as string);
+    if (settingsRaw.address)   setAddress(settingsRaw.address as string);
+    if (settingsRaw.language)  setLang(settingsRaw.language as string);
+    if (settingsRaw.receiptLang) setRl(settingsRaw.receiptLang as string);
+    if (settingsRaw.taxRate !== undefined) {
+      const t = String(settingsRaw.taxRate);
+      setTax(t);
+      // تحديث localStorage حتى POS يقرأ الضريبة الصحيحة فوراً
+      try { localStorage.setItem(sk(sid, "sett_tax"), t); } catch {}
+    }
+    if (settingsRaw.paperSize)    setPaper(settingsRaw.paperSize as string);
+    if (settingsRaw.printCopies)  setPrintCopies(settingsRaw.printCopies as string);
+    if (settingsRaw.printLogo   !== undefined) setPrintLogo(Boolean(settingsRaw.printLogo));
+    if (settingsRaw.printTax    !== undefined) setPrintTax(Boolean(settingsRaw.printTax));
+    if (settingsRaw.printPhone  !== undefined) setPrintPhone(Boolean(settingsRaw.printPhone));
+    if (settingsRaw.printBarcode!== undefined) setPrintBarcode(Boolean(settingsRaw.printBarcode));
+  }, [settingsRaw, sid]);
+
+  const doSave = async () => {
+    try {
+      await storeApi.put("/settings", {
+        storeName: sName, phone, address, language: lang, receiptLang: rl,
+        taxRate: parseFloat(tax) || 0,
+        paperSize: paper, printCopies,
+        printLogo, printTax, printPhone, printBarcode,
+        // White-label branding
+        appName: brandAppName, primaryColor: brandColor, logoUrl: logo,
+      });
+      // تحديث localStorage للـ POS
+      try { localStorage.setItem(sk(sid, "sett_tax"), String(parseFloat(tax) || 0)); } catch {}
+      try { localStorage.setItem(sk(sid, "sett_paper"), paper); } catch {}
+      // تحديث branding في localStorage
+      try {
+        const r = localStorage.getItem(`sowwanjo_storeinfo_${sid}`);
+        if (r) {
+          const info = JSON.parse(r);
+          info.appName = brandAppName;
+          info.primaryColor = brandColor;
+          info.logoUrl = logo;
+          localStorage.setItem(`sowwanjo_storeinfo_${sid}`, JSON.stringify(info));
+        }
+      } catch {}
+      await refreshSettings();
+      showToast("تم حفظ إعدادات المتجر في قاعدة البيانات ✅", "success");
+    } catch { showToast("خطأ في حفظ الإعدادات", "error"); }
+  };
+
+  return (
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto h-full">
+      <Hdr title="إعدادات المتجر" action={<Btn v="success" s="sm" icon={<Check size={13} />} onClick={doSave}>حفظ الإعدادات</Btn>} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
+          <p className="font-bold flex items-center gap-2"><Store size={13} /> معلومات المتجر</p>
+          {/* Logo upload */}
+          <div>
+            <p className="text-xs font-bold text-muted-foreground mb-2">شعار المتجر</p>
+            <div className="flex items-center gap-3">
+              <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => logoRef.current?.click()}>
+                {logo ? (
+                  <img src={logo} alt="شعار المتجر" className="w-full h-full object-contain" />
+                ) : (
+                  <div className="text-center">
+                    <Upload size={20} className="mx-auto mb-1 text-muted-foreground" />
+                    <p className="text-[9px] text-muted-foreground">رفع شعار</p>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Btn v="secondary" s="sm" icon={<Upload size={13} />} onClick={() => logoRef.current?.click()}>
+                  {logo ? "تغيير الشعار" : "رفع الشعار"}
+                </Btn>
+                {logo && <Btn v="ghost" s="sm" icon={<Trash2 size={13} />} onClick={removeLogo}>حذف</Btn>}
+                <p className="text-[10px] text-muted-foreground">PNG, JPG — أقل من 800KB</p>
+              </div>
+            </div>
+            <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+          </div>
+
+          <F label="اسم المتجر بالعربية"><TInput value={sName} onChange={setSName} /></F>
+          <F label="رقم الهاتف"><TInput value={phone} onChange={setPhone} icon={<Phone size={13} />} /></F>
+          <F label="البريد الإلكتروني"><TInput value={store.email} readOnly /></F>
+          <F label="العنوان">
+            <textarea value={address} onChange={e=>setAddress(e.target.value)} rows={2} className="w-full rounded-xl border border-border bg-input-background text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring/25 resize-none" />
+          </F>
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
+          <p className="font-bold flex items-center gap-2"><Globe size={13} /> اللغة والضريبة</p>
+          <F label="لغة النظام"><SInput value={lang} onChange={setLang} options={[{ value: "ar", label: "العربية (RTL)" }, { value: "en", label: "English (LTR)" }]} /></F>
+          <F label="لغة الإيصال"><SInput value={rl} onChange={setRl} options={[{ value: "ar", label: "عربي فقط" }, { value: "en", label: "English Only" }, { value: "both", label: "عربي + إنجليزي" }]} /></F>
+          <F label="العملة"><TInput value="دينار أردني (JOD)" readOnly /></F>
+          <F label="نسبة ضريبة المبيعات (%)"><TInput value={tax} onChange={setTax} type="number" /></F>
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
+          <p className="font-bold flex items-center gap-2"><Printer size={13} /> إعدادات الطباعة</p>
+          <F label="حجم ورق الطابعة"><SInput value={paper} onChange={setPaper} options={[{ value: "58mm", label: "58mm حراري" }, { value: "80mm", label: "80mm حراري" }, { value: "a4", label: "A4 عادي" }]} /></F>
+          <F label="عدد نسخ الإيصال"><SInput value={printCopies} onChange={setPrintCopies} options={[{value:"1",label:"نسخة واحدة"},{value:"2",label:"نسختان"},{value:"3",label:"3 نسخ"}]} /></F>
+          <div className="space-y-3">
+            {[
+              { label: "طباعة شعار المتجر", val: printLogo, set: setPrintLogo },
+              { label: "طباعة ضريبة القيمة المضافة", val: printTax, set: setPrintTax },
+              { label: "طباعة رقم الهاتف", val: printPhone, set: setPrintPhone },
+              { label: "طباعة الباركود على الإيصال", val: printBarcode, set: setPrintBarcode },
+            ].map(opt => (
+              <div key={opt.label} className="flex items-center justify-between py-1 border-b border-border/60 last:border-0">
+                <span className="text-sm">{opt.label}</span>
+                <Toggle on={opt.val} onChange={v => { opt.set(v); showToast(`${opt.label}: ${v ? "مفعّل" : "معطّل"}`, v ? "success" : "info"); }} />
+              </div>
+            ))}
+          </div>
+          <Btn v="secondary" full icon={<Printer size={13} />} onClick={() => showToast("جاري طباعة إيصال تجريبي...", "info")}>
+            طباعة إيصال تجريبي
+          </Btn>
+        </div>
+        {/* White-label branding */}
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
+          <p className="font-bold flex items-center gap-2"><Zap size={13} /> هوية المتجر (White-Label)</p>
+          <F label="اسم التطبيق عند التثبيت">
+            <TInput value={brandAppName} onChange={setBrandAppName} placeholder={store.nameAr || "اسم متجرك"} />
+          </F>
+          <F label="اللون الرئيسي للعلامة التجارية">
+            <div className="flex items-center gap-3">
+              <input type="color" value={brandColor || "#0F172A"} onChange={e => setBrandColor(e.target.value)}
+                className="w-11 h-11 rounded-xl border border-border cursor-pointer bg-transparent p-1" />
+              <TInput value={brandColor} onChange={setBrandColor} placeholder="#0F172A" />
+            </div>
+          </F>
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800 leading-relaxed">
+            <p className="font-bold mb-1 flex items-center gap-1"><Info size={11} /> ملاحظة حول الهوية البصرية</p>
+            <p>سيتم استخدام اسم التطبيق كعنوان النافذة وعند تثبيت التطبيق. اللون الرئيسي يظهر في شريط الحالة على الجوال.</p>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
+          <p className="font-bold flex items-center gap-2"><CreditCard size={13} /> تفاصيل الاشتراك</p>
+          <div className="space-y-2.5">
+            {[["الخطة الحالية", store.plan, true], ["الحالة", ST[store.status].label, false], ["تاريخ الانتهاء", store.expiresAt, false], ["عدد المستخدمين", `${store.users} / ${store.plan === "مبتدئ" ? "3" : store.plan === "احترافي" ? "10" : "∞"}`, false], ["عدد المنتجات", `${store.products} / ${store.plan === "مبتدئ" ? "500" : store.plan === "احترافي" ? "2,000" : "∞"}`, false]].map(([l, vv, bold]) => (
+              <div key={String(l)} className="flex justify-between border-b border-border/60 pb-2 last:border-0">
+                <span className="text-sm text-muted-foreground">{l}</span>
+                <span className={`text-sm ${bold ? "font-black text-primary" : "font-bold"}`}>{vv}</span>
+              </div>
+            ))}
+          </div>
+          <Btn v="secondary" full icon={<TrendingUp size={13} />} onClick={() => setShowUpgrade(true)}>ترقية الاشتراك</Btn>
+          <Btn v="ghost" full icon={<Download size={13} />} onClick={() => showToast("جاري تحضير تصدير بيانات المتجر...", "info")}>تصدير بيانات المتجر</Btn>
+        </div>
+      </div>
+
+      {showUpgrade && (
+        <Modal title="ترقية الاشتراك" sub="اختر الخطة المناسبة لمتجرك" onClose={() => setShowUpgrade(false)}>
+          <div className="space-y-3">
+            {PLANS.map(p => (
+              <div key={p.id} className={`border-2 rounded-2xl p-4 cursor-pointer transition-all hover:border-primary ${p.nameAr === store.plan ? "border-primary bg-primary/5" : "border-border"}`}
+                onClick={() => { showToast(`تم طلب الترقية إلى خطة "${p.nameAr}"، سيتواصل معك فريق الدعم`, "success"); setShowUpgrade(false); }}>
+                <div className="flex items-center justify-between">
+                  <div><p className="font-bold">{p.nameAr}</p><p className="text-xs text-muted-foreground">{p.features.slice(0,2).join(" • ")}</p></div>
+                  <div className="text-right"><p className="text-xl font-black text-primary">{p.price} JOD</p><p className="text-xs text-muted-foreground">شهرياً</p></div>
+                </div>
+                {p.nameAr === store.plan && <span className="text-xs font-bold text-primary mt-1 block">✓ خطتك الحالية</span>}
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+export { StoreReports, EmpScreen, BranchScreen, LoyaltyScreen, PrintJobsScreen, PrintMatsScreen, PrintPricesScreen, StoreSetts };
