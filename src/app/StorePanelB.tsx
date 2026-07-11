@@ -234,6 +234,9 @@ function SalesScreen({ store }: { store: StoreData }) {
 function ProductsMgr() {
   const sid = useStoreId();
   const modules = useStoreModules();
+  const storeCategory = (() => {
+    try { return JSON.parse(localStorage.getItem(`sowwanjo_storeinfo_${sid}`) || "{}").category || "supermarket"; } catch { return "supermarket"; }
+  })();
   const { data: prodsRaw, loading: prodsLoading, refresh: refreshProds } = useApi<unknown[]>("/products", []);
   const [prods, setProds] = useState<Product[]>([]);
   useEffect(() => { setProds(normList<Product>(prodsRaw)); }, [prodsRaw]);
@@ -324,7 +327,7 @@ function ProductsMgr() {
 
       {prods.length === 0 ? (
         <div className="bg-card rounded-2xl border border-border">
-          <Empty icon={<Package size={28} />} title="لا توجد منتجات بعد" desc='أضف منتجاً جديداً أو استخدم جلب Open Food Facts للسوبرماركت' />
+          <Empty icon={<Package size={28} />} title="لا توجد منتجات بعد" desc={storeCategory === "supermarket" ? "أضف منتجاً جديداً أو استخدم جلب Open Food Facts للسوبرماركت" : "أضف منتجاً جديداً للبدء"} />
         </div>
       ) : (
         <div className="bg-card rounded-2xl border border-border overflow-hidden">
@@ -394,7 +397,7 @@ function ProductsMgr() {
 
       {/* ── Add Product Modal ── */}
       {showAdd && (
-        <Modal title="إضافة منتج جديد" sub="ادخل الباركود للجلب التلقائي من Open Food Facts أو أدخل البيانات يدوياً" onClose={() => setShowAdd(false)} size="lg">
+        <Modal title="إضافة منتج جديد" sub={storeCategory === "supermarket" ? "ادخل الباركود للجلب التلقائي من Open Food Facts أو أدخل البيانات يدوياً" : "أدخل بيانات المنتج الجديد"} onClose={() => setShowAdd(false)} size="lg">
 
           {/* Open Food Facts Section — supermarket only */}
           {modules.openFoodFacts && <div className="mb-5 p-4 bg-gradient-to-l from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl">
