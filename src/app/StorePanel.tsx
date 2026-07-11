@@ -19,6 +19,7 @@ import {
   Flower2, Gift, Bike,
 } from "lucide-react";
 import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules } from "./lib";
+import { SyncCenter, SyncStatusBadge } from "./SyncCenter";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
 import { SalesScreen, ProductsMgr, InvScreen, CustScreen, SuppScreen, PurchScreen, ExpScreen, ReturnScreen } from "./StorePanelB";
 import { StoreReports, EmpScreen, BranchScreen, LoyaltyScreen, PrintJobsScreen, PrintMatsScreen, PrintPricesScreen, StoreSetts } from "./StorePanelC";
@@ -46,6 +47,7 @@ const STORE_NAV = [
   { id: "bouquet",       label: "باقة مخصصة",         icon: <Gift size={15} /> },
   { id: "delivery_mgmt", label: "إدارة التوصيل",      icon: <Bike size={15} /> },
   { id: "settings",     label: "الإعدادات",           icon: <Settings size={15} /> },
+  { id: "sync",         label: "مركز المزامنة",       icon: <RefreshCw size={15} /> },
 ];
 
 function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => void }) {
@@ -140,7 +142,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
     { items: ["customers", "suppliers"] },
     { items: ["reports", "employees", "branches", "loyalty"] },
     { items: ["print_jobs", "print_mats", "print_prices", "flower_orders", "bouquet", "delivery_mgmt"] },
-    { items: ["settings"] },
+    { items: ["settings", "sync"] },
   ];
 
   return (
@@ -259,6 +261,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <SyncStatusBadge storeId={storeId} onOpenCenter={() => navTo("sync")} />
             <span className="hidden sm:flex items-center gap-1 text-xs text-emerald-600 font-medium px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> نشط
             </span>
@@ -325,6 +328,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
           {screen === "bouquet"       && <BouquetBuilderScreen store={store} />}
           {screen === "delivery_mgmt" && <DeliveryMgmtScreen store={store} />}
           {screen === "settings"     && <StoreSetts store={store} />}
+          {screen === "sync"         && <SyncCenter storeId={storeId} />}
         </main>
 
         {/* Mobile bottom nav */}
@@ -490,15 +494,63 @@ function POSTerm({ store }: { store: StoreData }) {
   const [openingBal, setOpeningBal] = useState("0");
   const [closingBal, setClosingBal] = useState("");
 
-  // منتجات POS — من Backend مباشرة
+  // منتجات POS — من Backend مع fallback إلى IndexedDB عند انقطاع الاتصال
   const { data: prodsApiRaw, refresh: refreshPosProds } = useApi<unknown[]>("/products", []);
   const [allProds, setAllProds] = useState<Product[]>([]);
-  useEffect(() => { setAllProds(normList<Product>(prodsApiRaw)); }, [prodsApiRaw]);
+  useEffect(() => {
+    const prods = normList<Product>(prodsApiRaw);
+    if (prods.length > 0) {
+      setAllProds(prods);
+      // Cache to IndexedDB for offline use
+      import("./offlineDb").then(({ cacheProducts }) => {
+        cacheProducts(sid, prods.map(p => ({
+          id: p.id, storeId: sid, nameAr: p.nameAr, nameEn: p.nameEn || "",
+          barcode: p.barcode || "", sku: p.sku || "", sellPrice: p.sellPrice,
+          costPrice: 0, stock: p.stock, minStock: p.minStock || 0,
+          category: p.category || "", unit: p.unit || "", isActive: true,
+          updatedAt: new Date().toISOString(), syncedAt: new Date().toISOString(),
+        }))).catch(() => {});
+      });
+    } else if (!navigator.onLine) {
+      // Offline fallback: load from IndexedDB
+      import("./offlineDb").then(({ db }) => {
+        db.products.where("storeId").equals(sid).filter(p => p.isActive).toArray().then(offlineProds => {
+          if (offlineProds.length > 0) {
+            setAllProds(offlineProds.map(p => ({
+              id: p.id, nameAr: p.nameAr, nameEn: p.nameEn || "",
+              barcode: p.barcode || "", sku: p.sku || "", sellPrice: p.sellPrice,
+              stock: p.stock, minStock: p.minStock || 0, category: p.category || "",
+              unit: p.unit || "", cost: p.costPrice || 0,
+            } as unknown as Product)));
+          }
+        }).catch(() => {});
+      });
+    }
+  }, [prodsApiRaw, sid]);
   // عملاء POS
   type POSCust = {id:string;name:string;phone:string;email?:string};
   const { data: custsApiRaw, refresh: refreshCusts } = useApi<unknown[]>("/customers", []);
   const [posCustomers, setPosCustomers] = useState<POSCust[]>([]);
-  useEffect(() => { setPosCustomers(normList<POSCust>(custsApiRaw)); }, [custsApiRaw]);
+  useEffect(() => {
+    const custs = normList<POSCust>(custsApiRaw);
+    if (custs.length > 0) {
+      setPosCustomers(custs);
+      // Cache to IndexedDB
+      import("./offlineDb").then(({ cacheCustomers }) => {
+        cacheCustomers(sid, custs.map(c => ({
+          id: c.id, storeId: sid, name: c.name, phone: c.phone || "",
+          email: c.email || "", syncStatus: "synced" as const,
+          createdAt: new Date().toISOString(), syncedAt: new Date().toISOString(),
+        }))).catch(() => {});
+      });
+    } else if (!navigator.onLine) {
+      import("./offlineDb").then(({ db }) => {
+        db.customers.where("storeId").equals(sid).toArray().then(offlineCusts => {
+          setPosCustomers(offlineCusts.map(c => ({ id: c.id, name: c.name, phone: c.phone || "", email: c.email })));
+        }).catch(() => {});
+      });
+    }
+  }, [custsApiRaw, sid]);
   const [cart, setCart] = useLS<CartItem[]>(sk(sid,"pos_cart"), []);  // السلة تبقى بعد الـ refresh
   const [holds, setHolds] = useLS<CartItem[][]>(sk(sid,"pos_holds"), []); // الطلبات المعلقة
   const [q, setQ] = useState("");
@@ -581,33 +633,89 @@ function POSTerm({ store }: { store: StoreData }) {
   }, paper);
 
   const doPay = async () => {
+    const saleItems = cart.map(i => ({
+      productId: i.product.id,
+      nameAr:    i.product.nameAr,
+      qty:       i.qty,
+      unitPrice: i.product.sellPrice,
+      discount:  i.discount,
+      total:     i.product.sellPrice * i.qty * (1 - i.discount / 100),
+    }));
+    const salePayload = {
+      invoiceNo:    invNo,
+      items:        saleItems,
+      subtotal: sub, discountAmt: da, taxAmt: ta, total,
+      payMethod: pay,
+      cashIn:     pay === "cash" ? parseFloat(cash || "0") : undefined,
+      change:     pay === "cash" ? Math.max(0, parseFloat(cash || "0") - total) : undefined,
+      cliqRef:    pay === "cliq" ? cliqRef : undefined,
+      cliqSender: pay === "cliq" ? cliqSender : undefined,
+      cardRef:    pay === "card" ? cardRef : undefined,
+      customerId:   selectedCustomer?.id,
+      customerName: selectedCustomer?.name || "عميل نقدي",
+      customerPhone:selectedCustomer?.phone,
+      status: "completed",
+    };
+
+    if (navigator.onLine) {
+      try {
+        await storeApi.post("/sales", salePayload);
+        setTimeout(() => refreshPosProds(), 500);
+      } catch {
+        // Online but server error — save offline as fallback
+        await saveOfflineSale(saleItems);
+      }
+    } else {
+      // Fully offline — save to IndexedDB + queue
+      await saveOfflineSale(saleItems);
+    }
+
+    setOk(true);
+    invNoRef.current = `INV-${new Date().getFullYear()}${String(Date.now()).slice(-6)}`;
+  };
+
+  const saveOfflineSale = async (saleItems: { productId: string; nameAr: string; qty: number; unitPrice: number; discount: number; total: number }[]) => {
     try {
-      await storeApi.post("/sales", {
-        invoiceNo: invNo,
-        items: cart.map(i => ({
-          productId: i.product.id,
-          nameAr:    i.product.nameAr,
-          qty:       i.qty,
-          unitPrice: i.product.sellPrice,
-          discount:  i.discount,
-          total:     i.product.sellPrice * i.qty * (1 - i.discount / 100),
-        })),
-        subtotal: sub, discountAmt: da, taxAmt: ta, total,
-        payMethod: pay,
-        cashIn:    pay === "cash" ? parseFloat(cash || "0") : undefined,
-        change:    pay === "cash" ? Math.max(0, parseFloat(cash || "0") - total) : undefined,
-        cliqRef:   pay === "cliq" ? cliqRef : undefined,
-        cliqSender:pay === "cliq" ? cliqSender : undefined,
-        cardRef:   pay === "card" ? cardRef : undefined,
+      const { db, generateUUID, generateOfflineInvoiceNo, deductLocalInventory } = await import("./offlineDb");
+      const { runSync } = await import("./syncEngine");
+      const localId = generateUUID();
+      const offlineInvNo = generateOfflineInvoiceNo(sid);
+      const now = new Date().toISOString();
+      const sale = {
+        localId, invoiceNo: offlineInvNo, storeId: sid,
+        items: saleItems, subtotal: sub, discountAmt: da, taxAmt: ta, total,
+        payMethod: pay as "cash" | "cliq" | "card",
+        cashIn:     pay === "cash" ? parseFloat(cash || "0") : undefined,
+        change:     pay === "cash" ? Math.max(0, parseFloat(cash || "0") - total) : undefined,
+        cliqRef:    pay === "cliq" ? cliqRef : undefined,
+        cliqSender: pay === "cliq" ? cliqSender : undefined,
+        cardRef:    pay === "card" ? cardRef : undefined,
         customerId:   selectedCustomer?.id,
         customerName: selectedCustomer?.name || "عميل نقدي",
         customerPhone:selectedCustomer?.phone,
-        status: "completed",
+        status: "completed" as const,
+        syncStatus: "pending" as const,
+        isOffline: true,
+        createdAt: now,
+      };
+      await db.sales.add(sale);
+      await deductLocalInventory(sid, saleItems);
+      await db.syncQueue.add({
+        operationId:   localId,
+        operationType: "create_sale",
+        storeId: sid,
+        payload: sale,
+        localCreatedAt: now,
+        syncStatus: "pending",
+        retryCount: 0,
       });
-      setTimeout(() => refreshPosProds(), 500);
-    } catch { /* المخزون يتحدث عند الـ refresh */ }
-    setOk(true);
-    invNoRef.current = `INV-${new Date().getFullYear()}${String(Date.now()).slice(-6)}`;
+      showToast("تم حفظ الفاتورة محلياً — ستُزامن عند عودة الاتصال", "warning");
+      // Try sync in background if online
+      if (navigator.onLine) setTimeout(() => runSync(sid), 2000);
+    } catch (e) {
+      console.error("[POSTerm] saveOfflineSale failed:", e);
+      showToast("تعذّر حفظ الفاتورة محلياً — تحقق من التخزين", "error");
+    }
   };
 
   const handleClose = () => {
