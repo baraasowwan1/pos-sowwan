@@ -1,92 +1,89 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --font-size: 15px;
+  --font-size: 14px;
 
-  /* ── Warm Swiss POS Theme ─────────────────────────────────────────
-     Background: warm off-white — no harsh glare for cashiers on long shifts
-     Primary: calm teal-blue — confident, readable, easy on the eyes
-     Sidebar: deep warm slate — clear contrast, not pure black
+  /* ── Enterprise SaaS Palette (Square / Stripe / Shopify direction) ──
+     Clean neutrals, single brand blue, no decorative color noise.
   ──────────────────────────────────────────────────────────────────── */
-  --background: #F5F3F0;
-  --foreground: #1C1917;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
   --card: #FFFFFF;
-  --card-foreground: #1C1917;
+  --card-foreground: #0F172A;
   --popover: #FFFFFF;
-  --popover-foreground: #1C1917;
-  --primary: #0C7BB3;
+  --popover-foreground: #0F172A;
+  --primary: #2563EB;
   --primary-foreground: #FFFFFF;
-  --secondary: #EAE7E3;
-  --secondary-foreground: #2D2A27;
-  --muted: #EAE7E3;
-  --muted-foreground: #78716C;
-  --accent: #0DA870;
+  --secondary: #F1F5F9;
+  --secondary-foreground: #334155;
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+  --accent: #059669;
   --accent-foreground: #FFFFFF;
   --destructive: #DC2626;
   --destructive-foreground: #FFFFFF;
-  --border: rgba(28, 25, 23, 0.09);
+  --border: #E2E8F0;
   --input: transparent;
-  --input-background: #F9F8F6;
-  --switch-background: #C4BDB7;
+  --input-background: #FFFFFF;
+  --switch-background: #CBD5E1;
   --font-weight-medium: 600;
   --font-weight-normal: 400;
-  --ring: #0C7BB3;
-  --chart-1: #0C7BB3;
-  --chart-2: #0DA870;
-  --chart-3: #F59E0B;
+  --ring: #2563EB;
+  --chart-1: #2563EB;
+  --chart-2: #059669;
+  --chart-3: #D97706;
   --chart-4: #DC2626;
   --chart-5: #7C3AED;
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 
-  /* Sidebar — deep warm slate, not cold blue-black */
-  --sidebar: #1E2B3C;
-  --sidebar-foreground: #E8E4DF;
-  --sidebar-primary: #3BAEE0;
+  /* Sidebar — deep slate, not navy */
+  --sidebar: #0F172A;
+  --sidebar-foreground: #94A3B8;
+  --sidebar-primary: #60A5FA;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: rgba(255,255,255,0.07);
-  --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: rgba(255,255,255,0.07);
-  --sidebar-ring: #3BAEE0;
+  --sidebar-accent: rgba(255,255,255,0.06);
+  --sidebar-accent-foreground: #F1F5F9;
+  --sidebar-border: rgba(255,255,255,0.06);
+  --sidebar-ring: #60A5FA;
 }
 
 .dark {
-  /* Warm dark — easier on eyes than cold pure-black dark modes */
-  --background: #171412;
-  --foreground: #EDE9E4;
-  --card: #201D1A;
-  --card-foreground: #EDE9E4;
-  --popover: #201D1A;
-  --popover-foreground: #EDE9E4;
-  --primary: #3BAEE0;
-  --primary-foreground: #0A1520;
-  --secondary: #2C2825;
-  --secondary-foreground: #EDE9E4;
-  --muted: #2C2825;
-  --muted-foreground: #A09890;
-  --accent: #10C87D;
-  --accent-foreground: #0A1A12;
-  --destructive: #F87171;
-  --destructive-foreground: #1A0A0A;
-  --border: rgba(237, 233, 228, 0.09);
-  --input: rgba(237, 233, 228, 0.06);
-  --input-background: #252220;
-  --switch-background: #3D3732;
-  --ring: #3BAEE0;
+  --background: #0F172A;
+  --foreground: #F1F5F9;
+  --card: #1E293B;
+  --card-foreground: #F1F5F9;
+  --popover: #1E293B;
+  --popover-foreground: #F1F5F9;
+  --primary: #3B82F6;
+  --primary-foreground: #FFFFFF;
+  --secondary: #334155;
+  --secondary-foreground: #F1F5F9;
+  --muted: #334155;
+  --muted-foreground: #94A3B8;
+  --accent: #10B981;
+  --accent-foreground: #FFFFFF;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #334155;
+  --input: transparent;
+  --input-background: #1E293B;
+  --switch-background: #475569;
+  --ring: #3B82F6;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: #3BAEE0;
-  --chart-2: #10C87D;
-  --chart-3: #FBBF24;
-  --chart-4: #F87171;
+  --chart-1: #3B82F6;
+  --chart-2: #10B981;
+  --chart-3: #F59E0B;
+  --chart-4: #EF4444;
   --chart-5: #A78BFA;
-  --sidebar: #0F1820;
-  --sidebar-foreground: #D4CFC9;
-  --sidebar-primary: #3BAEE0;
+  --sidebar: #020617;
+  --sidebar-foreground: #94A3B8;
+  --sidebar-primary: #60A5FA;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: rgba(255,255,255,0.06);
-  --sidebar-accent-foreground: #EDE9E4;
-  --sidebar-border: rgba(255,255,255,0.06);
-  --sidebar-ring: #3BAEE0;
+  --sidebar-accent: rgba(255,255,255,0.05);
+  --sidebar-accent-foreground: #F1F5F9;
+  --sidebar-border: rgba(255,255,255,0.05);
+  --sidebar-ring: #60A5FA;
 }
 
 @theme inline {
