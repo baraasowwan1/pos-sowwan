@@ -1,5 +1,6 @@
 // StorePanelC — Reports, Employees, Branches, Loyalty, Print Shop, Settings
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import * as XLSX from "xlsx";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -21,20 +22,56 @@ import {
 import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules } from "./lib";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
 
+// ── decode JWT payload without verification ───────────────────────────────────
+function decodeJwtRole(): string {
+  try {
+    const token = getToken();
+    if (!token) return "";
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload.role || payload.userRole || "";
+  } catch { return ""; }
+}
+
+// Roles allowed to export reports
+const EXPORT_ROLES = ["مالك", "مدير", "محاسب", "owner", "manager", "accountant", "superadmin"];
+// Roles allowed to view reports at all
+const REPORT_ROLES = ["مالك", "مدير", "محاسب", "مسؤول مخزون", "owner", "manager", "accountant", "inventory"];
+
 function StoreReports() {
+  const sid = useStoreId();
   const [period, setPeriod] = useState("month");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const [exporting, setExporting] = useState(false);
   const { data: salesRaw, loading: sLoading } = useApi<unknown[]>("/sales", []);
   const { data: retsRaw } = useApi<unknown[]>("/returns", []);
 
-  const sales = normList<{id:string;total:number;discount:number;tax:number;payMethod:string;paymentMethod:string;createdAt:string;items:{name:string;qty:number;price:number}[]}>(salesRaw);
+  // Permission check
+  const userRole = decodeJwtRole();
+  const canView   = !userRole || REPORT_ROLES.some(r => userRole.includes(r));
+  const canExport = !userRole || EXPORT_ROLES.some(r => userRole.includes(r));
+
+  type SaleRow = { id:string; invoiceNo?:string; total:number; discount:number; tax:number; payMethod:string; paymentMethod:string; createdAt:string; items:{name:string;qty:number;price:number}[]; customerName?:string; };
+  const sales = normList<SaleRow>(salesRaw);
   const rets  = normList<{id:string;amount:number;status:string}>(retsRaw);
 
   const now = new Date();
+
+  const periodLabel = (() => {
+    if (period === "today") return "اليوم";
+    if (period === "yesterday") return "أمس";
+    if (period === "week") return "آخر 7 أيام";
+    if (period === "lastweek") return "الأسبوع الماضي";
+    if (period === "month") return now.toLocaleDateString("ar-JO", { month: "long", year: "numeric" });
+    if (period === "lastmonth") { const lm = new Date(now.getFullYear(), now.getMonth()-1, 1); return lm.toLocaleDateString("ar-JO", { month: "long", year: "numeric" }); }
+    if (period === "year") return String(now.getFullYear());
+    if (period === "custom" && customFrom && customTo) return `${customFrom} — ${customTo}`;
+    return "مخصص";
+  })();
+
   const filtered = sales.filter(s => {
     const d = new Date(s.createdAt);
-    if (period === "today") { return d.toDateString() === now.toDateString(); }
+    if (period === "today") return d.toDateString() === now.toDateString();
     if (period === "yesterday") { const y = new Date(now); y.setDate(y.getDate()-1); return d.toDateString() === y.toDateString(); }
     if (period === "week") { const w = new Date(now); w.setDate(w.getDate()-7); return d >= w; }
     if (period === "lastweek") { const e = new Date(now); e.setDate(e.getDate()-7); const s2 = new Date(now); s2.setDate(s2.getDate()-14); return d >= s2 && d < e; }
@@ -43,7 +80,7 @@ function StoreReports() {
     if (period === "year") return d.getFullYear()===now.getFullYear();
     if (period === "custom") {
       const from = customFrom ? new Date(customFrom) : null;
-      const to = customTo ? new Date(customTo + "T23:59:59") : null;
+      const to   = customTo   ? new Date(customTo + "T23:59:59") : null;
       return (!from || d >= from) && (!to || d <= to);
     }
     return d.getFullYear()===now.getFullYear();
@@ -52,7 +89,9 @@ function StoreReports() {
   const totalSales    = filtered.reduce((a, s) => a + (s.total || 0), 0);
   const totalDiscount = filtered.reduce((a, s) => a + (s.discount || 0), 0);
   const totalTax      = filtered.reduce((a, s) => a + (s.tax || 0), 0);
+  const netSales      = totalSales - totalDiscount;
   const totalRets     = rets.filter(r => r.status === "معتمد").reduce((a, r) => a + (r.amount || 0), 0);
+  const avgInvoice    = filtered.length ? totalSales / filtered.length : 0;
 
   const payGroups = filtered.reduce((acc: Record<string, number>, s) => {
     const m = s.payMethod || s.paymentMethod || "cash";
@@ -62,29 +101,134 @@ function StoreReports() {
   }, {});
   const payTotal = Object.values(payGroups).reduce((a, v) => a + v, 0) || 1;
 
-  const prodMap: Record<string, number> = {};
-  filtered.forEach(s => s.items?.forEach(it => { prodMap[it.name] = (prodMap[it.name] || 0) + (it.price * it.qty); }));
-  const topProds = Object.entries(prodMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const topMax = topProds[0]?.[1] || 1;
+  const prodMap: Record<string, { revenue: number; qty: number }> = {};
+  filtered.forEach(s => s.items?.forEach(it => {
+    if (!prodMap[it.name]) prodMap[it.name] = { revenue: 0, qty: 0 };
+    prodMap[it.name].revenue += it.price * it.qty;
+    prodMap[it.name].qty     += it.qty;
+  }));
+  const topProds = Object.entries(prodMap).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 5);
+  const topMax = topProds[0]?.[1].revenue || 1;
 
   const dayMap: Record<string, number> = {};
   filtered.forEach(s => {
-    const key = new Date(s.createdAt).toLocaleDateString("ar-JO", { weekday: "short" });
+    const key = new Date(s.createdAt).toLocaleDateString("ar-JO", { month: "2-digit", day: "2-digit" });
     dayMap[key] = (dayMap[key] || 0) + s.total;
   });
   const chartData = Object.entries(dayMap).map(([day, مبيعات]) => ({ day, مبيعات }));
+
+  // ── Excel Export ─────────────────────────────────────────────────────────────
+  const exportExcel = useCallback(() => {
+    if (!canExport) { showToast("ليس لديك صلاحية تصدير التقارير", "error"); return; }
+    setExporting(true);
+    try {
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: ملخص
+      const storeName = (() => { try { return JSON.parse(localStorage.getItem(`sowwanjo_storeinfo_${sid}`) || "{}").nameAr || "المتجر"; } catch { return "المتجر"; } })();
+      const summaryData = [
+        ["تقرير المبيعات — " + storeName, "", ""],
+        ["الفترة:", periodLabel, ""],
+        ["تاريخ التصدير:", new Date().toLocaleDateString("ar-JO"), new Date().toLocaleTimeString("ar-JO")],
+        ["", "", ""],
+        ["البيان", "المبلغ (JOD)", ""],
+        ["إجمالي المبيعات", totalSales.toFixed(3), ""],
+        ["الخصومات الممنوحة", totalDiscount.toFixed(3), ""],
+        ["صافي المبيعات", netSales.toFixed(3), ""],
+        ["ضريبة القيمة المضافة", totalTax.toFixed(3), ""],
+        ["المرتجعات المعتمدة", totalRets.toFixed(3), ""],
+        ["عدد الفواتير", filtered.length, ""],
+        ["متوسط قيمة الفاتورة", avgInvoice.toFixed(3), ""],
+        ["", "", ""],
+        ["طرق الدفع", "", ""],
+        ...Object.entries(payGroups).map(([m, v]) => [m, v.toFixed(3), `${Math.round((v / payTotal) * 100)}%`]),
+      ];
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+      wsSummary["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 10 }];
+      XLSX.utils.book_append_sheet(wb, wsSummary, "ملخص");
+
+      // Sheet 2: الفواتير
+      const invoiceHeaders = ["رقم الفاتورة", "التاريخ", "الوقت", "العميل", "طريقة الدفع", "الخصم (JOD)", "الضريبة (JOD)", "الإجمالي (JOD)"];
+      const invoiceRows = filtered.map(s => {
+        const dt = new Date(s.createdAt);
+        const payLabel = (s.payMethod || s.paymentMethod || "cash") === "cash" ? "نقدي" : (s.payMethod || s.paymentMethod) === "cliq" ? "كليك" : "بطاقة";
+        return [
+          s.invoiceNo || s.id.slice(-6).toUpperCase(),
+          dt.toLocaleDateString("ar-JO"),
+          dt.toLocaleTimeString("ar-JO"),
+          s.customerName || "زبون عام",
+          payLabel,
+          (s.discount || 0).toFixed(3),
+          (s.tax || 0).toFixed(3),
+          (s.total || 0).toFixed(3),
+        ];
+      });
+      const wsInvoices = XLSX.utils.aoa_to_sheet([invoiceHeaders, ...invoiceRows]);
+      wsInvoices["!cols"] = [{ wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 20 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+      XLSX.utils.book_append_sheet(wb, wsInvoices, "الفواتير");
+
+      // Sheet 3: أكثر المنتجات مبيعاً
+      const prodHeaders = ["المنتج", "إجمالي المبيعات (JOD)", "الكمية المباعة"];
+      const prodRows = Object.entries(prodMap)
+        .sort((a, b) => b[1].revenue - a[1].revenue)
+        .map(([name, { revenue, qty }]) => [name, revenue.toFixed(3), qty]);
+      const wsProds = XLSX.utils.aoa_to_sheet([prodHeaders, ...prodRows]);
+      wsProds["!cols"] = [{ wch: 30 }, { wch: 20 }, { wch: 16 }];
+      XLSX.utils.book_append_sheet(wb, wsProds, "أكثر المنتجات مبيعاً");
+
+      // Sheet 4: المرتجعات
+      const retHeaders = ["رقم المرتجع", "المبلغ (JOD)", "الحالة"];
+      const retRows = rets.map(r => [r.id.slice(-6).toUpperCase(), (r.amount || 0).toFixed(3), r.status]);
+      const wsRets = XLSX.utils.aoa_to_sheet([retHeaders, ...retRows]);
+      wsRets["!cols"] = [{ wch: 16 }, { wch: 16 }, { wch: 14 }];
+      XLSX.utils.book_append_sheet(wb, wsRets, "المرتجعات");
+
+      const fileName = `تقرير-المبيعات-${periodLabel.replace(/[^a-zA-Z0-9؀-ۿ\-]/g, "_")}-${new Date().toISOString().split("T")[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      showToast("تم تصدير التقرير بنجاح ✓", "success");
+    } catch {
+      showToast("فشل تصدير التقرير — حاول مرة أخرى", "error");
+    } finally {
+      setExporting(false);
+    }
+  }, [canExport, filtered, totalSales, totalDiscount, netSales, totalTax, totalRets, avgInvoice, payGroups, payTotal, prodMap, rets, periodLabel, sid]);
 
   const printTax = () => {
     const taxable = totalSales - totalTax;
     const w = window.open("", "_blank", "width=420,height=600");
     if (!w) { showToast("يُرجى السماح بالنوافذ المنبثقة", "warning"); return; }
-    w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>تقرير الضريبة</title><style>*{font-family:Cairo,sans-serif;margin:0;padding:0}body{padding:20px}h2{text-align:center;margin-bottom:16px}table{width:100%;border-collapse:collapse}td{padding:10px;border-bottom:1px solid #e5e7eb}td:last-child{font-weight:900;text-align:left}@media print{button{display:none}}</style></head><body><h2>تقرير الضريبة — ${period === "month" ? now.toLocaleDateString("ar-JO", { month: "long", year: "numeric" }) : period === "week" ? "آخر 7 أيام" : "السنة الحالية"}</h2><table><tr><td>إجمالي المبيعات</td><td>${totalSales.toFixed(3)} JOD</td></tr><tr><td>مبيعات خاضعة للضريبة</td><td>${taxable.toFixed(3)} JOD</td></tr><tr><td>ضريبة القيمة المضافة 16%</td><td>${totalTax.toFixed(3)} JOD</td></tr><tr><td>الخصومات</td><td>${totalDiscount.toFixed(3)} JOD</td></tr></table><br><button onclick="window.print()">طباعة</button></body></html>`);
+    const storeName = (() => { try { return JSON.parse(localStorage.getItem(`sowwanjo_storeinfo_${sid}`) || "{}").nameAr || ""; } catch { return ""; } })();
+    w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>تقرير الضريبة</title><style>*{font-family:Cairo,sans-serif;margin:0;padding:0}body{padding:20px}h2{text-align:center;margin-bottom:4px}p.sub{text-align:center;color:#6b7280;font-size:12px;margin-bottom:16px}table{width:100%;border-collapse:collapse}td{padding:10px;border-bottom:1px solid #e5e7eb}td:last-child{font-weight:900;text-align:left}@media print{button{display:none}}</style></head><body><h2>تقرير الضريبة</h2><p class="sub">${storeName} • ${periodLabel}</p><table><tr><td>إجمالي المبيعات</td><td>${totalSales.toFixed(3)} JOD</td></tr><tr><td>مبيعات قبل الضريبة</td><td>${taxable.toFixed(3)} JOD</td></tr><tr><td>ضريبة القيمة المضافة 16%</td><td>${totalTax.toFixed(3)} JOD</td></tr><tr><td>الخصومات</td><td>${totalDiscount.toFixed(3)} JOD</td></tr><tr><td>صافي المبيعات</td><td>${netSales.toFixed(3)} JOD</td></tr></table><br><button onclick="window.print()">طباعة</button></body></html>`);
     w.document.close();
   };
 
+  if (!canView) {
+    return (
+      <div className="p-5 h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4"><Shield size={24} className="text-red-500" /></div>
+          <p className="font-bold text-foreground">ليس لديك صلاحية عرض التقارير</p>
+          <p className="text-sm text-muted-foreground mt-1">تواصل مع مدير المتجر لمنحك الوصول</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-5 space-y-5 overflow-y-auto h-full">
-      <Hdr title="التقارير والإحصائيات" action={<Btn v="secondary" s="sm" icon={<Printer size={13} />} onClick={printTax}>طباعة تقرير الضريبة</Btn>} />
+      {/* Header */}
+      <Hdr title="التقارير والإحصائيات" action={
+        <div className="flex gap-2">
+          {canExport && (
+            <Btn s="sm" icon={exporting ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />} onClick={exportExcel} disabled={exporting}>
+              {exporting ? "جاري التصدير..." : "تصدير Excel"}
+            </Btn>
+          )}
+          <Btn v="secondary" s="sm" icon={<Printer size={13} />} onClick={printTax}>طباعة</Btn>
+        </div>
+      } />
+
+      {/* Period filter */}
       <div className="flex flex-wrap gap-1.5 items-center">
         <div className="flex bg-muted rounded-2xl p-1 border border-border flex-wrap gap-0.5">
           {([["today","اليوم"],["yesterday","أمس"],["week","أسبوع"],["lastweek","الأسبوع الماضي"],["month","هذا الشهر"],["lastmonth","الشهر الماضي"],["year","هذه السنة"],["custom","مخصص"]] as [string,string][]).map(([vv,l]) => (
@@ -98,18 +242,29 @@ function StoreReports() {
             <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="h-8 rounded-xl border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary" />
           </div>
         )}
+        <span className="text-xs text-muted-foreground bg-muted px-3 h-8 flex items-center rounded-xl border border-border">{filtered.length} فاتورة • {periodLabel}</span>
+        {!canExport && (
+          <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 h-8 flex items-center gap-1 rounded-xl">
+            <Shield size={11} /> صلاحية التصدير غير متاحة
+          </span>
+        )}
       </div>
+
+      {/* KPIs */}
       {sLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{[0,1,2,3].map(i => <div key={i} className="bg-card rounded-2xl border border-border h-24 animate-pulse" />)}</div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPI icon={<ShoppingCart size={18} />} label="إجمالي المبيعات" value={`${totalSales.toFixed(3)} JOD`} sub={`${filtered.length} فاتورة`} color="#1D4ED8" />
-          <KPI icon={<TrendingUp size={18} />} label="ضريبة القيمة المضافة" value={`${totalTax.toFixed(3)} JOD`} color="#059669" />
+          <KPI icon={<ShoppingCart size={18} />} label="إجمالي المبيعات" value={`${totalSales.toFixed(3)} JOD`} sub={`${filtered.length} فاتورة`} color="#0C7BB3" />
+          <KPI icon={<TrendingUp size={18} />} label="صافي المبيعات" value={`${netSales.toFixed(3)} JOD`} sub={`خصم ${totalDiscount.toFixed(3)} JOD`} color="#059669" />
           <KPI icon={<RotateCcw size={18} />} label="المرتجعات المعتمدة" value={`${totalRets.toFixed(3)} JOD`} color="#DC2626" />
-          <KPI icon={<Percent size={18} />} label="إجمالي الخصومات" value={`${totalDiscount.toFixed(3)} JOD`} color="#D97706" />
+          <KPI icon={<Percent size={18} />} label="متوسط الفاتورة" value={`${avgInvoice.toFixed(3)} JOD`} color="#D97706" />
         </div>
       )}
+
+      {/* Charts + tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Sales chart */}
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">مبيعات الفترة</p>
           {chartData.length === 0 ? (
@@ -117,30 +272,43 @@ function StoreReports() {
           ) : (
             <ResponsiveContainer width="100%" height={190}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 10 }} />
                 <Tooltip formatter={(v: number) => [`${v.toFixed(3)} JOD`]} />
-                <Line type="monotone" dataKey="مبيعات" stroke="#1D4ED8" strokeWidth={2.5} dot={false} />
+                <Line type="monotone" dataKey="مبيعات" stroke="#0C7BB3" strokeWidth={2.5} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           )}
         </div>
+
+        {/* Top products */}
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">أكثر المنتجات مبيعاً</p>
           {topProds.length === 0 ? (
             <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">لا توجد مبيعات بعد</div>
           ) : (
             <div className="space-y-3">
-              {topProds.map(([name, rev], i) => (
+              {topProds.map(([name, { revenue, qty }], i) => (
                 <div key={name} className="flex items-center gap-3">
                   <span className="text-xs font-black text-muted-foreground w-4 shrink-0">{i + 1}</span>
-                  <div className="flex-1"><div className="flex justify-between mb-1"><span className="text-xs font-bold">{name}</span><span className="text-xs font-black">{rev.toFixed(3)} JOD</span></div><div className="h-1.5 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${Math.round((rev / topMax) * 100)}%` }} /></div></div>
+                  <div className="flex-1">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-xs font-bold">{name}</span>
+                      <span className="text-xs font-black">{revenue.toFixed(3)} JOD</span>
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full">
+                      <div className="h-full bg-primary rounded-full" style={{ width: `${Math.round((revenue / topMax) * 100)}%` }} />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{qty} وحدة مباعة</p>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+
+        {/* Payment methods */}
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">طرق الدفع</p>
           {Object.keys(payGroups).length === 0 ? (
@@ -157,16 +325,30 @@ function StoreReports() {
             </div>
           )}
         </div>
+
+        {/* Tax summary */}
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">ملخص الضريبة</p>
           <div className="space-y-3">
-            {[["إجمالي المبيعات", `${totalSales.toFixed(3)} JOD`], ["مبيعات قبل الضريبة", `${(totalSales - totalTax).toFixed(3)} JOD`], ["ضريبة القيمة المضافة 16%", `${totalTax.toFixed(3)} JOD`], ["الخصومات الممنوحة", `${totalDiscount.toFixed(3)} JOD`]].map(([l, vv]) => (
+            {[
+              ["إجمالي المبيعات",         `${totalSales.toFixed(3)} JOD`],
+              ["مبيعات قبل الضريبة",      `${(totalSales - totalTax).toFixed(3)} JOD`],
+              ["ضريبة القيمة المضافة 16%", `${totalTax.toFixed(3)} JOD`],
+              ["الخصومات الممنوحة",       `${totalDiscount.toFixed(3)} JOD`],
+              ["صافي المبيعات",           `${netSales.toFixed(3)} JOD`],
+            ].map(([l, vv]) => (
               <div key={l} className="flex justify-between border-b border-border/60 pb-2 last:border-0">
-                <span className="text-sm text-muted-foreground">{l}</span><span className="font-bold">{vv}</span>
+                <span className="text-sm text-muted-foreground">{l}</span>
+                <span className="font-bold">{vv}</span>
               </div>
             ))}
           </div>
-          <Btn v="secondary" full cls="mt-4" icon={<Printer size={13} />} onClick={printTax}>طباعة تقرير الضريبة</Btn>
+          <div className="flex gap-2 mt-4">
+            <Btn v="secondary" full icon={<Printer size={13} />} onClick={printTax}>طباعة</Btn>
+            {canExport && (
+              <Btn full icon={exporting ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />} onClick={exportExcel} disabled={exporting}>Excel</Btn>
+            )}
+          </div>
         </div>
       </div>
     </div>
