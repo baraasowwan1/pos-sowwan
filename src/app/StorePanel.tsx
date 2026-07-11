@@ -133,71 +133,114 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
     { id: "settings",  label: "إعدادات",  icon: <Settings size={19} /> },
   ];
 
+  // Group nav items for sidebar sections
+  const NAV_GROUPS = [
+    { items: ["dashboard", "pos"] },
+    { items: ["sales", "products", "inventory", "purchases", "returns", "expenses"] },
+    { items: ["customers", "suppliers"] },
+    { items: ["reports", "employees", "branches", "loyalty"] },
+    { items: ["print_jobs", "print_mats", "print_prices", "flower_orders", "bouquet", "delivery_mgmt"] },
+    { items: ["settings"] },
+  ];
+
   return (
     <div className="flex h-screen overflow-hidden bg-background" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
 
-      {/* SIDEBAR: mobile=hidden, tablet=icon(52px), desktop=full(224px) */}
+      {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
       <aside
-        className={`hidden md:flex shrink-0 flex-col transition-all duration-300 md:w-[52px] ${col ? "lg:w-[52px]" : "lg:w-56"}`}
-        style={{ background: "#0F172A" }}>
-        <div className="h-14 flex items-center gap-2.5 px-2 lg:px-3 border-b border-white/7 shrink-0">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${cat.color}25` }}>
-            <span style={{ color: cat.color }}>{cat.icon}</span>
+        className={`hidden md:flex shrink-0 flex-col transition-all duration-200 border-l border-sidebar-border md:w-14 ${col ? "lg:w-14" : "lg:w-52"}`}
+        style={{ background: "var(--sidebar)" }}>
+
+        {/* Logo / Store name */}
+        <div className={`h-12 flex items-center gap-2.5 shrink-0 border-b border-sidebar-border ${col ? "lg:justify-center lg:px-0" : "lg:px-3"} px-2`}>
+          <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: `${cat.color}22` }}>
+            <span className="text-xs" style={{ color: cat.color }}>{cat.icon}</span>
           </div>
           <div className={`min-w-0 hidden ${col ? "lg:hidden" : "lg:block"}`}>
-            <p className="text-white font-bold text-xs leading-tight truncate">{store.nameAr}</p>
-            <p className="text-white/30 text-xs">{cat.label}</p>
+            <p className="text-sidebar-foreground font-semibold text-xs leading-tight truncate" style={{ color: "#F1F5F9" }}>{store.nameAr}</p>
+            <p className="text-xs truncate" style={{ color: "var(--sidebar-foreground)" }}>{cat.label}</p>
           </div>
         </div>
-        <nav className="flex-1 px-1 py-2 space-y-0.5 overflow-y-auto">
-          {visibleNav.map(n => (
-            <button key={n.id} onClick={() => navTo(n.id)}
-              className={`w-full flex items-center gap-2.5 md:h-10 lg:h-9 rounded-xl text-xs font-semibold transition-all justify-center md:px-1.5 ${col ? "lg:justify-center lg:px-1.5" : "lg:justify-start lg:px-2.5"} ${screen === n.id ? "bg-white/10 text-white" : "text-white/45 hover:bg-white/5 hover:text-white/80"}`}
-              title={n.label}>
-              <span className="shrink-0">{n.icon}</span>
-              <span className={`hidden truncate ${col ? "lg:hidden" : "lg:inline"}`}>{n.label}</span>
-            </button>
-          ))}
+
+        {/* Nav */}
+        <nav className="flex-1 px-1.5 py-2 overflow-y-auto space-y-px">
+          {NAV_GROUPS.map((grp, gi) => {
+            const groupItems = grp.items
+              .map(id => visibleNav.find(n => n.id === id))
+              .filter(Boolean) as typeof visibleNav;
+            if (!groupItems.length) return null;
+            return (
+              <div key={gi} className={gi > 0 ? "pt-1.5 mt-1.5 border-t border-sidebar-border" : ""}>
+                {groupItems.map(n => (
+                  <button key={n.id} onClick={() => navTo(n.id)} title={n.label}
+                    className={`w-full flex items-center gap-2.5 h-8 rounded-md text-xs font-medium transition-colors mb-0.5
+                      justify-center md:justify-center ${col ? "lg:justify-center" : "lg:justify-start lg:px-2.5"} px-2
+                      ${screen === n.id
+                        ? "bg-sidebar-primary/15 text-sidebar-primary"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      }`}>
+                    <span className="shrink-0">{n.icon}</span>
+                    <span className={`hidden truncate ${col ? "lg:hidden" : "lg:inline"}`}>{n.label}</span>
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </nav>
-        <div className="p-1.5 border-t border-white/7 space-y-0.5">
-          <div className={`px-2.5 py-2 rounded-xl bg-white/4 hidden ${col ? "lg:hidden" : "lg:block"}`}>
-            <p className="text-white/40 text-xs">{store.plan}</p>
-            <p className="text-white/25 text-xs">ينتهي {store.expiresAt}</p>
-          </div>
-          <button onClick={() => setCol(!col)} className="hidden lg:flex w-full items-center justify-center h-8 rounded-xl text-white/30 hover:text-white/60 hover:bg-white/5">
+
+        {/* Footer */}
+        <div className="p-1.5 border-t border-sidebar-border space-y-px">
+          <button onClick={() => setCol(!col)} className="hidden lg:flex w-full items-center justify-center h-7 rounded-md text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
             {col ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
           </button>
-          <button onClick={onLogout} className={`w-full flex items-center gap-2 md:h-10 lg:h-8 rounded-xl text-xs text-red-400/60 hover:text-red-400 hover:bg-red-500/10 justify-center ${col ? "lg:justify-center" : "lg:justify-start lg:px-2.5"}`}>
+          <button onClick={onLogout}
+            className={`w-full flex items-center gap-2 h-8 rounded-md text-xs transition-colors
+              text-red-400/60 hover:text-red-400 hover:bg-red-500/10
+              justify-center md:justify-center ${col ? "lg:justify-center" : "lg:justify-start lg:px-2.5"} px-2`}>
             <LogOut size={13} />
             <span className={`hidden ${col ? "lg:hidden" : "lg:inline"}`}>تسجيل الخروج</span>
           </button>
         </div>
       </aside>
 
-      {/* Mobile slide-in menu */}
+      {/* ── Mobile slide-in menu ─────────────────────────────────────────────── */}
       {storeMobileMenu && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setStoreMobileMenu(false)} />
-          <div className="relative mr-auto w-64 h-full flex flex-col shadow-2xl" style={{ background: "#0F172A", paddingTop: "env(safe-area-inset-top)" }}>
-            <div className="h-14 flex items-center gap-2.5 px-4 border-b border-white/7 shrink-0">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${cat.color}25` }}>
-                <span style={{ color: cat.color }}>{cat.icon}</span>
+          <div className="absolute inset-0 bg-black/50" onClick={() => setStoreMobileMenu(false)} />
+          <div className="relative mr-auto w-60 h-full flex flex-col" style={{ background: "var(--sidebar)", paddingTop: "env(safe-area-inset-top)" }}>
+            <div className="h-12 flex items-center gap-2.5 px-3 border-b border-sidebar-border shrink-0">
+              <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: `${cat.color}22` }}>
+                <span className="text-xs" style={{ color: cat.color }}>{cat.icon}</span>
               </div>
-              <div className="min-w-0 flex-1"><p className="text-white font-bold text-xs leading-tight truncate">{store.nameAr}</p><p className="text-white/30 text-xs">{cat.label}</p></div>
-              <button onClick={() => setStoreMobileMenu(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 text-white shrink-0"><X size={14} /></button>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-xs leading-tight truncate" style={{ color: "#F1F5F9" }}>{store.nameAr}</p>
+                <p className="text-xs" style={{ color: "var(--sidebar-foreground)" }}>{cat.label}</p>
+              </div>
+              <button onClick={() => setStoreMobileMenu(false)} className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-sidebar-accent text-sidebar-foreground shrink-0"><X size={13} /></button>
             </div>
-            <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto">
-              {visibleNav.map(n => (
-                <button key={n.id} onClick={() => { navTo(n.id); setStoreMobileMenu(false); }}
-                  className={`w-full flex items-center gap-2.5 h-10 rounded-xl px-3 text-sm font-semibold transition-all ${screen === n.id ? "bg-white/10 text-white" : "text-white/50 hover:bg-white/5 hover:text-white/80"}`}>
-                  <span className="shrink-0">{n.icon}</span>
-                  <span className="truncate">{n.label}</span>
-                </button>
-              ))}
+            <nav className="flex-1 px-1.5 py-2 space-y-px overflow-y-auto">
+              {NAV_GROUPS.map((grp, gi) => {
+                const groupItems = grp.items.map(id => visibleNav.find(n => n.id === id)).filter(Boolean) as typeof visibleNav;
+                if (!groupItems.length) return null;
+                return (
+                  <div key={gi} className={gi > 0 ? "pt-1.5 mt-1.5 border-t border-sidebar-border" : ""}>
+                    {groupItems.map(n => (
+                      <button key={n.id} onClick={() => { navTo(n.id); setStoreMobileMenu(false); }}
+                        className={`w-full flex items-center gap-2.5 h-9 rounded-md px-2.5 text-sm font-medium transition-colors mb-0.5
+                          ${screen === n.id
+                            ? "bg-sidebar-primary/15 text-sidebar-primary"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent"
+                          }`}>
+                        <span className="shrink-0">{n.icon}</span>
+                        <span className="truncate">{n.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
             </nav>
-            <div className="p-2 border-t border-white/7 space-y-0.5" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}>
-              {<div className="px-3 py-2 rounded-xl bg-white/4 mb-1"><p className="text-white/40 text-xs">{store.plan}</p><p className="text-white/25 text-xs">ينتهي {store.expiresAt}</p></div>}
-              <button onClick={onLogout} className="w-full flex items-center gap-2 h-9 rounded-xl text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10 px-3">
+            <div className="p-1.5 border-t border-sidebar-border" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}>
+              <button onClick={onLogout} className="w-full flex items-center gap-2 h-8 rounded-md px-2.5 text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-colors">
                 <LogOut size={13} />تسجيل الخروج
               </button>
             </div>
@@ -206,45 +249,48 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
       )}
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <header className="h-14 bg-card border-b border-border flex items-center justify-between px-3 sm:px-4 shrink-0" style={{ paddingTop: "env(safe-area-inset-top)" }}>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setStoreMobileMenu(true)} className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground"><Menu size={18} /></button>
-            <button onClick={() => setCol(!col)} className="hidden md:flex w-8 h-8 items-center justify-center rounded-xl hover:bg-muted text-muted-foreground"><Menu size={15} /></button>
-            <div><p className="text-sm font-bold">{visibleNav.find(n => n.id === screen)?.label || STORE_NAV.find(n => n.id === screen)?.label}</p><p className="text-xs text-muted-foreground hidden sm:block">{dateAr()} • {timeAr()}</p></div>
+        {/* ── Top header ─────────────────────────────────────────────────────── */}
+        <header className="h-12 bg-card border-b border-border flex items-center justify-between px-3 sm:px-4 shrink-0 gap-2" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+          <div className="flex items-center gap-2 min-w-0">
+            <button onClick={() => setStoreMobileMenu(true)} className="md:hidden w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground"><Menu size={16} /></button>
+            <button onClick={() => setCol(!col)} className="hidden md:flex w-8 h-8 items-center justify-center rounded-md hover:bg-muted text-muted-foreground"><Menu size={15} /></button>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold truncate">{visibleNav.find(n => n.id === screen)?.label || STORE_NAV.find(n => n.id === screen)?.label}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="hidden sm:flex items-center gap-1.5 text-xs bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> نشط
+          <div className="flex items-center gap-1">
+            <span className="hidden sm:flex items-center gap-1 text-xs text-emerald-600 font-medium px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> نشط
             </span>
             {/* Announcements Bell */}
             <div className="relative">
               <button onClick={() => { setShowAnn(!showAnn); if (!showAnn) markAllSeen(); }}
-                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground relative">
-                <Bell size={16} />
+                className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground relative">
+                <Bell size={15} />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border border-card">
+                  <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
               </button>
               {showAnn && (
-                <div className="absolute left-0 top-full mt-2 w-80 max-w-[calc(100vw-1rem)] bg-card rounded-2xl border border-border shadow-2xl z-50 overflow-hidden">
+                <div className="absolute left-0 top-full mt-1 w-72 max-w-[calc(100vw-1rem)] bg-card rounded-lg border border-border shadow-lg z-50 overflow-hidden">
                   <div className="flex justify-between items-center px-4 py-3 border-b border-border">
-                    <span className="font-bold text-sm flex items-center gap-2">
-                      <Bell size={13} /> الإعلانات
-                      {unreadCount > 0 && <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">{unreadCount}</span>}
+                    <span className="text-sm font-semibold flex items-center gap-1.5">
+                      الإعلانات
+                      {unreadCount > 0 && <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{unreadCount}</span>}
                     </span>
-                    <button onClick={() => setShowAnn(false)} className="text-xs text-muted-foreground hover:text-foreground"><X size={14} /></button>
+                    <button onClick={() => setShowAnn(false)} className="text-muted-foreground hover:text-foreground"><X size={13} /></button>
                   </div>
-                  <div className="max-h-72 overflow-y-auto">
+                  <div className="max-h-64 overflow-y-auto">
                     {announcements.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
-                        <Bell size={28} className="mx-auto mb-2 opacity-30" />
-                        <p className="text-sm">لا توجد إعلانات</p>
+                        <Bell size={24} className="mx-auto mb-2 opacity-30" />
+                        <p className="text-xs">لا توجد إعلانات</p>
                       </div>
                     ) : announcements.map(a => (
-                      <div key={a._id} className={`px-4 py-3 border-b border-border/50 last:border-0 ${!seenIds.includes(a._id) ? "bg-primary/3" : ""}`}>
-                        <div className={`text-xs font-bold px-2 py-0.5 rounded-full border inline-block mb-1 ${ANN_TYPE_COLOR[a.type] || ANN_TYPE_COLOR.info}`}>
+                      <div key={a._id} className={`px-4 py-3 border-b border-border last:border-0 ${!seenIds.includes(a._id) ? "bg-primary/5" : ""}`}>
+                        <div className={`text-xs font-semibold px-2 py-0.5 rounded border inline-block mb-1 ${ANN_TYPE_COLOR[a.type] || ANN_TYPE_COLOR.info}`}>
                           {a.title}
                         </div>
                         <p className="text-xs text-foreground leading-relaxed">{a.message}</p>
@@ -286,9 +332,10 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
           {storeBottomNav.map(n => (
             <button key={n.id} onClick={() => navTo(n.id)}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-all min-h-[56px] ${screen === n.id ? "text-primary" : "text-muted-foreground"}`}>
-              <span className={`transition-transform ${screen === n.id ? "scale-110" : ""}`}>{n.icon}</span>
-              <span className="text-[10px] font-bold leading-tight">{n.label}</span>
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[52px] transition-colors ${screen === n.id ? "text-primary" : "text-muted-foreground"}`}>
+              <span>{n.icon}</span>
+              <span className="text-[10px] font-medium leading-tight">{n.label}</span>
+              {screen === n.id && <span className="absolute bottom-0 w-5 h-0.5 bg-primary rounded-t-full" />}
             </button>
           ))}
         </nav>
@@ -322,18 +369,18 @@ function StoreDash({ store }: { store: StoreData }) {
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto h-full">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI icon={<ShoppingCart size={18} />} label="مبيعات اليوم"
+        <KPI icon={<ShoppingCart size={16} />} label="مبيعات اليوم"
           value={sumLoading ? "..." : `${(summary.today?.total || 0).toFixed(3)} JOD`}
-          sub={`${summary.today?.count || 0} فاتورة`} color="#1D4ED8" />
-        <KPI icon={<DollarSign size={18} />} label="إيرادات الشهر"
+          sub={`${summary.today?.count || 0} فاتورة`} color="#2563EB" />
+        <KPI icon={<DollarSign size={16} />} label="إيرادات الشهر"
           value={sumLoading ? "..." : `${(summary.month?.total || 0).toFixed(3)} JOD`}
           color="#059669" />
-        <KPI icon={<Package size={18} />} label="المنتجات"
+        <KPI icon={<Package size={16} />} label="المنتجات"
           value={sumLoading ? "..." : String(summary.totalProducts || store.products || 0)}
-          sub={summary.lowStock ? `${summary.lowStock} منخفضة المخزون` : "المخزون جيد"} color="#D97706" />
-        <KPI icon={<Users size={18} />} label="العملاء"
+          sub={summary.lowStock ? `${summary.lowStock} منخفضة` : "المخزون جيد"} color="#D97706" />
+        <KPI icon={<Users size={16} />} label="العملاء"
           value={sumLoading ? "..." : String(summary.totalCustomers || 0)}
-          sub="إجمالي العملاء" color="#7C3AED" />
+          color="#7C3AED" />
       </div>
       <div className="grid grid-cols-3 gap-4">
         {[
