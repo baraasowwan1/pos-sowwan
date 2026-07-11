@@ -439,24 +439,24 @@ export function SBadge({ status }: { status: StoreData["status"] }) {
   );
 }
 
-export function KPI({ icon, label, value, sub, color = "#1D4ED8", trend }: {
+export function KPI({ icon, label, value, sub, color = "#2563EB", trend }: {
   icon: React.ReactNode; label: string; value: string; sub?: string; color?: string; trend?: number;
 }) {
   return (
-    <div className="bg-card rounded-2xl p-4 sm:p-5 border border-border shadow-sm hover:shadow-md transition-all group">
-      <div className="flex items-start justify-between mb-3 sm:mb-4">
-        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform" style={{ backgroundColor: `${color}18` }}>
-          <span style={{ color }}>{icon}</span>
-        </div>
+    <div className="bg-card rounded-lg p-4 border border-border hover:border-primary/20 transition-colors">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
         {trend !== undefined && (
-          <span className={`flex items-center gap-0.5 text-xs font-bold px-2 py-1 rounded-lg ${trend >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
+          <span className={`flex items-center gap-0.5 text-xs font-semibold ${trend >= 0 ? "text-emerald-600" : "text-red-600"}`}>
             {trend >= 0 ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}{Math.abs(trend)}%
           </span>
         )}
       </div>
-      <p className="text-xl sm:text-2xl font-bold text-foreground mb-0.5 leading-tight">{value}</p>
-      <p className="text-xs sm:text-sm text-muted-foreground">{label}</p>
-      {sub && <p className="text-xs text-muted-foreground/60 mt-0.5">{sub}</p>}
+      <p className="text-xl font-bold text-foreground leading-tight mb-1">{value}</p>
+      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+      <div className="mt-3 pt-3 border-t border-border flex items-center gap-1.5" style={{ color }}>
+        <span className="opacity-70">{icon}</span>
+      </div>
     </div>
   );
 }
@@ -466,17 +466,19 @@ export function Modal({ title, sub, onClose, children, size = "md" }: {
 }) {
   const w = { sm: "max-w-md", md: "max-w-xl", lg: "max-w-2xl" };
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={`bg-card rounded-t-3xl sm:rounded-2xl shadow-2xl w-full ${w[size]} max-h-[94vh] sm:max-h-[88vh] flex flex-col`} dir="rtl" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {/* Drag handle — mobile only */}
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" style={{ background: "rgba(15,23,42,0.5)" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className={`bg-card rounded-t-xl sm:rounded-xl border border-border shadow-xl w-full ${w[size]} max-h-[94vh] sm:max-h-[88vh] flex flex-col`} dir="rtl" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-muted-foreground/25" />
+          <div className="w-8 h-1 rounded-full bg-border" />
         </div>
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-5 border-b border-border shrink-0">
-          <div><h3 className="text-base sm:text-lg font-bold text-foreground">{title}</h3>{sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}</div>
-          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-muted transition-colors"><X size={15} className="text-muted-foreground" /></button>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+            {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+          </div>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"><X size={14} /></button>
         </div>
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 overscroll-contain">{children}</div>
+        <div className="p-5 overflow-y-auto flex-1 overscroll-contain">{children}</div>
       </div>
     </div>
   );
@@ -484,8 +486,8 @@ export function Modal({ title, sub, onClose, children, size = "md" }: {
 
 export function F({ label, req, children }: { label: string; req?: boolean; children: React.ReactNode }) {
   return (
-    <div className="space-y-1.5">
-      <label className="text-sm font-semibold text-foreground">{label}{req && <span className="text-red-500 mr-0.5">*</span>}</label>
+    <div className="space-y-1">
+      <label className="text-xs font-medium text-foreground">{label}{req && <span className="text-destructive mr-0.5">*</span>}</label>
       {children}
     </div>
   );
@@ -498,14 +500,14 @@ export function TInput({ value, onChange, placeholder, type = "text", icon, read
     <div className="relative">
       {icon && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">{icon}</span>}
       <input type={type} value={value} readOnly={readOnly} onChange={e => onChange?.(e.target.value)} placeholder={placeholder}
-        className={`w-full h-11 md:h-10 rounded-xl border border-border bg-input-background text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/25 focus:border-primary transition-all ${icon ? "pr-9 pl-3" : "px-3"} ${readOnly ? "opacity-60" : ""}`} />
+        className={`w-full h-9 rounded-md border border-border bg-input-background text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors ${icon ? "pr-9 pl-3" : "px-3"} ${readOnly ? "opacity-50" : ""}`} />
     </div>
   );
 }
 
 export function SInput({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   return (
-    <select value={value} onChange={e => onChange(e.target.value)} className="w-full h-11 md:h-10 rounded-xl border border-border bg-input-background text-sm text-foreground px-3 focus:outline-none focus:ring-2 focus:ring-ring/25 focus:border-primary">
+    <select value={value} onChange={e => onChange(e.target.value)} className="w-full h-9 rounded-md border border-border bg-input-background text-sm text-foreground px-3 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
@@ -517,17 +519,22 @@ export function Btn({ children, onClick, v = "primary", s = "md", icon, cls = ""
   s?: "xs" | "sm" | "md" | "lg"; icon?: React.ReactNode; cls?: string; disabled?: boolean; full?: boolean;
 }) {
   const vs = {
-    primary: "bg-primary text-white hover:bg-primary/90 shadow-sm",
-    secondary: "bg-card text-foreground border border-border hover:bg-muted shadow-sm",
-    ghost: "text-foreground hover:bg-muted/70",
-    danger: "bg-destructive text-white hover:bg-destructive/90 shadow-sm",
-    success: "bg-accent text-white hover:bg-accent/90 shadow-sm",
-    warning: "bg-amber-500 text-white hover:bg-amber-600 shadow-sm",
+    primary:   "bg-primary text-primary-foreground hover:bg-primary/90",
+    secondary: "bg-card text-foreground border border-border hover:bg-muted",
+    ghost:     "text-foreground hover:bg-muted",
+    danger:    "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+    success:   "bg-accent text-accent-foreground hover:bg-accent/90",
+    warning:   "bg-amber-500 text-white hover:bg-amber-600",
   };
-  const ss = { xs: "h-7 px-2.5 text-xs gap-1", sm: "h-9 px-3 text-xs gap-1.5", md: "h-11 md:h-10 px-4 text-sm gap-2", lg: "h-13 md:h-12 px-6 text-base gap-2" };
+  const ss = {
+    xs: "h-7 px-2.5 text-xs gap-1 rounded-md",
+    sm: "h-8 px-3 text-xs gap-1.5 rounded-md",
+    md: "h-9 px-4 text-sm gap-2 rounded-md",
+    lg: "h-10 px-5 text-sm gap-2 rounded-md",
+  };
   return (
     <button onClick={onClick} disabled={disabled}
-      className={`inline-flex items-center justify-center font-semibold rounded-xl transition-all ${vs[v]} ${ss[s]} ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${full ? "w-full" : ""} ${cls}`}>
+      className={`inline-flex items-center justify-center font-medium transition-colors ${vs[v]} ${ss[s]} ${disabled ? "opacity-40 cursor-not-allowed pointer-events-none" : ""} ${full ? "w-full" : ""} ${cls}`}>
       {icon}{children}
     </button>
   );
@@ -535,19 +542,22 @@ export function Btn({ children, onClick, v = "primary", s = "md", icon, cls = ""
 
 export function Hdr({ title, sub, action }: { title: string; sub?: string; action?: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between mb-4 sm:mb-5 gap-3">
-      <div><h2 className="text-lg sm:text-xl font-bold text-foreground">{title}</h2>{sub && <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{sub}</p>}</div>
-      {action && <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">{action}</div>}
+    <div className="flex items-center justify-between gap-3 pb-4 border-b border-border mb-5">
+      <div>
+        <h2 className="text-base font-semibold text-foreground">{title}</h2>
+        {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+      </div>
+      {action && <div className="flex items-center gap-2 flex-wrap justify-end shrink-0">{action}</div>}
     </div>
   );
 }
 
 export function Empty({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4 text-muted-foreground/50">{icon}</div>
-      <p className="font-bold text-foreground mb-1">{title}</p>
-      <p className="text-sm text-muted-foreground">{desc}</p>
+    <div className="flex flex-col items-center justify-center py-14 text-center px-6">
+      <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3 text-muted-foreground">{icon}</div>
+      <p className="text-sm font-semibold text-foreground mb-1">{title}</p>
+      <p className="text-xs text-muted-foreground max-w-xs">{desc}</p>
     </div>
   );
 }
@@ -570,13 +580,23 @@ export function ToastHost() {
     return () => { const i = _toastListeners.indexOf(fn); if (i > -1) _toastListeners.splice(i, 1); };
   }, []);
   if (!list.length) return null;
-  const BG: Record<string,string> = { success:"bg-emerald-600", error:"bg-red-600", info:"bg-blue-600", warning:"bg-amber-500" };
-  const IC: Record<string,React.ReactNode> = { success:<CheckCircle size={14}/>, error:<XCircle size={14}/>, info:<Info size={14}/>, warning:<AlertTriangle size={14}/> };
+  const styles: Record<string,string> = {
+    success: "bg-card border-emerald-200 text-emerald-700",
+    error:   "bg-card border-red-200 text-red-700",
+    info:    "bg-card border-blue-200 text-blue-700",
+    warning: "bg-card border-amber-200 text-amber-700",
+  };
+  const IC: Record<string,React.ReactNode> = {
+    success: <CheckCircle size={14} />,
+    error:   <XCircle size={14} />,
+    info:    <Info size={14} />,
+    warning: <AlertTriangle size={14} />,
+  };
   return (
-    <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 pointer-events-none" dir="rtl">
+    <div className="fixed bottom-5 left-5 z-[200] flex flex-col gap-2 pointer-events-none" dir="rtl">
       {list.map(t => (
-        <div key={t.id} className={`${BG[t.type]} text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-sm font-semibold min-w-56`}>
-          {IC[t.type]}{t.msg}
+        <div key={t.id} className={`${styles[t.type]} border shadow-lg px-4 py-2.5 rounded-lg flex items-center gap-2.5 text-sm font-medium min-w-56 max-w-xs`}>
+          {IC[t.type]}<span className="text-foreground">{t.msg}</span>
         </div>
       ))}
     </div>
@@ -640,15 +660,73 @@ export function useStoreModules(): CategoryModules {
 // LOGIN
 // ─────────────────────────────────────────────────────────────────────────────
 
-const BUSINESS_CATS = [
-  { icon: "🛒", label: "سوبرماركت" },
-  { icon: "👕", label: "ملابس" },
-  { icon: "☕", label: "كافيه" },
-  { icon: "📱", label: "إلكترونيات" },
-  { icon: "✂️", label: "حلاقة" },
-  { icon: "🖨️", label: "مطبعة" },
-  { icon: "🌸", label: "محل زهور" },
-];
+// Inline SVG POS dashboard illustration for the brand panel
+function POSIllustration() {
+  const bars = [42, 68, 55, 80, 61, 90, 74];
+  const maxBar = 90;
+  return (
+    <div className="w-full max-w-[400px] mx-auto select-none" style={{ animation: "fadeUp 0.7s ease both 0.3s" }}>
+      {/* Mock app window */}
+      <div className="rounded-xl overflow-hidden border border-white/10 shadow-2xl" style={{ background: "#1e293b" }}>
+        {/* Window bar */}
+        <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-white/8" style={{ background: "#0f172a" }}>
+          <span className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-400/70" />
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/70" />
+          <span className="flex-1 text-center text-[10px] text-white/20 font-mono">Sowwanjo POS</span>
+        </div>
+        <div className="p-3 space-y-2.5">
+          {/* Metric row */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "مبيعات اليوم", value: "247.850", unit: "JOD", color: "#60a5fa" },
+              { label: "الفواتير",      value: "38",       unit: "فاتورة", color: "#34d399" },
+              { label: "العملاء",      value: "12",       unit: "جديد",  color: "#a78bfa" },
+            ].map(m => (
+              <div key={m.label} className="rounded-lg p-2" style={{ background: "#0f172a" }}>
+                <p className="text-[9px] mb-1" style={{ color: "#64748b" }}>{m.label}</p>
+                <p className="text-sm font-bold leading-none" style={{ color: m.color }}>{m.value}</p>
+                <p className="text-[9px] mt-0.5" style={{ color: "#475569" }}>{m.unit}</p>
+              </div>
+            ))}
+          </div>
+          {/* Bar chart */}
+          <div className="rounded-lg p-2.5" style={{ background: "#0f172a" }}>
+            <p className="text-[9px] mb-2" style={{ color: "#64748b" }}>مبيعات الأسبوع</p>
+            <div className="flex items-end gap-1 h-16">
+              {bars.map((h, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                  <div className="w-full rounded-sm" style={{ height: `${(h / maxBar) * 100}%`, background: i === 5 ? "#2563eb" : "#1e3a5f", transition: "height 1s ease" }} />
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between mt-1">
+              {["سبت","أحد","اثن","ثلا","أرب","خمس","جمع"].map(d => (
+                <span key={d} className="flex-1 text-center" style={{ fontSize: "7px", color: "#334155" }}>{d}</span>
+              ))}
+            </div>
+          </div>
+          {/* Product rows */}
+          <div className="space-y-1">
+            {[
+              { name: "كوكا كولا 330مل", qty: 24, price: "0.650" },
+              { name: "عصير نكتار توت",  qty: 18, price: "0.850" },
+              { name: "ماء حياة 500مل",  qty: 41, price: "0.250" },
+            ].map(p => (
+              <div key={p.name} className="flex items-center gap-2 rounded px-2 py-1.5" style={{ background: "#0f172a" }}>
+                <div className="w-5 h-5 rounded flex items-center justify-center shrink-0" style={{ background: "#1e3a5f" }}>
+                  <span style={{ fontSize: "9px" }}>📦</span>
+                </div>
+                <span className="flex-1 text-[9px] truncate" style={{ color: "#94a3b8" }}>{p.name}</span>
+                <span className="text-[9px] font-bold" style={{ color: "#60a5fa" }}>{p.price} JOD</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store", id?: string) => void }) {
   const [mode, setMode] = useState<"store" | "admin">("store");
@@ -774,192 +852,317 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
-      {/* ── Offline banner ───────────────────────────────────────────────────── */}
+    <div className="min-h-screen flex" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        .login-enter { animation: fadeUp 0.5s ease both; }
+        .login-enter-1 { animation: fadeUp 0.5s ease both 0.05s; }
+        .login-enter-2 { animation: fadeUp 0.5s ease both 0.1s; }
+        .login-enter-3 { animation: fadeUp 0.5s ease both 0.15s; }
+        .login-enter-4 { animation: fadeUp 0.5s ease both 0.2s; }
+        .login-enter-5 { animation: fadeUp 0.5s ease both 0.25s; }
+        .login-enter-6 { animation: fadeUp 0.5s ease both 0.3s; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin-slow { animation: spin 0.8s linear infinite; }
+      `}</style>
+
+      {/* ── Offline banner ─────────────────────────────────────────────────── */}
       {!online && (
-        <div className="fixed top-0 inset-x-0 z-50 bg-red-600 text-white text-center text-xs font-bold py-2 flex items-center justify-center gap-2">
-          <WifiOff size={13} /> لا يوجد اتصال بالإنترنت — تحقق من الشبكة
+        <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold text-white" style={{ background: "#DC2626", animation: "fadeIn 0.3s ease" }}>
+          <WifiOff size={13} />
+          <span>لا يوجد اتصال بالإنترنت — تحقق من الشبكة</span>
         </div>
       )}
 
-      {/* ── Mobile Hero ──────────────────────────────────────────────────────── */}
-      <div className="lg:hidden relative overflow-hidden shrink-0" style={{ background: "linear-gradient(160deg,#0A0F1E 0%,#0F172A 50%,#162040 100%)", minHeight: "220px" }}>
-        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)", backgroundSize: "40px 40px" }} />
-        <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-15" style={{ background: "radial-gradient(circle,#3B82F6 0%,transparent 70%)", transform: "translate(30%,-30%)" }} />
-        <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-10" style={{ background: "radial-gradient(circle,#06B6D4 0%,transparent 70%)", transform: "translate(-30%,30%)" }} />
-        <div className="relative z-10 px-6 pt-12 pb-8 flex flex-col items-center text-center">
-          <button onClick={handleLogoClick} className="flex items-center gap-3 mb-5 select-none" style={{ background: "none", border: "none" }}>
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/25 border border-blue-400/30 flex items-center justify-center">
-              <Store size={22} className="text-blue-400" />
-            </div>
-            <div className="text-right">
-              <p className="text-white font-black text-xl leading-tight">Sowwanjo POS</p>
-              <p className="text-blue-400/60 text-xs">نظام نقاط البيع السحابي</p>
-            </div>
-          </button>
-          <h1 className="text-2xl font-black text-white leading-tight mb-1">
-            ادِر متجرك <span className="bg-gradient-to-l from-blue-400 to-cyan-400 bg-clip-text text-transparent">بذكاء</span>
-          </h1>
-          <p className="text-white/40 text-sm">نظام POS متكامل مصمم للسوق الأردني</p>
-          <div className="flex flex-wrap justify-center gap-2 mt-4">
-            {BUSINESS_CATS.map(c => (
-              <span key={c.label} className="text-xs font-bold text-blue-300 bg-blue-500/15 border border-blue-500/20 px-2.5 py-1 rounded-full">{c.icon} {c.label}</span>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* ═══════════════════════════════════════════════════════════════════════
+          BRAND PANEL — right side (RTL: rendered left visually)
+      ════════════════════════════════════════════════════════════════════════ */}
+      <div className="hidden lg:flex flex-1 flex-col" style={{ background: "#0F172A" }}>
+        {/* Subtle dot-grid texture */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.035) 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+          width: "calc(100% - 480px)",
+        }} />
 
-      {/* ── Desktop Decorative Panel ─────────────────────────────────────────── */}
-      <div className="hidden lg:flex flex-1 flex-col relative overflow-hidden" style={{ background: "linear-gradient(160deg,#0A0F1E 0%,#0F172A 40%,#162040 100%)" }}>
-        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)", backgroundSize: "48px 48px" }} />
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full opacity-10" style={{ background: "radial-gradient(circle,#3B82F6 0%,transparent 70%)" }} />
-        <div className="absolute bottom-1/3 left-1/4 w-64 h-64 rounded-full opacity-10" style={{ background: "radial-gradient(circle,#06B6D4 0%,transparent 70%)" }} />
         <div className="relative z-10 flex flex-col h-full">
-          <div className="px-12 pt-10">
-            <button onClick={handleLogoClick} className="flex items-center gap-3 cursor-pointer group select-none" style={{ background: "none", border: "none" }}>
-              <div className="w-11 h-11 rounded-2xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center backdrop-blur-sm group-hover:bg-blue-500/30 transition-colors">
-                <Store size={20} className="text-blue-400" />
+          {/* Wordmark */}
+          <div className="px-10 pt-9">
+            <button onClick={handleLogoClick} className="flex items-center gap-3 select-none group" style={{ background: "none", border: "none" }}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#2563EB" }}>
+                <Store size={18} className="text-white" />
               </div>
               <div className="text-right">
-                <p className="text-white font-black text-lg leading-tight">Sowwanjo POS</p>
-                <p className="text-blue-400/60 text-xs">pos.sowwanjo.online</p>
+                <p className="font-bold text-white leading-none" style={{ fontSize: "15px", letterSpacing: "-0.01em" }}>Sowwanjo POS</p>
+                <p className="text-xs mt-0.5" style={{ color: "#475569" }}>نظام نقاط البيع السحابي</p>
               </div>
             </button>
           </div>
-          <div className="flex-1 flex flex-col items-center justify-center px-8 py-6">
-            <div className="text-center mb-6">
-              <h1 className="text-4xl font-black text-white leading-tight mb-2">
-                ادِر متجرك<br />
-                <span className="bg-gradient-to-l from-blue-400 to-cyan-400 bg-clip-text text-transparent">بذكاء وسرعة</span>
+
+          {/* Hero content */}
+          <div className="flex-1 flex flex-col items-center justify-center px-10 py-8">
+            <div className="w-full max-w-sm text-right mb-8" style={{ animation: "fadeUp 0.6s ease both 0.1s" }}>
+              <div className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full border" style={{ borderColor: "rgba(37,99,235,0.4)", background: "rgba(37,99,235,0.1)" }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" style={{ boxShadow: "0 0 6px #60a5fa" }} />
+                <span className="text-xs font-semibold" style={{ color: "#60a5fa" }}>الإصدار 2.0 — الآن متاح</span>
+              </div>
+              <h1 className="font-black leading-snug mb-3 text-white" style={{ fontSize: "clamp(24px, 2.5vw, 32px)" }}>
+                منصة POS الأذكى<br />
+                <span style={{ color: "#3B82F6" }}>للأعمال الأردنية</span>
               </h1>
-              <p className="text-white/40 text-sm max-w-xs mx-auto">نظام POS سحابي متكامل مصمم للسوق الأردني</p>
+              <p className="text-sm leading-relaxed" style={{ color: "#64748B" }}>
+                إدارة المبيعات والمخزون والعملاء من مكان واحد — مصمم لكل أنواع المتاجر في الأردن.
+              </p>
             </div>
-            {/* Business categories grid */}
-            <div className="grid grid-cols-4 gap-2 w-full max-w-sm mb-6">
-              {BUSINESS_CATS.map(c => (
-                <div key={c.label} className="bg-white/[0.05] border border-white/[0.08] rounded-xl p-2.5 text-center hover:bg-white/[0.09] transition-colors">
-                  <div className="text-xl mb-1">{c.icon}</div>
-                  <p className="text-white/70 text-xs font-semibold leading-tight">{c.label}</p>
-                </div>
-              ))}
+
+            {/* POS Dashboard Illustration */}
+            <div className="w-full max-w-[380px]" style={{ animation: "fadeUp 0.7s ease both 0.2s" }}>
+              <POSIllustration />
             </div>
-            <div className="grid grid-cols-2 gap-2.5 w-full max-w-sm">
+
+            {/* Feature pills */}
+            <div className="flex flex-wrap gap-2 mt-6 justify-center" style={{ animation: "fadeUp 0.6s ease both 0.35s" }}>
               {[
-                { icon: <Store size={15} />, t: "متعدد المتاجر", d: "إدارة كاملة بلا حدود" },
-                { icon: <ShoppingCart size={15} />, t: "نقطة بيع سريعة", d: "واجهة لمس احترافية" },
-                { icon: <BarChart2 size={15} />, t: "تقارير لحظية", d: "تحليلات مباشرة" },
-                { icon: <Shield size={15} />, t: "أمان عالي", d: "بيانات معزولة لكل متجر" },
+                { label: "متعدد المتاجر" },
+                { label: "تقارير لحظية" },
+                { label: "باركود" },
+                { label: "Open Food Facts" },
+                { label: "نقطة بيع سريعة" },
+                { label: "صلاحيات متعددة" },
               ].map(f => (
-                <div key={f.t} className="bg-white/[0.04] border border-white/[0.07] rounded-xl p-3 backdrop-blur-sm hover:bg-white/[0.07] transition-colors">
-                  <div className="text-blue-400 mb-1.5">{f.icon}</div>
-                  <p className="text-white font-bold text-xs">{f.t}</p>
-                  <p className="text-white/35 text-xs mt-0.5">{f.d}</p>
-                </div>
+                <span key={f.label} className="px-2.5 py-1 rounded-md text-xs font-medium" style={{ background: "rgba(255,255,255,0.05)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  {f.label}
+                </span>
               ))}
             </div>
           </div>
-          <div className="px-8 pb-8 text-center">
-            <p className="text-white/20 text-xs">جميع الحقوق محفوظة © 2025 Sowwanjo · JOD · RTL</p>
+
+          {/* Footer */}
+          <div className="px-10 pb-7 text-right">
+            <p className="text-xs" style={{ color: "#1e293b" }}>© 2025 Sowwanjo · JOD · RTL · pos.sowwanjo.online</p>
           </div>
         </div>
       </div>
 
-      {/* ── Form Panel ───────────────────────────────────────────────────────── */}
-      <div className="w-full lg:w-[460px] bg-background flex items-start lg:items-center justify-center p-5 sm:p-8 lg:p-8" style={{ paddingTop: !online ? "calc(2rem + 32px)" : undefined, paddingBottom: "calc(env(safe-area-inset-bottom) + 2rem)" }}>
-        <div className="w-full max-w-sm">
-          {adminUnlocked && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center gap-2">
-              <Shield size={14} className="text-amber-600 shrink-0" />
-              <p className="text-xs font-bold text-amber-700">تم تفعيل وضع الإدارة العليا</p>
+      {/* ═══════════════════════════════════════════════════════════════════════
+          FORM PANEL — left side (RTL: rendered right visually)
+      ════════════════════════════════════════════════════════════════════════ */}
+      <div
+        className="w-full lg:w-[480px] flex flex-col bg-white"
+        style={{
+          minHeight: "100dvh",
+          borderRight: "1px solid #E2E8F0",
+          paddingTop: !online ? "calc(env(safe-area-inset-top) + 40px)" : "env(safe-area-inset-top)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+      >
+        {/* Mobile wordmark */}
+        <div className="lg:hidden flex items-center gap-3 px-6 pt-8 pb-2">
+          <button onClick={handleLogoClick} className="flex items-center gap-3 select-none" style={{ background: "none", border: "none" }}>
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#2563EB" }}>
+              <Store size={18} className="text-white" />
             </div>
-          )}
-
-          <div className="mb-6 lg:mb-8">
-            <h2 className="text-2xl font-black text-foreground mb-1">
-              {mode === "admin" && adminUnlocked ? "بوابة الإدارة العليا" : "تسجيل الدخول"}
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              {mode === "admin" && adminUnlocked ? "الوصول مقيد بالمصرح لهم فقط" : "أدخل بيانات حساب متجرك للدخول"}
-            </p>
-          </div>
-
-          {adminUnlocked && (
-            <div className="flex bg-muted/60 rounded-2xl p-1 mb-6 border border-border">
-              <button onClick={() => { setMode("store"); setErr(""); }} className={`flex-1 h-10 rounded-xl text-sm font-bold transition-all ${mode === "store" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>
-                🏪 دخول المتجر
-              </button>
-              <button onClick={() => { setMode("admin"); setErr(""); }} className={`flex-1 h-10 rounded-xl text-sm font-bold transition-all ${mode === "admin" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>
-                🔐 الإدارة العليا
-              </button>
+            <div className="text-right">
+              <p className="font-bold text-foreground leading-none" style={{ fontSize: "15px" }}>Sowwanjo POS</p>
+              <p className="text-xs text-muted-foreground mt-0.5">نظام نقاط البيع السحابي</p>
             </div>
-          )}
+          </button>
+        </div>
 
-          <div className="space-y-4">
-            <F label={mode === "admin" ? "اسم المستخدم" : "البريد الإلكتروني للمتجر"} req>
-              <TInput value={email} onChange={setEmail} placeholder={mode === "admin" ? "اسم المستخدم" : "store@sowwanjo.online"} icon={mode === "admin" ? <Shield size={14} /> : <Mail size={14} />} />
-            </F>
+        {/* Centered form wrapper */}
+        <div className="flex-1 flex items-center justify-center px-6 py-8 lg:py-0">
+          <div className="w-full max-w-[360px]">
 
-            <F label="كلمة المرور" req>
-              <div className="relative">
-                <input
-                  type={showPass ? "text" : "password"}
-                  value={pass}
-                  onChange={e => setPass(e.target.value)}
-                  placeholder="••••••••"
-                  onKeyDown={e => e.key === "Enter" && doLogin()}
-                  onKeyUp={e => setCapsLock(e.getModifierState("CapsLock"))}
-                  className="w-full h-11 rounded-xl border border-border bg-input-background text-sm text-foreground px-3 pr-9 focus:outline-none focus:ring-2 focus:ring-ring/25 focus:border-primary transition-all"
-                />
-                <button onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-              {capsLock && (
-                <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
-                  <AlertCircle size={11} /> تنبيه: مفتاح Caps Lock مفعّل
-                </p>
-              )}
-            </F>
-
-            {/* Remember Me */}
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={e => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded border-border accent-primary"
-              />
-              <span className="text-sm text-muted-foreground">تذكرني</span>
-            </label>
-
-            {err && (
-              <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <span>{err}</span>
-                  {(err.includes("مهلة") || err.includes("timeout") || err.includes("اتصال")) && (
-                    <button onClick={doLogin} className="block text-xs font-bold text-red-700 underline mt-1">إعادة المحاولة</button>
-                  )}
-                </div>
+            {/* Admin unlock badge */}
+            {adminUnlocked && (
+              <div className="login-enter mb-5 flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border" style={{ background: "#fffbeb", borderColor: "#fcd34d" }}>
+                <Shield size={13} className="shrink-0" style={{ color: "#b45309" }} />
+                <p className="text-xs font-semibold" style={{ color: "#92400e" }}>تم تفعيل وضع الإدارة العليا</p>
               </div>
             )}
 
-            <Btn onClick={doLogin} full disabled={loading || !online} s="lg" icon={loading ? <RefreshCw size={16} className="animate-spin" /> : <ArrowLeft size={16} />}>
-              {loading ? "جاري التحقق..." : !online ? "لا يوجد اتصال" : "دخول"}
-            </Btn>
-          </div>
-
-          {mode === "store" && (
-            <div className="mt-5 p-4 bg-blue-50 border border-blue-200 rounded-2xl">
-              <p className="text-xs font-bold text-blue-800 mb-1 flex items-center gap-1.5"><Info size={12} /> ملاحظة لأصحاب المتاجر</p>
-              <p className="text-xs text-blue-700 leading-relaxed">إذا لم تمتلك حساباً، تواصل مع مزود الخدمة على: support@sowwanjo.online</p>
+            {/* Heading */}
+            <div className="login-enter mb-7">
+              <h2 className="font-bold text-foreground mb-1" style={{ fontSize: "22px", letterSpacing: "-0.02em" }}>
+                {mode === "admin" && adminUnlocked ? "بوابة الإدارة العليا" : "تسجيل الدخول"}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {mode === "admin" && adminUnlocked
+                  ? "الوصول مقيد بالمصرح لهم فقط"
+                  : "أدخل بيانات حساب متجرك للدخول"}
+              </p>
             </div>
-          )}
 
-          <p className="text-center text-xs text-muted-foreground mt-6">
-            جميع الحقوق محفوظة © 2025 Sowwanjo<br />
-            <span className="opacity-60">مدعوم بالدينار الأردني JOD • عربي RTL</span>
-          </p>
+            {/* Mode switcher — only visible when admin unlocked */}
+            {adminUnlocked && (
+              <div className="login-enter-1 flex bg-muted rounded-lg p-0.5 mb-5 border border-border">
+                <button
+                  onClick={() => { setMode("store"); setErr(""); }}
+                  className="flex-1 h-8 rounded-md text-xs font-semibold transition-all"
+                  style={mode === "store" ? { background: "#fff", color: "#0f172a", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" } : { color: "#64748b" }}
+                >
+                  دخول المتجر
+                </button>
+                <button
+                  onClick={() => { setMode("admin"); setErr(""); }}
+                  className="flex-1 h-8 rounded-md text-xs font-semibold transition-all"
+                  style={mode === "admin" ? { background: "#fff", color: "#0f172a", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" } : { color: "#64748b" }}
+                >
+                  الإدارة العليا
+                </button>
+              </div>
+            )}
+
+            {/* Form fields */}
+            <div className="space-y-4">
+              {/* Email / Username */}
+              <div className="login-enter-2">
+                <label className="block text-xs font-semibold text-foreground mb-1.5">
+                  {mode === "admin" ? "اسم المستخدم" : "البريد الإلكتروني"}
+                  <span className="text-destructive mr-0.5">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                    {mode === "admin" ? <Shield size={14} /> : <Mail size={14} />}
+                  </span>
+                  <input
+                    type={mode === "admin" ? "text" : "email"}
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder={mode === "admin" ? "admin" : "store@sowwanjo.online"}
+                    autoComplete={mode === "admin" ? "username" : "email"}
+                    className="w-full h-10 rounded-md border border-border bg-white text-sm text-foreground pr-9 pl-3 focus:outline-none transition-colors"
+                    style={{ boxShadow: "none" }}
+                    onFocus={e => { e.currentTarget.style.borderColor = "#2563EB"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.1)"; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = ""; e.currentTarget.style.boxShadow = "none"; }}
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="login-enter-3">
+                <label className="block text-xs font-semibold text-foreground mb-1.5">
+                  كلمة المرور<span className="text-destructive mr-0.5">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPass ? "text" : "password"}
+                    value={pass}
+                    onChange={e => setPass(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    onKeyDown={e => e.key === "Enter" && doLogin()}
+                    onKeyUp={e => setCapsLock(e.getModifierState("CapsLock"))}
+                    className="w-full h-10 rounded-md border border-border bg-white text-sm text-foreground px-3 pl-9 focus:outline-none transition-colors"
+                    style={{ boxShadow: "none" }}
+                    onFocus={e => { e.currentTarget.style.borderColor = "#2563EB"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.1)"; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = ""; e.currentTarget.style.boxShadow = "none"; }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(!showPass)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+                {capsLock && (
+                  <p className="flex items-center gap-1 mt-1.5 text-xs font-medium" style={{ color: "#b45309" }}>
+                    <AlertCircle size={11} /> مفتاح Caps Lock مفعّل
+                  </p>
+                )}
+              </div>
+
+              {/* Remember me row */}
+              <div className="login-enter-4 flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer select-none group">
+                  <div
+                    className="w-4 h-4 rounded border flex items-center justify-center transition-colors"
+                    style={{ background: rememberMe ? "#2563EB" : "#fff", borderColor: rememberMe ? "#2563EB" : "#CBD5E1" }}
+                    onClick={() => setRememberMe(!rememberMe)}
+                  >
+                    {rememberMe && (
+                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                        <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-xs font-medium text-muted-foreground">تذكرني</span>
+                </label>
+                <span className="text-xs font-medium" style={{ color: "#2563EB" }}>نسيت كلمة المرور؟</span>
+              </div>
+
+              {/* Error */}
+              {err && (
+                <div className="login-enter flex items-start gap-2.5 px-3.5 py-3 rounded-lg border" style={{ background: "#fef2f2", borderColor: "#fecaca" }}>
+                  <AlertCircle size={13} className="shrink-0 mt-0.5" style={{ color: "#dc2626" }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium" style={{ color: "#991b1b" }}>{err}</p>
+                    {(err.includes("مهلة") || err.includes("timeout") || err.includes("اتصال")) && (
+                      <button onClick={doLogin} className="mt-1 text-xs font-bold underline" style={{ color: "#b91c1c" }}>إعادة المحاولة</button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Submit button */}
+              <div className="login-enter-5">
+                <button
+                  onClick={doLogin}
+                  disabled={loading || !online}
+                  className="w-full h-10 rounded-md text-sm font-semibold text-white flex items-center justify-center gap-2 transition-opacity"
+                  style={{
+                    background: !online ? "#94a3b8" : "#2563EB",
+                    opacity: loading ? 0.85 : 1,
+                    cursor: loading || !online ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <svg className="spin-slow" width="15" height="15" viewBox="0 0 15 15" fill="none">
+                        <circle cx="7.5" cy="7.5" r="6" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
+                        <path d="M7.5 1.5A6 6 0 0 1 13.5 7.5" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                      جاري التحقق...
+                    </>
+                  ) : !online ? (
+                    <>
+                      <WifiOff size={14} /> لا يوجد اتصال
+                    </>
+                  ) : (
+                    <>
+                      دخول
+                      <ArrowLeft size={14} />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Support note */}
+            {mode === "store" && (
+              <div className="login-enter-6 mt-5 px-4 py-3 rounded-lg border border-border bg-muted/40">
+                <p className="text-xs font-semibold text-foreground mb-0.5 flex items-center gap-1.5">
+                  <Info size={11} className="text-muted-foreground" /> ملاحظة لأصحاب المتاجر
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  لا تمتلك حساباً؟ تواصل مع مزود الخدمة: support@sowwanjo.online
+                </p>
+              </div>
+            )}
+
+            {/* Footer */}
+            <p className="text-center text-xs text-muted-foreground mt-7" style={{ opacity: 0.55 }}>
+              © 2025 Sowwanjo · دينار أردني · عربي RTL
+            </p>
+          </div>
         </div>
       </div>
     </div>
