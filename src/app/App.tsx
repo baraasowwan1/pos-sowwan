@@ -6,6 +6,7 @@ import {
   StoreCtx, ToastHost,
   View,
 } from "./lib";
+import { initAutoSync } from "./syncEngine";
 import { SuperAdminLayout } from "./SAPanel";
 import { StoreLayout } from "./StorePanel";
 
@@ -118,6 +119,24 @@ export default function App() {
     setSplash(false);
   }, []);
 
+  // ── Service Worker registration ───────────────────────────────
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.ts").catch(() => {
+        // SW registration is non-critical; ignore failures
+      });
+      // Listen for background sync messages
+      navigator.serviceWorker.addEventListener("message", (event: MessageEvent) => {
+        if (event.data?.type === "BACKGROUND_SYNC") {
+          const sid = (() => {
+            try { const s = localStorage.getItem("sowwanjo_session"); if (!s) return ""; const { id } = JSON.parse(s); return id || ""; } catch { return ""; }
+          })();
+          if (sid) import("./syncEngine").then(({ runSync }) => runSync(sid, { silent: true }));
+        }
+      });
+    }
+  }, []);
+
   // ── PWA meta tags injection ──────────────────────────────────
   useEffect(() => {
     let vp = document.querySelector("meta[name=viewport]");
@@ -152,6 +171,10 @@ export default function App() {
       const s = localStorage.getItem("sowwanjo_session");
       if (!s) return "";
       const { type, id } = JSON.parse(s);
+      if (type === "store" && id) {
+        // Re-initialize auto-sync for restored session
+        setTimeout(() => { initAutoSync(id); }, 500);
+      }
       return type === "store" ? id : "";
     } catch { return ""; }
   });
@@ -164,6 +187,8 @@ export default function App() {
     } else {
       const sid = id || "";
       localStorage.setItem("sowwanjo_session", JSON.stringify({ type: "store", id: sid }));
+      // Initialize auto-sync for this store
+      initAutoSync(sid);
       try {
         const raw = localStorage.getItem(`sowwanjo_storeinfo_${sid}`);
         if (raw) {
