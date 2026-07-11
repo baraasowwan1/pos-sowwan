@@ -2,80 +2,91 @@
 
 :root {
   --font-size: 15px;
-  --background: #F1F5F9;
-  --foreground: #0F172A;
-  --card: #ffffff;
-  --card-foreground: #0F172A;
-  --popover: #ffffff;
-  --popover-foreground: #0F172A;
-  --primary: #4338CA;
-  --primary-foreground: #ffffff;
-  --secondary: #E2E8F0;
-  --secondary-foreground: #1E293B;
-  --muted: #E2E8F0;
-  --muted-foreground: #64748B;
-  --accent: #10B981;
-  --accent-foreground: #ffffff;
-  --destructive: #EF4444;
-  --destructive-foreground: #ffffff;
-  --border: rgba(15, 23, 42, 0.08);
+
+  /* ── Warm Swiss POS Theme ─────────────────────────────────────────
+     Background: warm off-white — no harsh glare for cashiers on long shifts
+     Primary: calm teal-blue — confident, readable, easy on the eyes
+     Sidebar: deep warm slate — clear contrast, not pure black
+  ──────────────────────────────────────────────────────────────────── */
+  --background: #F5F3F0;
+  --foreground: #1C1917;
+  --card: #FFFFFF;
+  --card-foreground: #1C1917;
+  --popover: #FFFFFF;
+  --popover-foreground: #1C1917;
+  --primary: #0C7BB3;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EAE7E3;
+  --secondary-foreground: #2D2A27;
+  --muted: #EAE7E3;
+  --muted-foreground: #78716C;
+  --accent: #0DA870;
+  --accent-foreground: #FFFFFF;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(28, 25, 23, 0.09);
   --input: transparent;
-  --input-background: #F8FAFC;
-  --switch-background: #CBD5E1;
+  --input-background: #F9F8F6;
+  --switch-background: #C4BDB7;
   --font-weight-medium: 600;
   --font-weight-normal: 400;
-  --ring: #4338CA;
-  --chart-1: #4338CA;
-  --chart-2: #10B981;
+  --ring: #0C7BB3;
+  --chart-1: #0C7BB3;
+  --chart-2: #0DA870;
   --chart-3: #F59E0B;
-  --chart-4: #EF4444;
-  --chart-5: #8B5CF6;
+  --chart-4: #DC2626;
+  --chart-5: #7C3AED;
   --radius: 0.75rem;
-  --sidebar: #1E1B4B;
-  --sidebar-foreground: #E2E8F0;
-  --sidebar-primary: #818CF8;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(255,255,255,0.08);
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(255,255,255,0.08);
-  --sidebar-ring: #818CF8;
+
+  /* Sidebar — deep warm slate, not cold blue-black */
+  --sidebar: #1E2B3C;
+  --sidebar-foreground: #E8E4DF;
+  --sidebar-primary: #3BAEE0;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(255,255,255,0.07);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(255,255,255,0.07);
+  --sidebar-ring: #3BAEE0;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+  /* Warm dark — easier on eyes than cold pure-black dark modes */
+  --background: #171412;
+  --foreground: #EDE9E4;
+  --card: #201D1A;
+  --card-foreground: #EDE9E4;
+  --popover: #201D1A;
+  --popover-foreground: #EDE9E4;
+  --primary: #3BAEE0;
+  --primary-foreground: #0A1520;
+  --secondary: #2C2825;
+  --secondary-foreground: #EDE9E4;
+  --muted: #2C2825;
+  --muted-foreground: #A09890;
+  --accent: #10C87D;
+  --accent-foreground: #0A1A12;
+  --destructive: #F87171;
+  --destructive-foreground: #1A0A0A;
+  --border: rgba(237, 233, 228, 0.09);
+  --input: rgba(237, 233, 228, 0.06);
+  --input-background: #252220;
+  --switch-background: #3D3732;
+  --ring: #3BAEE0;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --chart-1: #3BAEE0;
+  --chart-2: #10C87D;
+  --chart-3: #FBBF24;
+  --chart-4: #F87171;
+  --chart-5: #A78BFA;
+  --sidebar: #0F1820;
+  --sidebar-foreground: #D4CFC9;
+  --sidebar-primary: #3BAEE0;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(255,255,255,0.06);
+  --sidebar-accent-foreground: #EDE9E4;
+  --sidebar-border: rgba(255,255,255,0.06);
+  --sidebar-ring: #3BAEE0;
 }
 
 @theme inline {
