@@ -1,5 +1,5 @@
 // StorePanelC — Reports, Employees, Branches, Loyalty, Print Shop, Settings
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
