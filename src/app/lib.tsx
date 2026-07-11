@@ -851,319 +851,291 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
     }
   };
 
+  // ── Animated background blobs (CSS only, no deps)
+  const BG_STYLE: React.CSSProperties = {
+    position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none",
+  };
+
   return (
-    <div className="min-h-screen flex" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
+    <div dir="rtl" style={{ fontFamily: "'Cairo',sans-serif", minHeight: "100dvh", background: "linear-gradient(145deg,#080d1a 0%,#0c1424 45%,#0a1220 100%)", position: "relative" }}>
       <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to   { opacity: 1; transform: translateY(0); }
+        @keyframes lgn-blob1 { 0%,100%{transform:translate(0,0) scale(1)}55%{transform:translate(-4%,6%) scale(1.08)} }
+        @keyframes lgn-blob2 { 0%,100%{transform:translate(0,0) scale(1)}55%{transform:translate(4%,-5%) scale(1.06)} }
+        @keyframes lgn-up    { from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)} }
+        @keyframes lgn-spin  { to{transform:rotate(360deg)} }
+        @keyframes lgn-pulse { 0%,100%{opacity:1}50%{opacity:.5} }
+        .lf0{animation:lgn-up .5s ease both}
+        .lf1{animation:lgn-up .5s ease both .09s}
+        .lf2{animation:lgn-up .5s ease both .17s}
+        .lf3{animation:lgn-up .5s ease both .25s}
+        .lf4{animation:lgn-up .5s ease both .33s}
+        .lf5{animation:lgn-up .5s ease both .41s}
+        .lf6{animation:lgn-up .5s ease both .49s}
+        .lgn-spin{animation:lgn-spin .85s linear infinite}
+        .lgn-input{
+          width:100%;height:50px;border-radius:14px;
+          border:1.5px solid rgba(255,255,255,0.09);
+          background:rgba(255,255,255,0.06);
+          color:#f1f5f9;font-size:14px;
+          padding:0 46px 0 16px;
+          outline:none;transition:border-color .2s,box-shadow .2s,background .2s;
+          font-family:"Cairo",sans-serif;
+          -webkit-appearance:none;
         }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
+        .lgn-input:focus{
+          border-color:rgba(59,130,246,0.55);
+          box-shadow:0 0 0 3px rgba(59,130,246,0.13);
+          background:rgba(255,255,255,0.08);
         }
-        .login-enter { animation: fadeUp 0.5s ease both; }
-        .login-enter-1 { animation: fadeUp 0.5s ease both 0.05s; }
-        .login-enter-2 { animation: fadeUp 0.5s ease both 0.1s; }
-        .login-enter-3 { animation: fadeUp 0.5s ease both 0.15s; }
-        .login-enter-4 { animation: fadeUp 0.5s ease both 0.2s; }
-        .login-enter-5 { animation: fadeUp 0.5s ease both 0.25s; }
-        .login-enter-6 { animation: fadeUp 0.5s ease both 0.3s; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spin-slow { animation: spin 0.8s linear infinite; }
+        .lgn-input::placeholder{color:rgba(255,255,255,0.22)}
+        .lgn-input[dir="rtl"]{text-align:right}
+        .lgn-btn{
+          width:100%;height:52px;border-radius:16px;
+          font-size:15px;font-weight:800;color:white;border:none;
+          cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+          letter-spacing:-0.01em;position:relative;overflow:hidden;
+          transition:transform .1s,box-shadow .2s;
+          font-family:"Cairo",sans-serif;
+        }
+        .lgn-btn:not(:disabled):active{transform:scale(0.98)}
+        .lgn-card{
+          background:rgba(255,255,255,0.04);
+          border:1px solid rgba(255,255,255,0.08);
+          border-radius:24px;
+          backdrop-filter:blur(24px);
+          -webkit-backdrop-filter:blur(24px);
+          box-shadow:0 32px 80px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.05) inset;
+        }
       `}</style>
 
-      {/* ── Offline banner ─────────────────────────────────────────────────── */}
+      {/* Ambient blobs */}
+      <div style={BG_STYLE}>
+        <div style={{ position:"absolute", top:"-15%", right:"-10%", width:"65vw", height:"65vw", borderRadius:"50%", background:"radial-gradient(circle,rgba(37,99,235,0.14) 0%,transparent 70%)", animation:"lgn-blob1 9s ease-in-out infinite" }} />
+        <div style={{ position:"absolute", bottom:"-20%", left:"-10%", width:"55vw", height:"55vw", borderRadius:"50%", background:"radial-gradient(circle,rgba(99,102,241,0.1) 0%,transparent 70%)", animation:"lgn-blob2 12s ease-in-out infinite" }} />
+        {/* Grid texture */}
+        <div style={{ position:"absolute", inset:0, backgroundImage:"linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px)", backgroundSize:"52px 52px" }} />
+      </div>
+
+      {/* Offline banner */}
       {!online && (
-        <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold text-white" style={{ background: "#DC2626", animation: "fadeIn 0.3s ease" }}>
-          <WifiOff size={13} />
-          <span>لا يوجد اتصال بالإنترنت — تحقق من الشبكة</span>
+        <div style={{ position:"fixed", top:0, inset:"0 0 auto", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"9px 16px", fontSize:12, fontWeight:700, color:"white", background:"#DC2626" }}>
+          <WifiOff size={13}/> لا يوجد اتصال بالإنترنت — تحقق من الشبكة
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          BRAND PANEL — right side (RTL: rendered left visually)
-      ════════════════════════════════════════════════════════════════════════ */}
-      <div className="hidden lg:flex flex-1 flex-col" style={{ background: "#0F172A" }}>
-        {/* Subtle dot-grid texture */}
-        <div className="absolute inset-0 pointer-events-none" style={{
-          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.035) 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
-          width: "calc(100% - 480px)",
-        }} />
+      {/* ── PAGE LAYOUT ── */}
+      <div style={{ position:"relative", zIndex:10, display:"flex", minHeight:"100dvh" }}>
 
-        <div className="relative z-10 flex flex-col h-full">
-          {/* Wordmark */}
-          <div className="px-10 pt-9">
-            <button onClick={handleLogoClick} className="flex items-center gap-3 select-none group" style={{ background: "none", border: "none" }}>
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#2563EB" }}>
-                <Store size={18} className="text-white" />
-              </div>
-              <div className="text-right">
-                <p className="font-bold text-white leading-none" style={{ fontSize: "15px", letterSpacing: "-0.01em" }}>Sowwanjo POS</p>
-                <p className="text-xs mt-0.5" style={{ color: "#475569" }}>نظام نقاط البيع السحابي</p>
-              </div>
-            </button>
-          </div>
+        {/* ════════════════════════════════════
+            BRAND PANEL — desktop only
+        ════════════════════════════════════ */}
+        <div className="hidden lg:flex" style={{ flex:1, flexDirection:"column", padding:"44px 56px 40px", borderLeft:"1px solid rgba(255,255,255,0.05)", overflow:"hidden" }}>
 
-          {/* Hero content */}
-          <div className="flex-1 flex flex-col items-center justify-center px-10 py-8">
-            <div className="w-full max-w-sm text-right mb-8" style={{ animation: "fadeUp 0.6s ease both 0.1s" }}>
-              <div className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full border" style={{ borderColor: "rgba(37,99,235,0.4)", background: "rgba(37,99,235,0.1)" }}>
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" style={{ boxShadow: "0 0 6px #60a5fa" }} />
-                <span className="text-xs font-semibold" style={{ color: "#60a5fa" }}>الإصدار 2.0 — الآن متاح</span>
+          {/* Logo */}
+          <button onClick={handleLogoClick} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:12, width:"fit-content" }}>
+            <div style={{ width:46, height:46, borderRadius:14, background:"linear-gradient(135deg,#3B82F6,#1D4ED8)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 0 0 1px rgba(59,130,246,0.4),0 6px 24px rgba(37,99,235,0.3)" }}>
+              <Store size={22} color="white"/>
+            </div>
+            <div style={{ textAlign:"right" }}>
+              <p style={{ fontWeight:900, color:"#f1f5f9", fontSize:17, lineHeight:1.2, letterSpacing:"-0.025em" }}>Sowwanjo POS</p>
+              <p style={{ color:"#334155", fontSize:11, marginTop:2 }}>نظام نقاط البيع السحابي</p>
+            </div>
+          </button>
+
+          {/* Hero */}
+          <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", paddingTop:48 }}>
+            <div style={{ animation:"lgn-up .6s ease both .08s" }}>
+              <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"5px 14px", borderRadius:100, border:"1px solid rgba(59,130,246,0.35)", background:"rgba(59,130,246,0.1)", marginBottom:22 }}>
+                <span style={{ width:6, height:6, borderRadius:"50%", background:"#60a5fa", boxShadow:"0 0 8px #60a5fa", animation:"lgn-pulse 2s ease-in-out infinite" }}/>
+                <span style={{ fontSize:11, fontWeight:700, color:"#60a5fa" }}>الإصدار 2.0 — مصمم للأردن</span>
               </div>
-              <h1 className="font-black leading-snug mb-3 text-white" style={{ fontSize: "clamp(24px, 2.5vw, 32px)" }}>
-                منصة POS الأذكى<br />
-                <span style={{ color: "#3B82F6" }}>للأعمال الأردنية</span>
+              <h1 style={{ fontWeight:900, color:"white", lineHeight:1.15, marginBottom:18, fontSize:"clamp(28px,2.8vw,40px)", letterSpacing:"-0.035em" }}>
+                أذكى نظام POS<br/>
+                <span style={{ background:"linear-gradient(90deg,#3B82F6,#6366F1)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>للأعمال الأردنية</span>
               </h1>
-              <p className="text-sm leading-relaxed" style={{ color: "#64748B" }}>
-                إدارة المبيعات والمخزون والعملاء من مكان واحد — مصمم لكل أنواع المتاجر في الأردن.
+              <p style={{ color:"#475569", fontSize:14, lineHeight:1.75, maxWidth:380 }}>
+                إدارة المبيعات والمخزون والعملاء في مكان واحد — سحابي، سريع، وآمن.
               </p>
             </div>
 
-            {/* POS Dashboard Illustration */}
-            <div className="w-full max-w-[380px]" style={{ animation: "fadeUp 0.7s ease both 0.2s" }}>
-              <POSIllustration />
+            {/* Feature cards grid */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:44, animation:"lgn-up .6s ease both .2s" }}>
+              {[["🏪","متعدد الفروع والمتاجر"],["📊","تقارير وإحصائيات فورية"],["🔖","ماسح باركود متكامل"],["👥","صلاحيات متعددة للفريق"],["📱","يعمل على الجوال والحاسوب"],["☁️","سحابي ومحمي 100%"]].map(([ic,lb])=>(
+                <div key={lb as string} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 13px", borderRadius:12, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.06)" }}>
+                  <span style={{ fontSize:18 }}>{ic as string}</span>
+                  <span style={{ fontSize:12, fontWeight:600, color:"#64748b" }}>{lb as string}</span>
+                </div>
+              ))}
             </div>
 
-            {/* Feature pills */}
-            <div className="flex flex-wrap gap-2 mt-6 justify-center" style={{ animation: "fadeUp 0.6s ease both 0.35s" }}>
-              {[
-                { label: "متعدد المتاجر" },
-                { label: "تقارير لحظية" },
-                { label: "باركود" },
-                { label: "Open Food Facts" },
-                { label: "نقطة بيع سريعة" },
-                { label: "صلاحيات متعددة" },
-              ].map(f => (
-                <span key={f.label} className="px-2.5 py-1 rounded-md text-xs font-medium" style={{ background: "rgba(255,255,255,0.05)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  {f.label}
-                </span>
+            {/* Stats */}
+            <div style={{ display:"flex", gap:32, marginTop:40, animation:"lgn-up .6s ease both .3s" }}>
+              {[["١٢٠+","متجر نشط"],["٩٩.٩٪","وقت التشغيل"],["٥٠٠+","فاتورة يومياً"]].map(([n,l])=>(
+                <div key={l as string}>
+                  <p style={{ fontWeight:900, fontSize:22, color:"white", letterSpacing:"-0.03em" }}>{n as string}</p>
+                  <p style={{ fontSize:11, color:"#334155", marginTop:2 }}>{l as string}</p>
+                </div>
               ))}
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="px-10 pb-7 text-right">
-            <p className="text-xs" style={{ color: "#1e293b" }}>© 2025 Sowwanjo · JOD · RTL · pos.sowwanjo.online</p>
+          <p style={{ fontSize:10, color:"rgba(255,255,255,0.1)", marginTop:24 }}>© 2025 Sowwanjo · JOD · RTL · pos.sowwanjo.online</p>
+        </div>
+
+        {/* ════════════════════════════════════
+            FORM PANEL
+        ════════════════════════════════════ */}
+        <div style={{ width:"100%", display:"flex", flexDirection:"column", alignItems:"center", paddingTop: !online ? "calc(env(safe-area-inset-top,0px) + 40px)" : "env(safe-area-inset-top,0px)", paddingBottom:"env(safe-area-inset-bottom,0px)" }} className="lg:w-[520px] lg:max-w-[520px]">
+
+          {/* Mobile logo */}
+          <div className="lg:hidden lf0" style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"40px 24px 8px", textAlign:"center" }}>
+            <button onClick={handleLogoClick} style={{ background:"none", border:"none", cursor:"pointer" }}>
+              <div style={{ width:68, height:68, borderRadius:22, background:"linear-gradient(135deg,#3B82F6,#1D4ED8)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", boxShadow:"0 0 0 1px rgba(59,130,246,0.35),0 10px 40px rgba(37,99,235,0.4)" }}>
+                <Store size={30} color="white"/>
+              </div>
+            </button>
+            <p style={{ fontWeight:900, color:"white", fontSize:21, letterSpacing:"-0.025em" }}>Sowwanjo POS</p>
+            <p style={{ color:"#334155", fontSize:12, marginTop:4 }}>نظام نقاط البيع السحابي</p>
           </div>
-        </div>
-      </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          FORM PANEL — left side (RTL: rendered right visually)
-      ════════════════════════════════════════════════════════════════════════ */}
-      <div
-        className="w-full lg:w-[480px] flex flex-col bg-white"
-        style={{
-          minHeight: "100dvh",
-          borderRight: "1px solid #E2E8F0",
-          paddingTop: !online ? "calc(env(safe-area-inset-top) + 40px)" : "env(safe-area-inset-top)",
-          paddingBottom: "env(safe-area-inset-bottom)",
-        }}
-      >
-        {/* Mobile wordmark */}
-        <div className="lg:hidden flex items-center gap-3 px-6 pt-8 pb-2">
-          <button onClick={handleLogoClick} className="flex items-center gap-3 select-none" style={{ background: "none", border: "none" }}>
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#2563EB" }}>
-              <Store size={18} className="text-white" />
-            </div>
-            <div className="text-right">
-              <p className="font-bold text-foreground leading-none" style={{ fontSize: "15px" }}>Sowwanjo POS</p>
-              <p className="text-xs text-muted-foreground mt-0.5">نظام نقاط البيع السحابي</p>
-            </div>
-          </button>
-        </div>
+          {/* Form card */}
+          <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", width:"100%", padding:"16px 20px 32px" }}>
+            <div className="lgn-card lf0" style={{ width:"100%", maxWidth:420, padding:"36px 32px" }}>
 
-        {/* Centered form wrapper */}
-        <div className="flex-1 flex items-center justify-center px-6 py-8 lg:py-0">
-          <div className="w-full max-w-[360px]">
-
-            {/* Admin unlock badge */}
-            {adminUnlocked && (
-              <div className="login-enter mb-5 flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border" style={{ background: "#fffbeb", borderColor: "#fcd34d" }}>
-                <Shield size={13} className="shrink-0" style={{ color: "#b45309" }} />
-                <p className="text-xs font-semibold" style={{ color: "#92400e" }}>تم تفعيل وضع الإدارة العليا</p>
-              </div>
-            )}
-
-            {/* Heading */}
-            <div className="login-enter mb-7">
-              <h2 className="font-bold text-foreground mb-1" style={{ fontSize: "22px", letterSpacing: "-0.02em" }}>
-                {mode === "admin" && adminUnlocked ? "بوابة الإدارة العليا" : "تسجيل الدخول"}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {mode === "admin" && adminUnlocked
-                  ? "الوصول مقيد بالمصرح لهم فقط"
-                  : "أدخل بيانات حساب متجرك للدخول"}
-              </p>
-            </div>
-
-            {/* Mode switcher — only visible when admin unlocked */}
-            {adminUnlocked && (
-              <div className="login-enter-1 flex bg-muted rounded-lg p-0.5 mb-5 border border-border">
-                <button
-                  onClick={() => { setMode("store"); setErr(""); }}
-                  className="flex-1 h-8 rounded-md text-xs font-semibold transition-all"
-                  style={mode === "store" ? { background: "#fff", color: "#0f172a", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" } : { color: "#64748b" }}
-                >
-                  دخول المتجر
-                </button>
-                <button
-                  onClick={() => { setMode("admin"); setErr(""); }}
-                  className="flex-1 h-8 rounded-md text-xs font-semibold transition-all"
-                  style={mode === "admin" ? { background: "#fff", color: "#0f172a", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" } : { color: "#64748b" }}
-                >
-                  الإدارة العليا
-                </button>
-              </div>
-            )}
-
-            {/* Form fields */}
-            <div className="space-y-4">
-              {/* Email / Username */}
-              <div className="login-enter-2">
-                <label className="block text-xs font-semibold text-foreground mb-1.5">
-                  {mode === "admin" ? "اسم المستخدم" : "البريد الإلكتروني"}
-                  <span className="text-destructive mr-0.5">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-                    {mode === "admin" ? <Shield size={14} /> : <Mail size={14} />}
-                  </span>
-                  <input
-                    type={mode === "admin" ? "text" : "email"}
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder={mode === "admin" ? "admin" : "store@sowwanjo.online"}
-                    autoComplete={mode === "admin" ? "username" : "email"}
-                    className="w-full h-10 rounded-md border border-border bg-white text-sm text-foreground pr-9 pl-3 focus:outline-none transition-colors"
-                    style={{ boxShadow: "none" }}
-                    onFocus={e => { e.currentTarget.style.borderColor = "#2563EB"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.1)"; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = ""; e.currentTarget.style.boxShadow = "none"; }}
-                  />
+              {/* Desktop logo inside card */}
+              <div className="hidden lg:flex lf0" style={{ alignItems:"center", gap:12, marginBottom:28 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:"linear-gradient(135deg,#3B82F6,#1D4ED8)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 16px rgba(37,99,235,0.25)" }}>
+                  <Store size={18} color="white"/>
+                </div>
+                <div>
+                  <p style={{ fontWeight:900, color:"#f1f5f9", fontSize:15, letterSpacing:"-0.02em" }}>Sowwanjo POS</p>
+                  <p style={{ color:"#334155", fontSize:11 }}>نظام نقاط البيع السحابي</p>
                 </div>
               </div>
 
-              {/* Password */}
-              <div className="login-enter-3">
-                <label className="block text-xs font-semibold text-foreground mb-1.5">
-                  كلمة المرور<span className="text-destructive mr-0.5">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPass ? "text" : "password"}
-                    value={pass}
-                    onChange={e => setPass(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    onKeyDown={e => e.key === "Enter" && doLogin()}
-                    onKeyUp={e => setCapsLock(e.getModifierState("CapsLock"))}
-                    className="w-full h-10 rounded-md border border-border bg-white text-sm text-foreground px-3 pl-9 focus:outline-none transition-colors"
-                    style={{ boxShadow: "none" }}
-                    onFocus={e => { e.currentTarget.style.borderColor = "#2563EB"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.1)"; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = ""; e.currentTarget.style.boxShadow = "none"; }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPass(!showPass)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                </div>
-                {capsLock && (
-                  <p className="flex items-center gap-1 mt-1.5 text-xs font-medium" style={{ color: "#b45309" }}>
-                    <AlertCircle size={11} /> مفتاح Caps Lock مفعّل
-                  </p>
-                )}
-              </div>
-
-              {/* Remember me row */}
-              <div className="login-enter-4 flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer select-none group">
-                  <div
-                    className="w-4 h-4 rounded border flex items-center justify-center transition-colors"
-                    style={{ background: rememberMe ? "#2563EB" : "#fff", borderColor: rememberMe ? "#2563EB" : "#CBD5E1" }}
-                    onClick={() => setRememberMe(!rememberMe)}
-                  >
-                    {rememberMe && (
-                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                        <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </div>
-                  <span className="text-xs font-medium text-muted-foreground">تذكرني</span>
-                </label>
-                <span className="text-xs font-medium" style={{ color: "#2563EB" }}>نسيت كلمة المرور؟</span>
-              </div>
-
-              {/* Error */}
-              {err && (
-                <div className="login-enter flex items-start gap-2.5 px-3.5 py-3 rounded-lg border" style={{ background: "#fef2f2", borderColor: "#fecaca" }}>
-                  <AlertCircle size={13} className="shrink-0 mt-0.5" style={{ color: "#dc2626" }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium" style={{ color: "#991b1b" }}>{err}</p>
-                    {(err.includes("مهلة") || err.includes("timeout") || err.includes("اتصال")) && (
-                      <button onClick={doLogin} className="mt-1 text-xs font-bold underline" style={{ color: "#b91c1c" }}>إعادة المحاولة</button>
-                    )}
-                  </div>
+              {/* Admin unlock badge */}
+              {adminUnlocked && (
+                <div className="lf0" style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:12, marginBottom:20, background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.3)" }}>
+                  <Shield size={14} color="#FBBF24"/>
+                  <p style={{ fontSize:12, fontWeight:700, color:"#FCD34D" }}>تم تفعيل وضع الإدارة العليا</p>
                 </div>
               )}
 
-              {/* Submit button */}
-              <div className="login-enter-5">
-                <button
-                  onClick={doLogin}
-                  disabled={loading || !online}
-                  className="w-full h-10 rounded-md text-sm font-semibold text-white flex items-center justify-center gap-2 transition-opacity"
-                  style={{
-                    background: !online ? "#94a3b8" : "#2563EB",
-                    opacity: loading ? 0.85 : 1,
-                    cursor: loading || !online ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {loading ? (
-                    <>
-                      <svg className="spin-slow" width="15" height="15" viewBox="0 0 15 15" fill="none">
-                        <circle cx="7.5" cy="7.5" r="6" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
-                        <path d="M7.5 1.5A6 6 0 0 1 13.5 7.5" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                      </svg>
-                      جاري التحقق...
-                    </>
-                  ) : !online ? (
-                    <>
-                      <WifiOff size={14} /> لا يوجد اتصال
-                    </>
-                  ) : (
-                    <>
-                      دخول
-                      <ArrowLeft size={14} />
-                    </>
+              {/* Heading */}
+              <div className="lf1" style={{ marginBottom:26 }}>
+                <h2 style={{ fontWeight:900, color:"white", fontSize:23, letterSpacing:"-0.03em", marginBottom:7, lineHeight:1.2 }}>
+                  {mode === "admin" && adminUnlocked ? "بوابة الإدارة العليا" : "مرحباً بك 👋"}
+                </h2>
+                <p style={{ color:"#475569", fontSize:13, lineHeight:1.5 }}>
+                  {mode === "admin" && adminUnlocked ? "الوصول مقيد بالمصرح لهم فقط" : "أدخل بيانات حساب متجرك للمتابعة"}
+                </p>
+              </div>
+
+              {/* Mode tabs */}
+              {adminUnlocked && (
+                <div className="lf1" style={{ display:"flex", borderRadius:12, padding:3, marginBottom:22, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.08)" }}>
+                  {(["store","admin"] as const).map(m => (
+                    <button key={m} onClick={() => { setMode(m); setErr(""); }} style={{ flex:1, height:36, borderRadius:10, fontSize:12, fontWeight:700, border:"none", cursor:"pointer", transition:"all .2s", background:mode===m?"rgba(37,99,235,0.9)":"transparent", color:mode===m?"white":"#64748b", boxShadow:mode===m?"0 2px 10px rgba(37,99,235,0.35)":"none", fontFamily:"inherit" }}>
+                      {m==="store" ? "دخول المتجر" : "الإدارة العليا"}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Fields */}
+              <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+
+                {/* Email */}
+                <div className="lf2">
+                  <label style={{ display:"block", fontSize:12, fontWeight:700, color:"#64748b", marginBottom:8 }}>
+                    {mode==="admin" ? "اسم المستخدم" : "البريد الإلكتروني"} <span style={{ color:"#EF4444" }}>*</span>
+                  </label>
+                  <div style={{ position:"relative" }}>
+                    <span style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", color:"rgba(255,255,255,0.22)", pointerEvents:"none", display:"flex" }}>
+                      {mode==="admin" ? <Shield size={15}/> : <Mail size={15}/>}
+                    </span>
+                    <input dir="rtl" className="lgn-input" type={mode==="admin"?"text":"email"} value={email} onChange={e=>setEmail(e.target.value)} placeholder={mode==="admin"?"admin":"store@sowwanjo.online"} autoComplete={mode==="admin"?"username":"email"} style={{ paddingRight:44 }}/>
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div className="lf3">
+                  <label style={{ display:"block", fontSize:12, fontWeight:700, color:"#64748b", marginBottom:8 }}>
+                    كلمة المرور <span style={{ color:"#EF4444" }}>*</span>
+                  </label>
+                  <div style={{ position:"relative" }}>
+                    <span style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", color:"rgba(255,255,255,0.22)", pointerEvents:"none", display:"flex" }}>
+                      <Lock size={15}/>
+                    </span>
+                    <input dir="rtl" className="lgn-input" type={showPass?"text":"password"} value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••••" autoComplete="current-password" onKeyDown={e=>e.key==="Enter"&&doLogin()} onKeyUp={e=>setCapsLock(e.getModifierState("CapsLock"))} style={{ paddingRight:44, paddingLeft:44 }}/>
+                    <button type="button" onClick={()=>setShowPass(!showPass)} style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.3)", padding:0, display:"flex" }}>
+                      {showPass ? <EyeOff size={15}/> : <Eye size={15}/>}
+                    </button>
+                  </div>
+                  {capsLock && (
+                    <p style={{ display:"flex", alignItems:"center", gap:5, marginTop:6, fontSize:11, fontWeight:600, color:"#FBBF24" }}>
+                      <AlertCircle size={11}/> مفتاح Caps Lock مفعّل
+                    </p>
                   )}
-                </button>
+                </div>
+
+                {/* Remember me */}
+                <div className="lf4" style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                  <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", userSelect:"none" }}>
+                    <div onClick={()=>setRememberMe(!rememberMe)} style={{ width:18, height:18, borderRadius:5, border:`1.5px solid ${rememberMe?"#3B82F6":"rgba(255,255,255,0.18)"}`, background:rememberMe?"#3B82F6":"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s", cursor:"pointer", flexShrink:0 }}>
+                      {rememberMe && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L4 7L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <span style={{ fontSize:12, fontWeight:600, color:"#475569" }}>تذكرني</span>
+                  </label>
+                  <span style={{ fontSize:12, fontWeight:700, color:"#3B82F6", cursor:"pointer" }}>نسيت كلمة المرور؟</span>
+                </div>
+
+                {/* Error */}
+                {err && (
+                  <div className="lf0" style={{ display:"flex", alignItems:"flex-start", gap:10, padding:"12px 14px", borderRadius:12, background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.3)" }}>
+                    <AlertCircle size={13} color="#F87171" style={{ flexShrink:0, marginTop:1 }}/>
+                    <div>
+                      <p style={{ fontSize:12, fontWeight:600, color:"#FCA5A5" }}>{err}</p>
+                      {(err.includes("مهلة")||err.includes("اتصال")) && (
+                        <button onClick={doLogin} style={{ marginTop:4, fontSize:11, fontWeight:700, color:"#F87171", textDecoration:"underline", background:"none", border:"none", cursor:"pointer", padding:0, fontFamily:"inherit" }}>إعادة المحاولة</button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Submit */}
+                <div className="lf5">
+                  <button className="lgn-btn" onClick={doLogin} disabled={loading||!online} style={{ background:!online?"rgba(30,41,59,0.8)":"linear-gradient(135deg,#2563EB 0%,#1D4ED8 100%)", opacity:loading?0.9:1, cursor:loading||!online?"not-allowed":"pointer", boxShadow:!online?"none":"0 6px 24px rgba(37,99,235,0.45),0 1px 0 rgba(255,255,255,0.1) inset" }}>
+                    {loading ? (
+                      <svg className="lgn-spin" width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="rgba(255,255,255,0.25)" strokeWidth="2"/><path d="M10 2A8 8 0 0 1 18 10" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+                    ) : !online ? (
+                      <><WifiOff size={16}/> لا يوجد اتصال</>
+                    ) : (
+                      <>دخول <ArrowLeft size={16}/></>
+                    )}
+                  </button>
+                </div>
               </div>
+
+              {/* Support note */}
+              {mode==="store" && !adminUnlocked && (
+                <div className="lf6" style={{ marginTop:20, padding:"11px 14px", borderRadius:12, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)" }}>
+                  <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.3)", marginBottom:3, display:"flex", alignItems:"center", gap:5 }}>
+                    <Info size={11}/> لأصحاب المتاجر
+                  </p>
+                  <p style={{ fontSize:11, color:"rgba(255,255,255,0.2)", lineHeight:1.6 }}>
+                    لا تمتلك حساباً؟ تواصل مع مزود الخدمة:<br/>support@sowwanjo.online
+                  </p>
+                </div>
+              )}
             </div>
-
-            {/* Support note */}
-            {mode === "store" && (
-              <div className="login-enter-6 mt-5 px-4 py-3 rounded-lg border border-border bg-muted/40">
-                <p className="text-xs font-semibold text-foreground mb-0.5 flex items-center gap-1.5">
-                  <Info size={11} className="text-muted-foreground" /> ملاحظة لأصحاب المتاجر
-                </p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  لا تمتلك حساباً؟ تواصل مع مزود الخدمة: support@sowwanjo.online
-                </p>
-              </div>
-            )}
-
-            {/* Footer */}
-            <p className="text-center text-xs text-muted-foreground mt-7" style={{ opacity: 0.55 }}>
-              © 2026 Sowwanjo · دينار أردني · عربي RTL
-            </p>
           </div>
+
+          <p style={{ textAlign:"center", fontSize:10, color:"rgba(255,255,255,0.1)", paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 16px)" }}>
+            © 2025 Sowwanjo · دينار أردني · RTL
+          </p>
         </div>
+
       </div>
     </div>
   );
