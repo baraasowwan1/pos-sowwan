@@ -1160,7 +1160,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
 
             {/* Footer */}
             <p className="text-center text-xs text-muted-foreground mt-7" style={{ opacity: 0.55 }}>
-              © 2025 Sowwanjo · دينار أردني · عربي RTL
+              © 2026 Sowwanjo · دينار أردني · عربي RTL
             </p>
           </div>
         </div>
