@@ -1,6 +1,5 @@
 // StorePanelC — Reports, Employees, Branches, Loyalty, Print Shop, Settings
 import { useState, useEffect, useRef, useCallback } from "react";
-import * as XLSX from "xlsx";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -117,42 +116,46 @@ function StoreReports() {
   });
   const chartData = Object.entries(dayMap).map(([day, مبيعات]) => ({ day, مبيعات }));
 
-  // ── Excel Export ─────────────────────────────────────────────────────────────
+  // ── CSV Export (UTF-8 BOM — opens correctly in Excel with Arabic) ────────────
   const exportExcel = useCallback(() => {
     if (!canExport) { showToast("ليس لديك صلاحية تصدير التقارير", "error"); return; }
     setExporting(true);
     try {
-      const wb = XLSX.utils.book_new();
-
-      // Sheet 1: ملخص
       const storeName = (() => { try { return JSON.parse(localStorage.getItem(`sowwanjo_storeinfo_${sid}`) || "{}").nameAr || "المتجر"; } catch { return "المتجر"; } })();
-      const summaryData = [
-        ["تقرير المبيعات — " + storeName, "", ""],
-        ["الفترة:", periodLabel, ""],
-        ["تاريخ التصدير:", new Date().toLocaleDateString("ar-JO"), new Date().toLocaleTimeString("ar-JO")],
-        ["", "", ""],
-        ["البيان", "المبلغ (JOD)", ""],
-        ["إجمالي المبيعات", totalSales.toFixed(3), ""],
-        ["الخصومات الممنوحة", totalDiscount.toFixed(3), ""],
-        ["صافي المبيعات", netSales.toFixed(3), ""],
-        ["ضريبة القيمة المضافة", totalTax.toFixed(3), ""],
-        ["المرتجعات المعتمدة", totalRets.toFixed(3), ""],
-        ["عدد الفواتير", filtered.length, ""],
-        ["متوسط قيمة الفاتورة", avgInvoice.toFixed(3), ""],
-        ["", "", ""],
-        ["طرق الدفع", "", ""],
-        ...Object.entries(payGroups).map(([m, v]) => [m, v.toFixed(3), `${Math.round((v / payTotal) * 100)}%`]),
-      ];
-      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-      wsSummary["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 10 }];
-      XLSX.utils.book_append_sheet(wb, wsSummary, "ملخص");
+      const now2 = new Date();
+      const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+      const row = (...cols: (string | number)[]) => cols.map(esc).join(",") + "\n";
 
-      // Sheet 2: الفواتير
-      const invoiceHeaders = ["رقم الفاتورة", "التاريخ", "الوقت", "العميل", "طريقة الدفع", "الخصم (JOD)", "الضريبة (JOD)", "الإجمالي (JOD)"];
-      const invoiceRows = filtered.map(s => {
+      let csv = "";
+
+      // ── Section 1: ملخص ──────────────────────────────────────────
+      csv += row("تقرير المبيعات", storeName);
+      csv += row("الفترة", periodLabel);
+      csv += row("تاريخ التصدير", now2.toLocaleDateString("ar-JO") + " " + now2.toLocaleTimeString("ar-JO"));
+      csv += row("", "");
+      csv += row("البيان", "المبلغ (JOD)");
+      csv += row("إجمالي المبيعات",       totalSales.toFixed(3));
+      csv += row("الخصومات الممنوحة",    totalDiscount.toFixed(3));
+      csv += row("صافي المبيعات",         netSales.toFixed(3));
+      csv += row("ضريبة القيمة المضافة", totalTax.toFixed(3));
+      csv += row("المرتجعات المعتمدة",   totalRets.toFixed(3));
+      csv += row("عدد الفواتير",          filtered.length);
+      csv += row("متوسط قيمة الفاتورة",  avgInvoice.toFixed(3));
+      csv += row("", "");
+
+      // ── Section 2: طرق الدفع ─────────────────────────────────────
+      csv += row("طرق الدفع", "المبلغ (JOD)", "النسبة");
+      Object.entries(payGroups).forEach(([m, v]) => {
+        csv += row(m, v.toFixed(3), Math.round((v / payTotal) * 100) + "%");
+      });
+      csv += row("", "", "");
+
+      // ── Section 3: الفواتير ───────────────────────────────────────
+      csv += row("رقم الفاتورة", "التاريخ", "الوقت", "العميل", "طريقة الدفع", "الخصم (JOD)", "الضريبة (JOD)", "الإجمالي (JOD)");
+      filtered.forEach(s => {
         const dt = new Date(s.createdAt);
         const payLabel = (s.payMethod || s.paymentMethod || "cash") === "cash" ? "نقدي" : (s.payMethod || s.paymentMethod) === "cliq" ? "كليك" : "بطاقة";
-        return [
+        csv += row(
           s.invoiceNo || s.id.slice(-6).toUpperCase(),
           dt.toLocaleDateString("ar-JO"),
           dt.toLocaleTimeString("ar-JO"),
@@ -161,30 +164,29 @@ function StoreReports() {
           (s.discount || 0).toFixed(3),
           (s.tax || 0).toFixed(3),
           (s.total || 0).toFixed(3),
-        ];
+        );
       });
-      const wsInvoices = XLSX.utils.aoa_to_sheet([invoiceHeaders, ...invoiceRows]);
-      wsInvoices["!cols"] = [{ wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 20 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
-      XLSX.utils.book_append_sheet(wb, wsInvoices, "الفواتير");
+      csv += row("", "", "", "", "", "", "", "");
 
-      // Sheet 3: أكثر المنتجات مبيعاً
-      const prodHeaders = ["المنتج", "إجمالي المبيعات (JOD)", "الكمية المباعة"];
-      const prodRows = Object.entries(prodMap)
+      // ── Section 4: أكثر المنتجات مبيعاً ─────────────────────────
+      csv += row("المنتج", "إجمالي المبيعات (JOD)", "الكمية المباعة");
+      Object.entries(prodMap)
         .sort((a, b) => b[1].revenue - a[1].revenue)
-        .map(([name, { revenue, qty }]) => [name, revenue.toFixed(3), qty]);
-      const wsProds = XLSX.utils.aoa_to_sheet([prodHeaders, ...prodRows]);
-      wsProds["!cols"] = [{ wch: 30 }, { wch: 20 }, { wch: 16 }];
-      XLSX.utils.book_append_sheet(wb, wsProds, "أكثر المنتجات مبيعاً");
+        .forEach(([name, { revenue, qty }]) => { csv += row(name, revenue.toFixed(3), qty); });
+      csv += row("", "", "");
 
-      // Sheet 4: المرتجعات
-      const retHeaders = ["رقم المرتجع", "المبلغ (JOD)", "الحالة"];
-      const retRows = rets.map(r => [r.id.slice(-6).toUpperCase(), (r.amount || 0).toFixed(3), r.status]);
-      const wsRets = XLSX.utils.aoa_to_sheet([retHeaders, ...retRows]);
-      wsRets["!cols"] = [{ wch: 16 }, { wch: 16 }, { wch: 14 }];
-      XLSX.utils.book_append_sheet(wb, wsRets, "المرتجعات");
+      // ── Section 5: المرتجعات ──────────────────────────────────────
+      csv += row("رقم المرتجع", "المبلغ (JOD)", "الحالة");
+      rets.forEach(r => { csv += row(r.id.slice(-6).toUpperCase(), (r.amount || 0).toFixed(3), r.status); });
 
-      const fileName = `تقرير-المبيعات-${periodLabel.replace(/[^a-zA-Z0-9؀-ۿ\-]/g, "_")}-${new Date().toISOString().split("T")[0]}.xlsx`;
-      XLSX.writeFile(wb, fileName);
+      // UTF-8 BOM so Excel renders Arabic correctly
+      const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `تقرير-المبيعات-${periodLabel.replace(/\s+/g, "-")}-${now2.toISOString().split("T")[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
       showToast("تم تصدير التقرير بنجاح ✓", "success");
     } catch {
       showToast("فشل تصدير التقرير — حاول مرة أخرى", "error");
