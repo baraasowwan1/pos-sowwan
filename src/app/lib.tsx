@@ -115,7 +115,7 @@ import {
   Building2, Boxes, Truck, LayoutDashboard, UserCheck, ClipboardList,
   Banknote, Landmark, Handshake, Globe, MapPin, Key, User,
   ArrowUpRight, ArrowDownRight, Clipboard, Copy, Power, Monitor,
-  Info, ChevronLeft, Grid3X3, List, Hash, Tag,
+  Info, ChevronLeft, Grid3X3, List, Hash, Tag, WifiOff,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -637,22 +637,45 @@ export function useStoreModules(): CategoryModules {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LOGIN — SEPARATED (Store / Admin)
-// Admin accessible only via clicking logo 5 times (hidden portal)
+// LOGIN
 // ─────────────────────────────────────────────────────────────────────────────
+
+const BUSINESS_CATS = [
+  { icon: "🛒", label: "سوبرماركت" },
+  { icon: "👕", label: "ملابس" },
+  { icon: "☕", label: "كافيه" },
+  { icon: "📱", label: "إلكترونيات" },
+  { icon: "✂️", label: "حلاقة" },
+  { icon: "🖨️", label: "مطبعة" },
+  { icon: "🌸", label: "محل زهور" },
+];
 
 export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store", id?: string) => void }) {
   const [mode, setMode] = useState<"store" | "admin">("store");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    try { return localStorage.getItem("sowwanjo_remember_email") || ""; } catch { return ""; }
+  });
   const [pass, setPass] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [rememberMe, setRememberMe] = useState(() => {
+    try { return !!localStorage.getItem("sowwanjo_remember_email"); } catch { return false; }
+  });
+  const [capsLock, setCapsLock] = useState(false);
+  const [online, setOnline] = useState(navigator.onLine);
   const [logoClicks, setLogoClicks] = useState(0);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const logoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Secret: click logo 5× within 3 seconds → unlock admin portal
+  useEffect(() => {
+    const up = () => setOnline(true);
+    const dn = () => setOnline(false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", dn);
+    return () => { window.removeEventListener("online", up); window.removeEventListener("offline", dn); };
+  }, []);
+
   const handleLogoClick = () => {
     const next = logoClicks + 1;
     setLogoClicks(next);
@@ -665,23 +688,50 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
     }
   };
 
+  const friendlyError = (e: {error?:string; message?:string; status?: number; code?: string}): string => {
+    const msg = (e.error || e.message || "").toLowerCase();
+    if (e.code === "ABORT_ERR" || msg.includes("abort") || msg.includes("timeout"))
+      return "انتهت مهلة الاتصال — تأكد من الاتصال بالإنترنت وحاول مرة أخرى";
+    if (!online || msg.includes("failed to fetch") || msg.includes("network") || msg.includes("cors"))
+      return "تعذر الوصول إلى الخادم — تحقق من اتصالك بالإنترنت";
+    if (msg.includes("suspended") || msg.includes("موقوف"))
+      return "هذا الحساب موقوف — تواصل مع الدعم الفني";
+    if (msg.includes("expired") || msg.includes("subscription") || msg.includes("منتهي"))
+      return "انتهى اشتراك المتجر — يرجى تجديد الاشتراك";
+    if (msg.includes("invalid") || msg.includes("incorrect") || msg.includes("wrong") || msg.includes("خطأ") || msg.includes("غير صحيح"))
+      return "البريد الإلكتروني أو كلمة المرور غير صحيحة";
+    if (msg.includes("not found") || msg.includes("غير موجود"))
+      return "لا يوجد حساب بهذا البريد الإلكتروني";
+    if (e.error) return e.error;
+    if (e.message) return e.message;
+    return "حدث خطأ غير متوقع — حاول مرة أخرى";
+  };
+
   const doLogin = async () => {
+    if (loading) return;
     if (!email || !pass) { setErr("الرجاء إدخال البريد الإلكتروني وكلمة المرور"); return; }
+    if (!online) { setErr("لا يوجد اتصال بالإنترنت — تحقق من شبكتك وحاول مرة أخرى"); return; }
     setLoading(true); setErr("");
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     try {
       if (mode === "admin") {
-        // ── المدير العام — Backend فقط ───────────────────────────────
         const res = await apiLoginAdmin(email, pass);
         if (!res?.token) throw { error: "لم يُستلم توكن من الخادم" };
         setToken(res.token);
+        if (rememberMe) {
+          try { localStorage.setItem("sowwanjo_remember_email", email); } catch {}
+        } else {
+          try { localStorage.removeItem("sowwanjo_remember_email"); } catch {}
+        }
         onLogin("superadmin");
       } else {
-        // ── المتجر — Backend فقط (MongoDB) — يعمل من أي متصفح ────────
         const res = await apiLoginStore(email, pass);
         if (!res?.token) throw { error: "لم يُستلم توكن من الخادم" };
         if (!res?.store?.id) throw { error: "بيانات المتجر غير مكتملة" };
         setToken(res.token);
-        // تطبيع وحفظ بيانات المتجر في localStorage
         const normalizedStore = {
           id:       (res.store as {_id?: string; id: string})._id || res.store.id,
           nameAr:   res.store.nameAr   || "متجري",
@@ -694,31 +744,45 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
           status:   res.store.status   || "active",
           plan:     res.store.plan     || "مبتدئ",
           taxNo:    "",
-          users:    0, products: 0, sales: 0, revenue: 0, branches: 1,
-          createdAt:new Date().toISOString().split("T")[0],
-          expiresAt:res.store.expiresAt
+          users: 0, products: 0, sales: 0, revenue: 0, branches: 1,
+          createdAt: new Date().toISOString().split("T")[0],
+          expiresAt: res.store.expiresAt
             ? new Date(res.store.expiresAt).toISOString().split("T")[0]
             : new Date(Date.now() + 365*86400000).toISOString().split("T")[0],
         };
         try {
-          localStorage.setItem(
-            `sowwanjo_storeinfo_${normalizedStore.id}`,
-            JSON.stringify(normalizedStore)
-          );
+          localStorage.setItem(`sowwanjo_storeinfo_${normalizedStore.id}`, JSON.stringify(normalizedStore));
         } catch {}
+        if (rememberMe) {
+          try { localStorage.setItem("sowwanjo_remember_email", email); } catch {}
+        } else {
+          try { localStorage.removeItem("sowwanjo_remember_email"); } catch {}
+        }
         onLogin("store", normalizedStore.id);
       }
     } catch (err: unknown) {
-      const e = err as {error?:string; message?:string};
-      setErr(e.error || e.message || "حدث خطأ غير متوقع — حاول مرة أخرى");
+      const e = err as {error?:string; message?:string; code?: string; status?: number; name?: string};
+      if (e.name === "AbortError" || e.code === "ABORT_ERR") {
+        setErr("انتهت مهلة الاتصال (10 ثوان) — تأكد من الاتصال بالإنترنت وحاول مرة أخرى");
+      } else {
+        setErr(friendlyError(e));
+      }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
-      {/* ── Mobile Hero (phone/tablet only) ─────────────────────────────────── */}
+      {/* ── Offline banner ───────────────────────────────────────────────────── */}
+      {!online && (
+        <div className="fixed top-0 inset-x-0 z-50 bg-red-600 text-white text-center text-xs font-bold py-2 flex items-center justify-center gap-2">
+          <WifiOff size={13} /> لا يوجد اتصال بالإنترنت — تحقق من الشبكة
+        </div>
+      )}
+
+      {/* ── Mobile Hero ──────────────────────────────────────────────────────── */}
       <div className="lg:hidden relative overflow-hidden shrink-0" style={{ background: "linear-gradient(160deg,#0A0F1E 0%,#0F172A 50%,#162040 100%)", minHeight: "220px" }}>
         <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)", backgroundSize: "40px 40px" }} />
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-15" style={{ background: "radial-gradient(circle,#3B82F6 0%,transparent 70%)", transform: "translate(30%,-30%)" }} />
@@ -737,10 +801,9 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
             ادِر متجرك <span className="bg-gradient-to-l from-blue-400 to-cyan-400 bg-clip-text text-transparent">بذكاء</span>
           </h1>
           <p className="text-white/40 text-sm">نظام POS متكامل مصمم للسوق الأردني</p>
-          {/* Feature pills */}
           <div className="flex flex-wrap justify-center gap-2 mt-4">
-            {["متعدد المتاجر", "تقارير لحظية", "أمان عالي"].map(f => (
-              <span key={f} className="text-xs font-bold text-blue-300 bg-blue-500/15 border border-blue-500/20 px-3 py-1 rounded-full">{f}</span>
+            {BUSINESS_CATS.map(c => (
+              <span key={c.label} className="text-xs font-bold text-blue-300 bg-blue-500/15 border border-blue-500/20 px-2.5 py-1 rounded-full">{c.icon} {c.label}</span>
             ))}
           </div>
         </div>
@@ -771,43 +834,39 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
               </h1>
               <p className="text-white/40 text-sm max-w-xs mx-auto">نظام POS سحابي متكامل مصمم للسوق الأردني</p>
             </div>
-            <div className="relative w-full max-w-md">
-              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-3/4 h-8 rounded-full opacity-30 blur-xl" style={{ background: "linear-gradient(90deg,#3B82F6,#06B6D4)" }} />
-              <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl" style={{ boxShadow: "0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)" }}>
-                <img src="https://images.unsplash.com/photo-1726065235239-b20b88d43eea?w=700&h=460&fit=crop&auto=format&q=85" alt="جهاز نقطة البيع" className="w-full object-cover" style={{ height: "260px" }} />
-                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(10,15,30,0.5) 0%, transparent 60%)" }} />
-                <div className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-white text-xs font-semibold">نشط الآن</span>
+            {/* Business categories grid */}
+            <div className="grid grid-cols-4 gap-2 w-full max-w-sm mb-6">
+              {BUSINESS_CATS.map(c => (
+                <div key={c.label} className="bg-white/[0.05] border border-white/[0.08] rounded-xl p-2.5 text-center hover:bg-white/[0.09] transition-colors">
+                  <div className="text-xl mb-1">{c.icon}</div>
+                  <p className="text-white/70 text-xs font-semibold leading-tight">{c.label}</p>
                 </div>
-                <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm border border-white/10 rounded-xl px-3 py-1.5">
-                  <p className="text-white/50 text-xs">مبيعات اليوم</p>
-                  <p className="text-white font-black text-sm">247.850 JOD</p>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 w-full max-w-sm">
+              {[
+                { icon: <Store size={15} />, t: "متعدد المتاجر", d: "إدارة كاملة بلا حدود" },
+                { icon: <ShoppingCart size={15} />, t: "نقطة بيع سريعة", d: "واجهة لمس احترافية" },
+                { icon: <BarChart2 size={15} />, t: "تقارير لحظية", d: "تحليلات مباشرة" },
+                { icon: <Shield size={15} />, t: "أمان عالي", d: "بيانات معزولة لكل متجر" },
+              ].map(f => (
+                <div key={f.t} className="bg-white/[0.04] border border-white/[0.07] rounded-xl p-3 backdrop-blur-sm hover:bg-white/[0.07] transition-colors">
+                  <div className="text-blue-400 mb-1.5">{f.icon}</div>
+                  <p className="text-white font-bold text-xs">{f.t}</p>
+                  <p className="text-white/35 text-xs mt-0.5">{f.d}</p>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
-          <div className="px-8 pb-10 grid grid-cols-2 gap-2.5">
-            {[
-              { icon: <Store size={16} />, t: "متعدد المتاجر", d: "إدارة كاملة بلا حدود" },
-              { icon: <ShoppingCart size={16} />, t: "نقطة بيع سريعة", d: "واجهة لمس احترافية" },
-              { icon: <BarChart2 size={16} />, t: "تقارير لحظية", d: "تحليلات مباشرة" },
-              { icon: <Shield size={16} />, t: "أمان عالي", d: "بيانات معزولة لكل متجر" },
-            ].map(f => (
-              <div key={f.t} className="bg-white/[0.04] border border-white/[0.07] rounded-xl p-3 backdrop-blur-sm hover:bg-white/[0.07] transition-colors">
-                <div className="text-blue-400 mb-1.5">{f.icon}</div>
-                <p className="text-white font-bold text-xs">{f.t}</p>
-                <p className="text-white/35 text-xs mt-0.5">{f.d}</p>
-              </div>
-            ))}
+          <div className="px-8 pb-8 text-center">
+            <p className="text-white/20 text-xs">جميع الحقوق محفوظة © 2025 Sowwanjo · JOD · RTL</p>
           </div>
         </div>
       </div>
 
       {/* ── Form Panel ───────────────────────────────────────────────────────── */}
-      <div className="w-full lg:w-[460px] bg-background flex items-start lg:items-center justify-center p-5 sm:p-8 lg:p-8" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 2rem)" }}>
+      <div className="w-full lg:w-[460px] bg-background flex items-start lg:items-center justify-center p-5 sm:p-8 lg:p-8" style={{ paddingTop: !online ? "calc(2rem + 32px)" : undefined, paddingBottom: "calc(env(safe-area-inset-bottom) + 2rem)" }}>
         <div className="w-full max-w-sm">
-          {/* Admin mode banner */}
           {adminUnlocked && (
             <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center gap-2">
               <Shield size={14} className="text-amber-600 shrink-0" />
@@ -839,23 +898,54 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
             <F label={mode === "admin" ? "اسم المستخدم" : "البريد الإلكتروني للمتجر"} req>
               <TInput value={email} onChange={setEmail} placeholder={mode === "admin" ? "اسم المستخدم" : "store@sowwanjo.online"} icon={mode === "admin" ? <Shield size={14} /> : <Mail size={14} />} />
             </F>
+
             <F label="كلمة المرور" req>
               <div className="relative">
-                <input type={showPass ? "text" : "password"} value={pass} onChange={e => setPass(e.target.value)} placeholder="••••••••"
+                <input
+                  type={showPass ? "text" : "password"}
+                  value={pass}
+                  onChange={e => setPass(e.target.value)}
+                  placeholder="••••••••"
                   onKeyDown={e => e.key === "Enter" && doLogin()}
-                  className="w-full h-11 rounded-xl border border-border bg-input-background text-sm text-foreground px-3 pr-9 focus:outline-none focus:ring-2 focus:ring-ring/25 focus:border-primary transition-all" />
+                  onKeyUp={e => setCapsLock(e.getModifierState("CapsLock"))}
+                  className="w-full h-11 rounded-xl border border-border bg-input-background text-sm text-foreground px-3 pr-9 focus:outline-none focus:ring-2 focus:ring-ring/25 focus:border-primary transition-all"
+                />
                 <button onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
+              {capsLock && (
+                <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
+                  <AlertCircle size={11} /> تنبيه: مفتاح Caps Lock مفعّل
+                </p>
+              )}
             </F>
+
+            {/* Remember Me */}
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={e => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-border accent-primary"
+              />
+              <span className="text-sm text-muted-foreground">تذكرني</span>
+            </label>
+
             {err && (
-              <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                <AlertCircle size={14} /> {err}
+              <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <span>{err}</span>
+                  {(err.includes("مهلة") || err.includes("timeout") || err.includes("اتصال")) && (
+                    <button onClick={doLogin} className="block text-xs font-bold text-red-700 underline mt-1">إعادة المحاولة</button>
+                  )}
+                </div>
               </div>
             )}
-            <Btn onClick={doLogin} full disabled={loading} s="lg" icon={loading ? <RefreshCw size={16} className="animate-spin" /> : <ArrowLeft size={16} />}>
-              {loading ? "جاري التحقق..." : "دخول"}
+
+            <Btn onClick={doLogin} full disabled={loading || !online} s="lg" icon={loading ? <RefreshCw size={16} className="animate-spin" /> : <ArrowLeft size={16} />}>
+              {loading ? "جاري التحقق..." : !online ? "لا يوجد اتصال" : "دخول"}
             </Btn>
           </div>
 
