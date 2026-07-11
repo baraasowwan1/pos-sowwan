@@ -363,19 +363,35 @@ function EmpScreen() {
   useEffect(() => { setEmps(normList<{id:string;name:string;role:string;phone:string;sales:number;status:string;branch:string}>(empsRaw)); }, [empsRaw]);
   const [showNew, setShowNew] = useState(false);
   const [editEmp, setEditEmp] = useState<{id:number;name:string;role:string;phone:string;sales:number;status:string;branch:string}|null>(null);
-  const [nf, setNf] = useState({ name: '', role: 'كاشير', phone: '', branch: 'الفرع الرئيسي' });
-  const RC: Record<string, { c: string; b: string }> = { مدير: { c: "#1D4ED8", b: "#DBEAFE" }, كاشير: { c: "#059669", b: "#D1FAE5" }, "مسؤول مخزون": { c: "#D97706", b: "#FEF3C7" } };
+  // Role / status mappings — form uses Arabic labels but DB stores English enum values
+  const ROLE_AR_TO_EN: Record<string,string> = { مدير:"manager", كاشير:"cashier", "مسؤول مخزون":"inventory", محاسب:"accountant", مالك:"owner" };
+  const ROLE_EN_TO_AR: Record<string,string> = { owner:"مالك", manager:"مدير", cashier:"كاشير", inventory:"مسؤول مخزون", accountant:"محاسب" };
+  const STATUS_AR_TO_EN: Record<string,string> = { نشط:"active", موقوف:"suspended", إجازة:"suspended" };
+  const STATUS_EN_TO_AR: Record<string,string> = { active:"نشط", suspended:"موقوف" };
+  const ROLE_OPTS = ["manager","cashier","inventory","accountant"].map(r => ({ value: r, label: ROLE_EN_TO_AR[r] || r }));
+  const STATUS_OPTS = ["active","suspended"].map(s => ({ value: s, label: STATUS_EN_TO_AR[s] || s }));
+  const RC: Record<string, { c: string; b: string }> = { manager: { c: "#1D4ED8", b: "#DBEAFE" }, cashier: { c: "#059669", b: "#D1FAE5" }, inventory: { c: "#D97706", b: "#FEF3C7" }, owner: { c: "#7C3AED", b: "#EDE9FE" }, accountant: { c: "#0891B2", b: "#CFFAFE" } };
+
+  const [nf, setNf] = useState({ name: '', role: 'cashier', phone: '', branch: 'الفرع الرئيسي' });
   const addEmp = async () => {
     if (!nf.name || !nf.phone) return;
     try {
+      // nf.role is already an English enum value — send directly
       await storeApi.post("/users", { name: nf.name, phone: nf.phone, role: nf.role, email: `${nf.phone.replace(/[^0-9]/g,"")}@store.jo` });
       await refreshEmps();
       showToast(`تم إضافة "${nf.name}" وحفظه في قاعدة البيانات ✅`);
     } catch (e) { showToast((e as {error?:string}).error || "خطأ في إضافة الموظف", "error"); return; }
-    setShowNew(false); setNf({ name: '', role: 'كاشير', phone: '', branch: 'الفرع الرئيسي' });
+    setShowNew(false); setNf({ name: '', role: 'cashier', phone: '', branch: 'الفرع الرئيسي' });
   };
   const delEmp = async (id: string) => { await storeApi.delete(`/users/${id}`); await refreshEmps(); showToast("تم حذف الموظف", "warning"); };
-  const saveEdit = async () => { if (!editEmp) return; await storeApi.put(`/users/${editEmp.id}`, { name: editEmp.name, role: editEmp.role, status: editEmp.status }); await refreshEmps(); showToast("تم حفظ تعديلات الموظف"); setEditEmp(null); };
+  const saveEdit = async () => {
+    if (!editEmp) return;
+    // role may arrive as Arabic (from old state) — normalize to English before sending
+    const enRole = ROLE_AR_TO_EN[editEmp.role] || editEmp.role;
+    const enStatus = STATUS_AR_TO_EN[editEmp.status] || editEmp.status;
+    await storeApi.put(`/users/${editEmp.id}`, { name: editEmp.name, role: enRole, status: enStatus });
+    await refreshEmps(); showToast("تم حفظ تعديلات الموظف"); setEditEmp(null);
+  };
 
   return (
     <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
@@ -394,8 +410,8 @@ function EmpScreen() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-bold">{e.name}</p>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: rc.b, color: rc.c }}>{e.role}</span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${e.status === "نشط" ? "text-emerald-700 bg-emerald-100" : "text-amber-700 bg-amber-100"}`}>{e.status}</span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: rc.b, color: rc.c }}>{ROLE_EN_TO_AR[e.role] || e.role}</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${e.status === "active" ? "text-emerald-700 bg-emerald-100" : "text-amber-700 bg-amber-100"}`}>{STATUS_EN_TO_AR[e.status] || e.status}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">{e.phone} • {e.branch}</p>
               </div>
@@ -431,7 +447,7 @@ function EmpScreen() {
           <div className="space-y-4">
             <F label="الاسم الكامل" req><TInput value={nf.name} onChange={v=>setNf({...nf,name:v})} placeholder="محمد أحمد السالم" /></F>
             <F label="رقم الهاتف" req><TInput value={nf.phone} onChange={v=>setNf({...nf,phone:v})} placeholder="+962-79-XXX-XXXX" icon={<Phone size={13}/>} /></F>
-            <F label="الدور الوظيفي"><SInput value={nf.role} onChange={v=>setNf({...nf,role:v})} options={["مدير","كاشير","مسؤول مخزون","محاسب"].map(r=>({value:r,label:r}))} /></F>
+            <F label="الدور الوظيفي"><SInput value={nf.role} onChange={v=>setNf({...nf,role:v})} options={ROLE_OPTS} /></F>
             <F label="الفرع"><SInput value={nf.branch} onChange={v=>setNf({...nf,branch:v})} options={["الفرع الرئيسي","فرع مرج الحمام","فرع الزرقاء"].map(b=>({value:b,label:b}))} /></F>
             <div className="flex gap-3 justify-end"><Btn v="secondary" onClick={()=>setShowNew(false)}>إلغاء</Btn><Btn onClick={addEmp} disabled={!nf.name||!nf.phone} icon={<Plus size={14}/>}>إضافة الموظف</Btn></div>
           </div>
@@ -442,8 +458,8 @@ function EmpScreen() {
           <div className="space-y-4">
             <F label="الاسم الكامل"><TInput value={editEmp.name} onChange={v=>setEditEmp({...editEmp,name:v})} /></F>
             <F label="رقم الهاتف"><TInput value={editEmp.phone} onChange={v=>setEditEmp({...editEmp,phone:v})} /></F>
-            <F label="الدور الوظيفي"><SInput value={editEmp.role} onChange={v=>setEditEmp({...editEmp,role:v})} options={["مدير","كاشير","مسؤول مخزون","محاسب"].map(r=>({value:r,label:r}))} /></F>
-            <F label="الحالة"><SInput value={editEmp.status} onChange={v=>setEditEmp({...editEmp,status:v})} options={["نشط","إجازة","موقوف"].map(s=>({value:s,label:s}))} /></F>
+            <F label="الدور الوظيفي"><SInput value={editEmp.role} onChange={v=>setEditEmp({...editEmp,role:v})} options={ROLE_OPTS} /></F>
+            <F label="الحالة"><SInput value={editEmp.status} onChange={v=>setEditEmp({...editEmp,status:v})} options={STATUS_OPTS} /></F>
             <div className="flex gap-3 justify-end"><Btn v="secondary" onClick={()=>setEditEmp(null)}>إلغاء</Btn><Btn onClick={saveEdit} icon={<Check size={14}/>}>حفظ التعديلات</Btn></div>
           </div>
         </Modal>
