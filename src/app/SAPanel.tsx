@@ -552,6 +552,14 @@ function SAStores() {
   const [deleteConfirm, setDeleteConfirm] = useState<StoreData | null>(null);
   const [exportData,    setExportData]    = useState<StoreData | null>(null);  // ← كان ناقصاً
   const [nf, setNf] = useState({ nameAr: "", nameEn: "", category: "supermarket" as StoreCategory, owner: "", email: "", phone: "", city: "", plan: "الاحترافي", taxNo: "" });
+  // Dynamic plans fetched from API — overrides hardcoded PLANS constant
+  const [apiPlans, setApiPlans] = useState<Plan[]>(PLANS);
+  useEffect(() => {
+    apiFetch("/plans", {}, getToken())
+      .then(d => { if (Array.isArray(d) && (d as object[]).length > 0) setApiPlans((d as object[]).map(x => norm(x as Plan & { _id?: string }))); })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // جلب المتاجر من Backend عند فتح الشاشة
   useEffect(() => {
@@ -817,7 +825,7 @@ function SAStores() {
             <F label="رقم الهاتف"><TInput value={nf.phone} onChange={v => setNf({ ...nf, phone: v })} placeholder="+962-79-XXX-XXXX" icon={<Phone size={13} />} /></F>
             <F label="البريد الإلكتروني (يُستخدم للدخول)" req><TInput value={nf.email} onChange={v => setNf({ ...nf, email: v })} placeholder="owner@store.jo" icon={<Mail size={13} />} /></F>
             <F label="فئة المتجر" req><SInput value={nf.category} onChange={v => setNf({ ...nf, category: v as StoreCategory })} options={Object.entries(CAT).map(([k, v]) => ({ value: k, label: v.label }))} /></F>
-            <F label="خطة الاشتراك"><SInput value={nf.plan} onChange={v => setNf({ ...nf, plan: v })} options={PLANS.map(p => ({ value: p.nameAr, label: `${p.nameAr} — ${p.price} JOD/شهر` }))} /></F>
+            <F label="خطة الاشتراك"><SInput value={nf.plan} onChange={v => setNf({ ...nf, plan: v })} options={apiPlans.map(p => ({ value: p.nameAr, label: `${p.nameAr} — ${p.price} JOD/شهر` }))} /></F>
             <F label="الرقم الضريبي (اختياري)"><TInput value={nf.taxNo} onChange={v => setNf({ ...nf, taxNo: v })} placeholder="JO-XXXXXXXX" icon={<Hash size={13} />} /></F>
           </div>
           <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800 space-y-1">
@@ -864,7 +872,7 @@ function SAStores() {
             <F label="رقم الهاتف"><TInput value={editStore.phone} onChange={v => setEditStore({...editStore, phone: v})} icon={<Phone size={13}/>} /></F>
             <F label="البريد الإلكتروني"><TInput value={editStore.email} readOnly /></F>
             <F label="فئة المتجر"><SInput value={editStore.category} onChange={v => setEditStore({...editStore, category: v as StoreCategory})} options={Object.entries(CAT).map(([k, v]) => ({ value: k, label: v.label }))} /></F>
-            <F label="خطة الاشتراك"><SInput value={editStore.plan} onChange={v => setEditStore({...editStore, plan: v})} options={[...PLANS.map(p => ({ value: p.nameAr, label: `${p.nameAr} — ${p.price} JOD/شهر` })), { value: "تجريبي", label: "تجريبي (مجاني)" }]} /></F>
+            <F label="خطة الاشتراك"><SInput value={editStore.plan} onChange={v => setEditStore({...editStore, plan: v})} options={[...apiPlans.map(p => ({ value: p.nameAr, label: `${p.nameAr} — ${p.price} JOD/شهر` })), { value: "تجريبي", label: "تجريبي (مجاني)" }]} /></F>
             <F label="حالة المتجر"><SInput value={editStore.status} onChange={v => setEditStore({...editStore, status: v as StoreData["status"]})} options={[{ value: "active", label: "نشط" }, { value: "trial", label: "تجريبي" }, { value: "suspended", label: "موقوف" }, { value: "expired", label: "منتهي" }]} /></F>
             <F label="تاريخ انتهاء الاشتراك"><TInput value={editStore.expiresAt} onChange={v => setEditStore({...editStore, expiresAt: v})} type="date" /></F>
             <F label="الرقم الضريبي"><TInput value={editStore.taxNo || ""} onChange={v => setEditStore({...editStore, taxNo: v})} placeholder="JO-XXXXXXXX" icon={<Hash size={13}/>} /></F>
@@ -941,7 +949,7 @@ function SAStores() {
       {renewStore && (
         <Modal title={`تجديد اشتراك: ${renewStore.nameAr}`} sub={`الانتهاء الحالي: ${renewStore.expiresAt}`} onClose={() => setRenewStore(null)} size="sm">
           <div className="space-y-4">
-            <F label="الخطة"><SInput value={renewStore.plan} onChange={v => setRenewStore({...renewStore, plan: v})} options={PLANS.map(p => ({ value: p.nameAr, label: `${p.nameAr} — ${p.price} JOD/شهر` }))} /></F>
+            <F label="الخطة"><SInput value={renewStore.plan} onChange={v => setRenewStore({...renewStore, plan: v})} options={apiPlans.map(p => ({ value: p.nameAr, label: `${p.nameAr} — ${p.price} JOD/شهر` }))} /></F>
             <F label="مدة التجديد">
               <SInput value={renewMonths} onChange={setRenewMonths} options={[{ value: "1", label: "شهر واحد" }, { value: "3", label: "3 أشهر (وفر 5%)" }, { value: "6", label: "6 أشهر (وفر 10%)" }, { value: "12", label: "سنة كاملة (وفر 32%)" }]} />
             </F>
