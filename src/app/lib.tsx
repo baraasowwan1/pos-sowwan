@@ -869,6 +869,14 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
   };
 
   const [entering, setEntering] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    setIsDesktop(mq.matches);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   const doLogin = async () => {
     if (loading) return;
@@ -1063,7 +1071,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
       {/* ═══════════════════════════════════════════════════════════════
           DESKTOP LAYOUT  65% HERO  |  35% CARD
       ═══════════════════════════════════════════════════════════════ */}
-      <div className="hidden lg:flex" style={{ height:"100dvh" }}>
+      {isDesktop && <div style={{ height:"100dvh", display:"flex" }}>
 
         {/* ── HERO 65% ── */}
         <div style={{
@@ -1377,12 +1385,12 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
             </p>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* ═══════════════════════════════════════════════════════════════
           MOBILE LAYOUT — full screen card with headline above
       ═══════════════════════════════════════════════════════════════ */}
-      <div className="lg:hidden" style={{
+      {!isDesktop && <div style={{
         width:"100%", minHeight:"100dvh", display:"flex", flexDirection:"column",
         padding:"calc(env(safe-area-inset-top,0px) + 20px) 18px calc(env(safe-area-inset-bottom,0px) + 20px)",
         position:"relative", zIndex:1,
@@ -1499,7 +1507,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
           </div>
           <p style={{ textAlign:"center", fontSize:10, color:"rgba(255,255,255,0.13)", marginTop:16 }}>© 2026 Sowwanjo · v1.0</p>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
