@@ -20,6 +20,6 @@
     }
   ],
   "env": {
-    "VITE_API_URL": "https://sowwanjo-pos-api.onrender.com/api"
+    "VITE_API_URL": "https://serversowpos1.onrender.com/api"
   }
 }
