@@ -24,6 +24,7 @@ const SA_NAV = [
   { id: "dashboard",    label: "لوحة التحكم",    icon: <LayoutDashboard size={17} /> },
   { id: "stores",       label: "المتاجر",          icon: <Store size={17} /> },
   { id: "master-catalog", label: "كتالوج رئيسي",  icon: <Boxes size={17} /> },
+  { id: "all-users",    label: "المستخدمون",       icon: <Users size={17} /> },
   { id: "plans",        label: "خطط الاشتراك",    icon: <CreditCard size={17} /> },
   { id: "reports",      label: "التقارير العامة",  icon: <BarChart2 size={17} /> },
   { id: "audit",        label: "سجلات التدقيق",   icon: <ClipboardList size={17} /> },
@@ -313,6 +314,7 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
         <main className="flex-1 overflow-y-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)" }}>
           {screen === "dashboard"    && <SADash onNav={navTo} />}
           {screen === "stores"       && <SAStores />}
+          {screen === "all-users"    && <SAAllUsers />}
           {screen === "master-catalog" && <SAMasterCatalog />}
           {screen === "plans"        && <SAPlans />}
           {screen === "reports"      && <SAReports />}
@@ -3059,6 +3061,306 @@ function SAMasterCatalog() {
               )}
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SA ALL USERS SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SAAllUsers() {
+  const API = (import.meta as Record<string, Record<string, string>>).env?.VITE_API_URL || "http://localhost:5000/api";
+  const tok = () => { try { return localStorage.getItem("sowwanjo_jwt") || ""; } catch { return ""; } };
+  const af = (path: string, opts: RequestInit = {}) =>
+    fetch(`${API}${path}`, { ...opts, headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok()}`, ...(opts.headers || {}) } });
+
+  type AllUser = { id: string; name: string; email: string; role: string; phone: string; storeId: string; storeName: string; status: string; createdAt: string };
+  const ROLES = [
+    { value: "owner",     label: "مالك" },
+    { value: "manager",   label: "مدير" },
+    { value: "cashier",   label: "كاشير" },
+    { value: "inventory", label: "مخزون" },
+    { value: "accountant",label: "محاسب" },
+  ];
+  const ROLE_STYLE: Record<string, string> = {
+    owner:      "bg-purple-50 text-purple-700 border-purple-200",
+    manager:    "bg-blue-50 text-blue-700 border-blue-200",
+    cashier:    "bg-emerald-50 text-emerald-700 border-emerald-200",
+    inventory:  "bg-amber-50 text-amber-700 border-amber-200",
+    accountant: "bg-sky-50 text-sky-700 border-sky-200",
+  };
+
+  const [users,   setUsers]   = useState<AllUser[]>([]);
+  const [total,   setTotal]   = useState(0);
+  const [pages,   setPages]   = useState(1);
+  const [page,    setPage]    = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [q,       setQ]       = useState("");
+  const [roleF,   setRoleF]   = useState("");
+  const [storeF,  setStoreF]  = useState("");
+  const [stores,  setStores]  = useState<{ id: string; nameAr: string }[]>([]);
+
+  // Edit / password / add
+  const emptyForm = { name: "", email: "", role: "cashier", phone: "", storeId: "", password: "" };
+  const [editUser,   setEditUser]   = useState<AllUser | null>(null);
+  const [editForm,   setEditForm]   = useState({ name: "", email: "", role: "", phone: "" });
+  const [editLoading,setEditLoading]= useState(false);
+  const [passUser,   setPassUser]   = useState<AllUser | null>(null);
+  const [passVal,    setPassVal]    = useState("");
+  const [passLoading,setPassLoading]= useState(false);
+  const [showAdd,    setShowAdd]    = useState(false);
+  const [addForm,    setAddForm]    = useState(emptyForm);
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError,   setAddError]   = useState("");
+
+  const LIMIT = 50;
+
+  const load = async (pg = 1, search = q, role = roleF, store = storeF) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(pg), limit: String(LIMIT) });
+      if (search) params.set("q", search);
+      if (role)   params.set("role", role);
+      if (store)  params.set("storeId", store);
+      const r = await af(`/stores/all-users?${params}`);
+      const d = await r.json() as { users: AllUser[]; total: number; pages: number };
+      setUsers(d.users || []); setTotal(d.total || 0); setPages(d.pages || 1); setPage(pg);
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
+  };
+
+  // Load stores for filter dropdown & add form
+  useEffect(() => {
+    af("/stores").then(r => r.json()).then((d: unknown) => {
+      if (Array.isArray(d)) setStores((d as { _id?: string; id?: string; nameAr: string }[]).map(s => ({ id: s._id || s.id || "", nameAr: s.nameAr })));
+    }).catch(() => {});
+    load(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => load(1, q, roleF, storeF), 350);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, roleF, storeF]);
+
+  const doEdit = async () => {
+    if (!editUser) return;
+    setEditLoading(true);
+    try {
+      const r = await af(`/stores/${editUser.storeId}/users/${editUser.id}`, { method: "PUT", body: JSON.stringify(editForm) });
+      const d = await r.json() as Partial<AllUser> & { error?: string };
+      if (d.error) { showToast(d.error, "error"); return; }
+      setUsers(u => u.map(x => x.id === editUser.id ? { ...x, ...d } : x));
+      setEditUser(null); showToast("تم التحديث ✓", "success");
+    } catch { showToast("خطأ في التعديل", "error"); }
+    finally { setEditLoading(false); }
+  };
+
+  const doResetPass = async () => {
+    if (!passUser || passVal.length < 6) return;
+    setPassLoading(true);
+    try {
+      const r = await af(`/stores/${passUser.storeId}/users/${passUser.id}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword: passVal }) });
+      const d = await r.json() as { error?: string };
+      if (d.error) { showToast(d.error, "error"); return; }
+      setPassUser(null); setPassVal(""); showToast(`تم تغيير كلمة مرور "${passUser.name}" ✓`, "success");
+    } catch { showToast("خطأ في تغيير كلمة المرور", "error"); }
+    finally { setPassLoading(false); }
+  };
+
+  const doDelete = async (user: AllUser) => {
+    if (!confirm(`حذف "${user.name}" من متجر "${user.storeName}"؟`)) return;
+    try {
+      await af(`/stores/${user.storeId}/users/${user.id}`, { method: "DELETE" });
+      setUsers(u => u.filter(x => x.id !== user.id)); setTotal(t => t - 1);
+      showToast(`تم حذف "${user.name}"`, "warning");
+    } catch { showToast("خطأ في الحذف", "error"); }
+  };
+
+  const doAdd = async () => {
+    if (!addForm.storeId || !addForm.name || !addForm.email || addForm.password.length < 6) return;
+    setAddLoading(true); setAddError("");
+    try {
+      const r = await af(`/stores/${addForm.storeId}/users`, { method: "POST", body: JSON.stringify(addForm) });
+      const d = await r.json() as AllUser & { error?: string };
+      if (d.error) { setAddError(d.error); return; }
+      showToast(`تم إضافة "${addForm.name}" ✓`, "success");
+      setShowAdd(false); setAddForm(emptyForm); load(1);
+    } catch { setAddError("خطأ في الإضافة"); }
+    finally { setAddLoading(false); }
+  };
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4 overflow-y-auto h-full">
+      <Hdr title="إدارة المستخدمين" sub={`${total.toLocaleString("ar")} مستخدم في جميع المتاجر`}
+        action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => { setShowAdd(true); setAddForm(emptyForm); setAddError(""); setEditUser(null); setPassUser(null); }}>مستخدم جديد</Btn>} />
+
+      {/* ── Add User Panel ── */}
+      {showAdd && (
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="font-bold text-sm">إضافة مستخدم جديد</p>
+            <button onClick={() => setShowAdd(false)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground"><X size={14} /></button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <F label="المتجر" req>
+              <select value={addForm.storeId} onChange={e => setAddForm(f => ({ ...f, storeId: e.target.value }))}
+                className="w-full h-10 px-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:border-primary" dir="rtl">
+                <option value="">اختر متجراً...</option>
+                {stores.map(s => <option key={s.id} value={s.id}>{s.nameAr}</option>)}
+              </select>
+            </F>
+            <F label="الاسم الكامل" req><TInput value={addForm.name} onChange={v => setAddForm(f => ({ ...f, name: v }))} placeholder="أحمد محمد" /></F>
+            <F label="البريد الإلكتروني" req><TInput value={addForm.email} onChange={v => setAddForm(f => ({ ...f, email: v }))} placeholder="ahmed@store.com" /></F>
+            <F label="كلمة المرور" req><TInput value={addForm.password} onChange={v => setAddForm(f => ({ ...f, password: v }))} type="password" placeholder="6 أحرف على الأقل" /></F>
+            <F label="رقم الجوال"><TInput value={addForm.phone} onChange={v => setAddForm(f => ({ ...f, phone: v }))} placeholder="07XXXXXXXX" /></F>
+            <F label="الصلاحية"><SInput value={addForm.role} onChange={v => setAddForm(f => ({ ...f, role: v }))} options={ROLES} /></F>
+          </div>
+          {addError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 font-semibold">{addError}</p>}
+          <div className="flex gap-2 justify-end">
+            <Btn v="secondary" s="sm" onClick={() => setShowAdd(false)}>إلغاء</Btn>
+            <Btn s="sm" icon={addLoading ? <RefreshCw size={12} className="animate-spin" /> : <Check size={12} />}
+              onClick={doAdd} disabled={addLoading || !addForm.storeId || !addForm.name || !addForm.email || addForm.password.length < 6}>
+              {addLoading ? "جاري الإضافة..." : "إضافة"}
+            </Btn>
+          </div>
+        </div>
+      )}
+
+      {/* ── Filters ── */}
+      <div className="flex flex-wrap gap-2">
+        <div className="flex-1 min-w-48 relative">
+          <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="بحث بالاسم، البريد، الجوال..."
+            className="w-full h-10 rounded-xl border border-border bg-background text-sm pr-9 pl-3 focus:outline-none focus:border-primary" />
+        </div>
+        <select value={storeF} onChange={e => setStoreF(e.target.value)}
+          className="h-10 px-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:border-primary" dir="rtl">
+          <option value="">كل المتاجر</option>
+          {stores.map(s => <option key={s.id} value={s.id}>{s.nameAr}</option>)}
+        </select>
+        <select value={roleF} onChange={e => setRoleF(e.target.value)}
+          className="h-10 px-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:border-primary" dir="rtl">
+          <option value="">كل الصلاحيات</option>
+          {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+        </select>
+        <button onClick={() => { setQ(""); setRoleF(""); setStoreF(""); }} className="h-10 px-3 rounded-xl border border-border text-xs text-muted-foreground hover:bg-muted transition-all">مسح</button>
+      </div>
+
+      {/* ── Table ── */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        {loading ? (
+          <div className="space-y-0 divide-y divide-border/60">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 p-4">
+                <div className="w-9 h-9 rounded-full bg-muted animate-pulse shrink-0" />
+                <div className="flex-1 space-y-1.5"><div className="h-3.5 bg-muted animate-pulse rounded-lg w-32" /><div className="h-3 bg-muted animate-pulse rounded-lg w-48" /></div>
+                <div className="h-6 w-16 bg-muted animate-pulse rounded-full" />
+                <div className="h-6 w-24 bg-muted animate-pulse rounded-lg" />
+              </div>
+            ))}
+          </div>
+        ) : users.length === 0 ? (
+          <Empty icon={<Users size={28} />} title="لا يوجد مستخدمون" desc="جرب تغيير الفلتر أو أضف مستخدماً جديداً" />
+        ) : (
+          <div className="divide-y divide-border/60">
+            {/* Desktop header */}
+            <div className="hidden md:grid grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] gap-4 px-5 py-3 bg-muted/40 text-xs font-bold text-muted-foreground">
+              <span>المستخدم</span><span>البريد / الجوال</span><span>المتجر</span><span>الصلاحية</span><span>تاريخ الإضافة</span><span>إجراءات</span>
+            </div>
+
+            {users.map(user => (
+              <div key={user.id} className="overflow-hidden">
+                {/* Main row */}
+                <div className="grid grid-cols-1 md:grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] gap-3 md:gap-4 items-center px-4 md:px-5 py-3 hover:bg-muted/20 transition-all">
+                  {/* Avatar + name */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-sm font-black">{user.name[0]}</div>
+                    <div className="min-w-0"><p className="text-sm font-bold truncate">{user.name}</p><p className="text-xs text-muted-foreground truncate md:hidden">{user.email}</p></div>
+                  </div>
+                  {/* Email / phone */}
+                  <div className="hidden md:block min-w-0">
+                    <p className="text-xs truncate">{user.email}</p>
+                    {user.phone && <p className="text-xs text-muted-foreground">{user.phone}</p>}
+                  </div>
+                  {/* Store */}
+                  <p className="text-xs font-semibold text-muted-foreground truncate">{user.storeName}</p>
+                  {/* Role badge */}
+                  <span className={`inline-flex items-center self-start md:self-center text-xs font-bold px-2 py-0.5 rounded-full border ${ROLE_STYLE[user.role] || "bg-muted text-muted-foreground border-border"}`}>
+                    {ROLES.find(r => r.value === user.role)?.label || user.role}
+                  </span>
+                  {/* Date */}
+                  <p className="hidden md:block text-xs text-muted-foreground">{user.createdAt}</p>
+                  {/* Actions */}
+                  <div className="flex gap-1 shrink-0">
+                    <button title="تعديل" onClick={() => { setEditUser(user); setEditForm({ name: user.name, email: user.email, role: user.role, phone: user.phone }); setPassUser(null); }}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-100 text-blue-600 transition-all"><Edit2 size={12} /></button>
+                    <button title="تغيير كلمة المرور" onClick={() => { setPassUser(user); setPassVal(""); setEditUser(null); }}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-amber-100 text-amber-600 transition-all"><Key size={12} /></button>
+                    <button title="حذف" onClick={() => doDelete(user)}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500 transition-all"><Trash2 size={12} /></button>
+                  </div>
+                </div>
+
+                {/* Inline edit */}
+                {editUser?.id === user.id && (
+                  <div className="border-t border-border px-4 md:px-5 py-4 bg-blue-50/60 dark:bg-blue-950/20 space-y-3">
+                    <p className="text-xs font-bold text-blue-700 dark:text-blue-300">تعديل بيانات المستخدم</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <F label="الاسم"><TInput value={editForm.name} onChange={v => setEditForm(f => ({ ...f, name: v }))} /></F>
+                      <F label="البريد"><TInput value={editForm.email} onChange={v => setEditForm(f => ({ ...f, email: v }))} /></F>
+                      <F label="الجوال"><TInput value={editForm.phone} onChange={v => setEditForm(f => ({ ...f, phone: v }))} /></F>
+                      <F label="الصلاحية"><SInput value={editForm.role} onChange={v => setEditForm(f => ({ ...f, role: v }))} options={ROLES} /></F>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Btn v="secondary" s="sm" onClick={() => setEditUser(null)}>إلغاء</Btn>
+                      <Btn s="sm" icon={editLoading ? <RefreshCw size={12} className="animate-spin" /> : <Check size={12} />} onClick={doEdit} disabled={editLoading}>
+                        {editLoading ? "جاري الحفظ..." : "حفظ"}
+                      </Btn>
+                    </div>
+                  </div>
+                )}
+
+                {/* Inline password */}
+                {passUser?.id === user.id && (
+                  <div className="border-t border-border px-4 md:px-5 py-4 bg-amber-50/60 dark:bg-amber-950/20">
+                    <p className="text-xs font-bold text-amber-700 dark:text-amber-300 mb-2">كلمة مرور جديدة لـ "{user.name}"</p>
+                    <div className="flex gap-2 max-w-sm">
+                      <TInput value={passVal} onChange={setPassVal} type="password" placeholder="6 أحرف على الأقل" />
+                      <Btn v="secondary" s="sm" onClick={() => setPassUser(null)}>إلغاء</Btn>
+                      <Btn s="sm" icon={passLoading ? <RefreshCw size={12} className="animate-spin" /> : <Key size={12} />}
+                        onClick={doResetPass} disabled={passLoading || passVal.length < 6}>
+                        {passLoading ? "..." : "حفظ"}
+                      </Btn>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Pagination ── */}
+      {pages > 1 && (
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <p>{total.toLocaleString("ar")} مستخدم · صفحة {page} من {pages}</p>
+          <div className="flex gap-1">
+            <button onClick={() => load(page - 1)} disabled={page === 1}
+              className="px-3 h-8 rounded-xl border border-border hover:bg-muted disabled:opacity-40 transition-all">السابق</button>
+            {Array.from({ length: Math.min(5, pages) }, (_, i) => {
+              const p = Math.max(1, Math.min(page - 2, pages - 4)) + i;
+              return <button key={p} onClick={() => load(p)}
+                className={`w-8 h-8 rounded-xl border text-xs font-bold transition-all ${p === page ? "bg-primary text-white border-primary" : "border-border hover:bg-muted"}`}>{p}</button>;
+            })}
+            <button onClick={() => load(page + 1)} disabled={page >= pages}
+              className="px-3 h-8 rounded-xl border border-border hover:bg-muted disabled:opacity-40 transition-all">التالي</button>
+          </div>
         </div>
       )}
     </div>
