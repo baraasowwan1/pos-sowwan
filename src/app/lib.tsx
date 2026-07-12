@@ -212,7 +212,7 @@ export const PRODUCTS: Product[] = [];  // أضف المنتجات من إدار
 
 export const PLANS: Plan[] = [
   { id: "pl1", nameAr: "المبتدئ", price: 15, yearlyPrice: 144, maxBranches: 1, maxUsers: 3, maxProducts: 500, maxInvoices: 1000, maxTerminals: 1, storage: "1 غيغابايت", apiAccess: false, color: "#64748B", features: ["نقطة بيع واحدة", "إدارة المنتجات", "تقارير أساسية", "إدارة العملاء", "دعم عبر البريد"] },
-  { id: "pl2", nameAr: "الاحترافي", price: 35, yearlyPrice: 336, maxBranches: 3, maxUsers: 10, maxProducts: 2000, maxInvoices: 5000, maxTerminals: 5, storage: "5 غيغابايت", apiAccess: false, color: "#1D4ED8", badge: "الأكثر شيوعاً", features: ["كل مزايا المبتدئ", "إدارة متعددة الفروع", "تقارير متقدمة", "إدارة المخزون", "ماسح الباركود", "إدارة الموردين", "دعم أولوية"] },
+  { id: "pl2", nameAr: "الاحترافي", price: 35, yearlyPrice: 336, maxBranches: 3, maxUsers: 10, maxProducts: 2000, maxInvoices: 5000, maxTerminals: 5, storage: "5 غيغابايت", apiAccess: false, color: "#4F46E5", badge: "الأكثر شيوعاً", features: ["كل مزايا المبتدئ", "إدارة متعددة الفروع", "تقارير متقدمة", "إدارة المخزون", "ماسح الباركود", "إدارة الموردين", "دعم أولوية"] },
   { id: "pl3", nameAr: "المؤسسي", price: 75, yearlyPrice: 720, maxBranches: 99, maxUsers: 99, maxProducts: 99999, maxInvoices: 99999, maxTerminals: 99, storage: "50 غيغابايت", apiAccess: true, color: "#059669", features: ["كل مزايا الاحترافي", "فروع غير محدودة", "مستخدمون غير محدودون", "وصول API كامل", "تقارير مخصصة", "نظام الولاء والمكافآت", "إدارة المستودعات", "نسخ احتياطي يومي تلقائي", "مدير حساب مخصص"] },
 ];
 
@@ -240,7 +240,7 @@ export const CAT: Record<StoreCategory, { label: string; icon: React.ReactNode; 
   supermarket: { label: "سوبرماركت",     icon: <ShoppingCart size={15} />, color: "#059669", bg: "#D1FAE5" },
   clothing:    { label: "ملابس",          icon: <ShoppingBag size={15} />, color: "#7C3AED", bg: "#EDE9FE" },
   cafe:        { label: "كافيه",          icon: <Coffee size={15} />,      color: "#D97706", bg: "#FEF3C7" },
-  electronics: { label: "إلكترونيات",    icon: <Cpu size={15} />,         color: "#1D4ED8", bg: "#DBEAFE" },
+  electronics: { label: "إلكترونيات",    icon: <Cpu size={15} />,         color: "#4F46E5", bg: "#EEF2FF" },
   barber:      { label: "حلاقة وتجميل",  icon: <Scissors size={15} />,    color: "#DB2777", bg: "#FCE7F3" },
   print_shop:  { label: "مطبعة / طباعة", icon: <Ruler size={15} />,       color: "#0891B2", bg: "#CFFAFE" },
   flower_shop: { label: "محل زهور",      icon: <Flower2 size={15} />,     color: "#EC4899", bg: "#FCE7F3" },
@@ -495,23 +495,25 @@ export function SBadge({ status }: { status: StoreData["status"] }) {
   );
 }
 
-export function KPI({ icon, label, value, sub, color = "#2563EB", trend }: {
+export function KPI({ icon, label, value, sub, color = "#4F46E5", trend }: {
   icon: React.ReactNode; label: string; value: string; sub?: string; color?: string; trend?: number;
 }) {
   return (
-    <div className="bg-card rounded-lg p-4 border border-border hover:border-primary/20 transition-colors">
-      <div className="flex items-center justify-between mb-3">
+    <div className="bg-card rounded-xl border border-border hover:shadow-sm transition-all group relative overflow-hidden" style={{ borderRightWidth: 3, borderRightColor: color }}>
+      <div className="p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}15`, color }}>
+            {icon}
+          </div>
+          {trend !== undefined && (
+            <span className={`flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded-md ${trend >= 0 ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400" : "text-red-700 bg-red-50 dark:bg-red-950/40 dark:text-red-400"}`}>
+              {trend >= 0 ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}{Math.abs(trend)}%
+            </span>
+          )}
+        </div>
+        <p className="text-2xl font-bold text-foreground leading-tight tracking-tight mb-0.5">{value}</p>
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        {trend !== undefined && (
-          <span className={`flex items-center gap-0.5 text-xs font-semibold ${trend >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-            {trend >= 0 ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}{Math.abs(trend)}%
-          </span>
-        )}
-      </div>
-      <p className="text-xl font-bold text-foreground leading-tight mb-1">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
-      <div className="mt-3 pt-3 border-t border-border flex items-center gap-1.5" style={{ color }}>
-        <span className="opacity-70">{icon}</span>
+        {sub && <p className="text-xs text-muted-foreground/70 mt-0.5">{sub}</p>}
       </div>
     </div>
   );
@@ -522,17 +524,17 @@ export function Modal({ title, sub, onClose, children, size = "md" }: {
 }) {
   const w = { sm: "max-w-md", md: "max-w-xl", lg: "max-w-2xl" };
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" style={{ background: "rgba(15,23,42,0.5)" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={`bg-card rounded-t-xl sm:rounded-xl border border-border shadow-xl w-full ${w[size]} max-h-[94vh] sm:max-h-[88vh] flex flex-col`} dir="rtl" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" style={{ background: "rgba(15,23,42,0.55)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className={`bg-card rounded-t-2xl sm:rounded-2xl border border-border shadow-2xl w-full ${w[size]} max-h-[94vh] sm:max-h-[88vh] flex flex-col`} dir="rtl" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-8 h-1 rounded-full bg-border" />
+          <div className="w-10 h-1 rounded-full bg-border/60" />
         </div>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border shrink-0">
           <div>
             <h3 className="text-sm font-semibold text-foreground">{title}</h3>
             {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
           </div>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"><X size={14} /></button>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"><X size={14} /></button>
         </div>
         <div className="p-5 overflow-y-auto flex-1 overscroll-contain">{children}</div>
       </div>
@@ -556,14 +558,14 @@ export function TInput({ value, onChange, placeholder, type = "text", icon, read
     <div className="relative">
       {icon && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">{icon}</span>}
       <input type={type} value={value} readOnly={readOnly} onChange={e => onChange?.(e.target.value)} placeholder={placeholder}
-        className={`w-full h-9 rounded-md border border-border bg-input-background text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors ${icon ? "pr-9 pl-3" : "px-3"} ${readOnly ? "opacity-50" : ""}`} />
+        className={`w-full h-10 rounded-lg border border-border bg-input-background text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${icon ? "pr-9 pl-3" : "px-3"} ${readOnly ? "opacity-50 cursor-not-allowed" : ""}`} />
     </div>
   );
 }
 
 export function SInput({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   return (
-    <select value={value} onChange={e => onChange(e.target.value)} className="w-full h-9 rounded-md border border-border bg-input-background text-sm text-foreground px-3 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
+    <select value={value} onChange={e => onChange(e.target.value)} className="w-full h-10 rounded-lg border border-border bg-input-background text-sm text-foreground px-3 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
@@ -575,22 +577,22 @@ export function Btn({ children, onClick, v = "primary", s = "md", icon, cls = ""
   s?: "xs" | "sm" | "md" | "lg"; icon?: React.ReactNode; cls?: string; disabled?: boolean; full?: boolean;
 }) {
   const vs = {
-    primary:   "bg-primary text-primary-foreground hover:bg-primary/90",
+    primary:   "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
     secondary: "bg-card text-foreground border border-border hover:bg-muted",
-    ghost:     "text-foreground hover:bg-muted",
-    danger:    "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-    success:   "bg-accent text-accent-foreground hover:bg-accent/90",
-    warning:   "bg-amber-500 text-white hover:bg-amber-600",
+    ghost:     "text-muted-foreground hover:bg-muted hover:text-foreground",
+    danger:    "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
+    success:   "bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm",
+    warning:   "bg-amber-500 text-white hover:bg-amber-600 shadow-sm",
   };
   const ss = {
     xs: "h-7 px-2.5 text-xs gap-1 rounded-md",
-    sm: "h-8 px-3 text-xs gap-1.5 rounded-md",
-    md: "h-9 px-4 text-sm gap-2 rounded-md",
-    lg: "h-10 px-5 text-sm gap-2 rounded-md",
+    sm: "h-8 px-3 text-xs gap-1.5 rounded-lg",
+    md: "h-9 px-4 text-sm gap-2 rounded-lg",
+    lg: "h-10 px-5 text-sm gap-2 rounded-lg",
   };
   return (
     <button onClick={onClick} disabled={disabled}
-      className={`inline-flex items-center justify-center font-medium transition-colors ${vs[v]} ${ss[s]} ${disabled ? "opacity-40 cursor-not-allowed pointer-events-none" : ""} ${full ? "w-full" : ""} ${cls}`}>
+      className={`inline-flex items-center justify-center font-medium transition-all active:scale-[0.97] ${vs[v]} ${ss[s]} ${disabled ? "opacity-40 cursor-not-allowed pointer-events-none" : ""} ${full ? "w-full" : ""} ${cls}`}>
       {icon}{children}
     </button>
   );
@@ -598,10 +600,13 @@ export function Btn({ children, onClick, v = "primary", s = "md", icon, cls = ""
 
 export function Hdr({ title, sub, action }: { title: string; sub?: string; action?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 pb-4 border-b border-border mb-5">
-      <div>
-        <h2 className="text-base font-semibold text-foreground">{title}</h2>
-        {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+    <div className="flex items-center justify-between gap-3 pb-4 border-b border-border mb-4">
+      <div className="flex items-center gap-3">
+        <div className="w-1 h-5 bg-primary rounded-full shrink-0" />
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+          {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+        </div>
       </div>
       {action && <div className="flex items-center gap-2 flex-wrap justify-end shrink-0">{action}</div>}
     </div>
@@ -610,10 +615,10 @@ export function Hdr({ title, sub, action }: { title: string; sub?: string; actio
 
 export function Empty({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-14 text-center px-6">
-      <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3 text-muted-foreground">{icon}</div>
+    <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+      <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-4 text-muted-foreground">{icon}</div>
       <p className="text-sm font-semibold text-foreground mb-1">{title}</p>
-      <p className="text-xs text-muted-foreground max-w-xs">{desc}</p>
+      <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">{desc}</p>
     </div>
   );
 }
@@ -649,9 +654,10 @@ export function ToastHost() {
     warning: <AlertTriangle size={14} />,
   };
   return (
-    <div className="fixed bottom-5 left-5 z-[200] flex flex-col gap-2 pointer-events-none" dir="rtl">
+    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-5 z-[200] flex flex-col gap-2 pointer-events-none items-center sm:items-end" dir="rtl">
       {list.map(t => (
-        <div key={t.id} className={`${styles[t.type]} border shadow-lg px-4 py-2.5 rounded-lg flex items-center gap-2.5 text-sm font-medium min-w-56 max-w-xs`}>
+        <div key={t.id} className={`${styles[t.type]} border shadow-xl px-4 py-3 rounded-xl flex items-center gap-2.5 text-sm font-medium min-w-64 max-w-sm`}
+          style={{ animation: "lgn-up .3s ease both" }}>
           {IC[t.type]}<span className="text-foreground">{t.msg}</span>
         </div>
       ))}
@@ -914,298 +920,284 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
     }
   };
 
-  // ── Animated background blobs (CSS only, no deps)
-  const BG_STYLE: React.CSSProperties = {
-    position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none",
-  };
-
   return (
-    <div dir="rtl" style={{ fontFamily: "'Cairo',sans-serif", minHeight: "100dvh", background: "linear-gradient(135deg,#020d0a 0%,#051a1a 30%,#060d1f 65%,#0e0520 100%)", position: "relative" }}>
+    <div dir="rtl" style={{ fontFamily:"'Cairo',sans-serif", minHeight:"100dvh", display:"flex" }}>
       <style>{`
-        @keyframes lgn-blob1 { 0%,100%{transform:translate(0,0) scale(1)}55%{transform:translate(-4%,6%) scale(1.08)} }
-        @keyframes lgn-blob2 { 0%,100%{transform:translate(0,0) scale(1)}55%{transform:translate(4%,-5%) scale(1.06)} }
-        @keyframes lgn-blob3 { 0%,100%{transform:translate(0,0) scale(1)}60%{transform:translate(-3%,3%) scale(1.05)} }
-        @keyframes lgn-up    { from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)} }
-        @keyframes lgn-spin  { to{transform:rotate(360deg)} }
-        @keyframes lgn-pulse { 0%,100%{opacity:1}50%{opacity:.5} }
-        @keyframes lgn-aurora { 0%,100%{opacity:.55;transform:scaleX(1)}50%{opacity:.85;transform:scaleX(1.06)} }
-        .lf0{animation:lgn-up .5s ease both}
-        .lf1{animation:lgn-up .5s ease both .09s}
-        .lf2{animation:lgn-up .5s ease both .17s}
-        .lf3{animation:lgn-up .5s ease both .25s}
-        .lf4{animation:lgn-up .5s ease both .33s}
-        .lf5{animation:lgn-up .5s ease both .41s}
-        .lf6{animation:lgn-up .5s ease both .49s}
-        .lgn-spin{animation:lgn-spin .85s linear infinite}
-        .lgn-input{
-          width:100%;height:50px;border-radius:14px;
-          border:1.5px solid rgba(255,255,255,0.09);
-          background:rgba(255,255,255,0.05);
-          color:#f1f5f9;font-size:14px;
-          padding:0 46px 0 16px;
-          outline:none;transition:border-color .2s,box-shadow .2s,background .2s;
+        @keyframes lgn-up  { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes lgn-spin { to{transform:rotate(360deg)} }
+        @keyframes lgn-fade { from{opacity:0} to{opacity:1} }
+        .lf0{animation:lgn-up .45s cubic-bezier(.22,1,.36,1) both}
+        .lf1{animation:lgn-up .45s cubic-bezier(.22,1,.36,1) both .07s}
+        .lf2{animation:lgn-up .45s cubic-bezier(.22,1,.36,1) both .13s}
+        .lf3{animation:lgn-up .45s cubic-bezier(.22,1,.36,1) both .19s}
+        .lf4{animation:lgn-up .45s cubic-bezier(.22,1,.36,1) both .25s}
+        .lf5{animation:lgn-up .45s cubic-bezier(.22,1,.36,1) both .31s}
+        .lf6{animation:lgn-up .45s cubic-bezier(.22,1,.36,1) both .37s}
+        .lgn-spin{animation:lgn-spin .8s linear infinite}
+        .lgn-field{
+          width:100%; height:48px; border-radius:10px;
+          border:1.5px solid #E5E7EB;
+          background:#F9FAFB;
+          color:#111827; font-size:14px;
+          padding:0 44px 0 14px;
+          outline:none;
+          transition:border-color .15s, box-shadow .15s, background .15s;
           font-family:"Cairo",sans-serif;
           -webkit-appearance:none;
         }
-        .lgn-input:focus{
-          border-color:rgba(52,211,153,0.5);
-          box-shadow:0 0 0 3px rgba(52,211,153,0.1);
-          background:rgba(255,255,255,0.08);
+        .lgn-field:focus{
+          border-color:#4F46E5;
+          box-shadow:0 0 0 3px rgba(79,70,229,0.12);
+          background:#fff;
         }
-        .lgn-input::placeholder{color:rgba(255,255,255,0.22)}
-        .lgn-input[dir="rtl"]{text-align:right}
-        .lgn-btn{
-          width:100%;height:52px;border-radius:16px;
-          font-size:15px;font-weight:800;color:white;border:none;
-          cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
-          letter-spacing:-0.01em;position:relative;overflow:hidden;
-          transition:transform .1s,box-shadow .2s;
+        .lgn-field::placeholder{color:#9CA3AF}
+        .lgn-field[dir="rtl"]{text-align:right}
+        .lgn-field.err{border-color:#EF4444; box-shadow:0 0 0 3px rgba(239,68,68,0.1);}
+        .lgn-submit{
+          width:100%; height:48px; border-radius:10px;
+          background:#4F46E5; color:#fff;
+          font-size:14px; font-weight:700;
+          border:none; cursor:pointer;
+          display:flex; align-items:center; justify-content:center; gap:8px;
+          transition:background .15s, transform .1s, box-shadow .15s;
           font-family:"Cairo",sans-serif;
+          letter-spacing:-0.01em;
         }
-        .lgn-btn:not(:disabled):active{transform:scale(0.98)}
-        .lgn-card{
-          background:rgba(255,255,255,0.04);
-          border:1px solid rgba(255,255,255,0.08);
-          border-radius:24px;
-          backdrop-filter:blur(24px);
-          -webkit-backdrop-filter:blur(24px);
-          box-shadow:0 32px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.05) inset;
+        .lgn-submit:hover:not(:disabled){background:#4338CA; box-shadow:0 4px 16px rgba(79,70,229,0.3);}
+        .lgn-submit:active:not(:disabled){transform:scale(0.985);}
+        .lgn-submit:disabled{opacity:0.6; cursor:not-allowed;}
+        .lgn-tab{
+          flex:1; height:34px; border-radius:7px; border:none; cursor:pointer;
+          font-size:12px; font-weight:700; transition:all .15s; font-family:"Cairo",sans-serif;
         }
       `}</style>
 
-      {/* Aurora Borealis blobs */}
-      <div style={BG_STYLE}>
-        {/* Emerald glow — top right */}
-        <div style={{ position:"absolute", top:"-20%", right:"-15%", width:"70vw", height:"70vw", borderRadius:"50%", background:"radial-gradient(circle,rgba(16,185,129,0.22) 0%,rgba(5,150,105,0.08) 45%,transparent 70%)", animation:"lgn-blob1 11s ease-in-out infinite" }} />
-        {/* Cyan glow — center */}
-        <div style={{ position:"absolute", top:"25%", left:"20%", width:"50vw", height:"50vw", borderRadius:"50%", background:"radial-gradient(circle,rgba(6,182,212,0.16) 0%,rgba(14,165,233,0.06) 50%,transparent 70%)", animation:"lgn-blob3 14s ease-in-out infinite 2s" }} />
-        {/* Violet glow — bottom left */}
-        <div style={{ position:"absolute", bottom:"-20%", left:"-10%", width:"60vw", height:"60vw", borderRadius:"50%", background:"radial-gradient(circle,rgba(139,92,246,0.2) 0%,rgba(109,40,217,0.08) 45%,transparent 70%)", animation:"lgn-blob2 9s ease-in-out infinite 1s" }} />
-        {/* Aurora ribbon — horizontal sweep */}
-        <div style={{ position:"absolute", top:"38%", left:"-10%", right:"-10%", height:"180px", background:"linear-gradient(90deg,transparent 0%,rgba(16,185,129,0.06) 20%,rgba(6,182,212,0.1) 45%,rgba(139,92,246,0.08) 75%,transparent 100%)", filter:"blur(32px)", animation:"lgn-aurora 7s ease-in-out infinite" }} />
-        {/* Grid texture */}
-        <div style={{ position:"absolute", inset:0, backgroundImage:"linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)", backgroundSize:"52px 52px" }} />
-      </div>
+      {/* ── BRAND PANEL (desktop) ─────────────────────────────────── */}
+      <div className="hidden lg:flex" style={{ width:"52%", flexDirection:"column", background:"#0F172A", position:"relative", overflow:"hidden" }}>
+        {/* Subtle dot grid */}
+        <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient(rgba(255,255,255,0.06) 1px,transparent 1px)", backgroundSize:"28px 28px" }} />
+        {/* Indigo glow */}
+        <div style={{ position:"absolute", top:"-30%", right:"-20%", width:"60%", height:"60%", borderRadius:"50%", background:"radial-gradient(circle,rgba(79,70,229,0.25) 0%,transparent 70%)", pointerEvents:"none" }} />
+        <div style={{ position:"absolute", bottom:"-20%", left:"-15%", width:"50%", height:"50%", borderRadius:"50%", background:"radial-gradient(circle,rgba(99,102,241,0.15) 0%,transparent 70%)", pointerEvents:"none" }} />
 
-      {/* Offline banner */}
-      {!online && (
-        <div style={{ position:"fixed", top:0, inset:"0 0 auto", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"9px 16px", fontSize:12, fontWeight:700, color:"white", background:"#DC2626" }}>
-          <WifiOff size={13}/> لا يوجد اتصال بالإنترنت — تحقق من الشبكة
-        </div>
-      )}
-
-      {/* ── PAGE LAYOUT ── */}
-      <div style={{ position:"relative", zIndex:10, display:"flex", minHeight:"100dvh" }}>
-
-        {/* ════════════════════════════════════
-            BRAND PANEL — desktop only
-        ════════════════════════════════════ */}
-        <div className="hidden lg:flex" style={{ flex:1, flexDirection:"column", padding:"44px 56px 40px", borderLeft:"1px solid rgba(255,255,255,0.05)", overflow:"hidden" }}>
-
+        <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", height:"100%", padding:"44px 52px" }}>
           {/* Logo */}
-          <button onClick={handleLogoClick} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:12, width:"fit-content" }}>
-            <div style={{ width:46, height:46, borderRadius:14, background:"linear-gradient(135deg,#10B981,#06B6D4,#8B5CF6)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 0 0 1px rgba(16,185,129,0.4),0 6px 24px rgba(139,92,246,0.3)" }}>
-              <Store size={22} color="white"/>
+          <button onClick={handleLogoClick} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:12, width:"fit-content", padding:0 }}>
+            <div style={{ width:42, height:42, borderRadius:12, background:"#4F46E5", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 0 0 1px rgba(99,102,241,0.5), 0 8px 24px rgba(79,70,229,0.4)" }}>
+              <Store size={20} color="#fff"/>
             </div>
             <div style={{ textAlign:"right" }}>
-              <p style={{ fontWeight:900, color:"#f1f5f9", fontSize:17, lineHeight:1.2, letterSpacing:"-0.025em" }}>Sowwanjo POS</p>
-              <p style={{ color:"#334155", fontSize:11, marginTop:2 }}>نظام نقاط البيع السحابي</p>
+              <p style={{ color:"#F9FAFB", fontWeight:800, fontSize:16, letterSpacing:"-0.025em", lineHeight:1.2 }}>Sowwanjo POS</p>
+              <p style={{ color:"#475569", fontSize:11, marginTop:1 }}>نظام نقاط البيع السحابي</p>
             </div>
           </button>
 
-          {/* Hero */}
-          <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", paddingTop:48 }}>
-            <div style={{ animation:"lgn-up .6s ease both .08s" }}>
-              <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"5px 14px", borderRadius:100, border:"1px solid rgba(16,185,129,0.4)", background:"rgba(16,185,129,0.1)", marginBottom:22 }}>
-                <span style={{ width:6, height:6, borderRadius:"50%", background:"#34D399", boxShadow:"0 0 8px #34D399", animation:"lgn-pulse 2s ease-in-out infinite" }}/>
-                <span style={{ fontSize:11, fontWeight:700, color:"#34D399" }}>الإصدار 2.0 — مصمم للأردن</span>
+          {/* Main copy */}
+          <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center" }}>
+            <div style={{ animation:"lgn-up .5s cubic-bezier(.22,1,.36,1) both .1s" }}>
+              <div style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"4px 12px", borderRadius:100, background:"rgba(99,102,241,0.15)", border:"1px solid rgba(99,102,241,0.3)", marginBottom:24 }}>
+                <span style={{ width:5, height:5, borderRadius:"50%", background:"#818CF8", display:"block" }}/>
+                <span style={{ fontSize:11, fontWeight:700, color:"#818CF8", letterSpacing:"0.02em" }}>الإصدار 2.0 · مصمّم للأردن</span>
               </div>
-              <h1 style={{ fontWeight:900, color:"white", lineHeight:1.15, marginBottom:18, fontSize:"clamp(28px,2.8vw,40px)", letterSpacing:"-0.035em" }}>
+              <h1 style={{ color:"#F9FAFB", fontWeight:900, fontSize:"clamp(26px,2.6vw,38px)", lineHeight:1.18, letterSpacing:"-0.04em", marginBottom:16 }}>
                 أذكى نظام POS<br/>
-                <span style={{ background:"linear-gradient(90deg,#10B981,#06B6D4,#8B5CF6)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>للأعمال الأردنية</span>
+                <span style={{ color:"#818CF8" }}>للأعمال الأردنية</span>
               </h1>
-              <p style={{ color:"#475569", fontSize:14, lineHeight:1.75, maxWidth:380 }}>
-                إدارة المبيعات والمخزون والعملاء في مكان واحد — سحابي، سريع، وآمن.
+              <p style={{ color:"#475569", fontSize:14, lineHeight:1.8, maxWidth:360 }}>
+                إدارة المبيعات، المخزون، والعملاء في مكان واحد — سحابي، سريع، وآمن.
               </p>
             </div>
 
-            {/* Feature cards grid */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:44, animation:"lgn-up .6s ease both .2s" }}>
-              {[["🏪","متعدد الفروع والمتاجر"],["📊","تقارير وإحصائيات فورية"],["🔖","ماسح باركود متكامل"],["👥","صلاحيات متعددة للفريق"],["📱","يعمل على الجوال والحاسوب"],["☁️","سحابي ومحمي 100%"]].map(([ic,lb])=>(
-                <div key={lb as string} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 13px", borderRadius:12, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.06)" }}>
-                  <span style={{ fontSize:18 }}>{ic as string}</span>
-                  <span style={{ fontSize:12, fontWeight:600, color:"#64748b" }}>{lb as string}</span>
+            {/* Feature list */}
+            <div style={{ marginTop:40, display:"flex", flexDirection:"column", gap:14, animation:"lgn-up .5s cubic-bezier(.22,1,.36,1) both .2s" }}>
+              {[
+                { icon:"🏪", text:"إدارة متعددة الفروع والمتاجر" },
+                { icon:"📊", text:"تقارير وإحصائيات فورية" },
+                { icon:"👥", text:"صلاحيات ومستويات وصول متعددة" },
+                { icon:"☁️", text:"سحابي، مشفّر، ومحمي 100%" },
+              ].map(({ icon, text }) => (
+                <div key={text} style={{ display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ width:36, height:36, borderRadius:9, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.07)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>{icon}</div>
+                  <span style={{ fontSize:13, color:"#94A3B8", fontWeight:500 }}>{text}</span>
                 </div>
               ))}
             </div>
 
-            {/* Stats */}
-            <div style={{ display:"flex", gap:32, marginTop:40, animation:"lgn-up .6s ease both .3s" }}>
-              {[["١٢٠+","متجر نشط"],["٩٩.٩٪","وقت التشغيل"],["٥٠٠+","فاتورة يومياً"]].map(([n,l])=>(
-                <div key={l as string}>
-                  <p style={{ fontWeight:900, fontSize:22, color:"white", letterSpacing:"-0.03em" }}>{n as string}</p>
-                  <p style={{ fontSize:11, color:"#334155", marginTop:2 }}>{l as string}</p>
+            {/* Stats row */}
+            <div style={{ display:"flex", gap:0, marginTop:44, borderTop:"1px solid rgba(255,255,255,0.06)", paddingTop:32, animation:"lgn-up .5s cubic-bezier(.22,1,.36,1) both .3s" }}>
+              {[["١٢٠+","متجر نشط"],["٩٩.٩٪","وقت التشغيل"],["٥٠٠+","فاتورة/يوم"]].map(([n, l], i) => (
+                <div key={l} style={{ flex:1, paddingRight: i < 2 ? 24 : 0, borderRight: i < 2 ? "1px solid rgba(255,255,255,0.06)" : "none", marginRight: i < 2 ? 24 : 0 }}>
+                  <p style={{ color:"#F9FAFB", fontWeight:900, fontSize:22, letterSpacing:"-0.04em", lineHeight:1 }}>{n}</p>
+                  <p style={{ color:"#475569", fontSize:11, marginTop:4 }}>{l}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <p style={{ fontSize:10, color:"rgba(255,255,255,0.1)", marginTop:24 }}>© 2026 Sowwanjo · JOD · RTL · pos.sowwanjo.online</p>
+          <p style={{ color:"#1E293B", fontSize:11 }}>© 2026 Sowwanjo · pos.sowwanjo.online</p>
+        </div>
+      </div>
+
+      {/* ── FORM PANEL ───────────────────────────────────────────── */}
+      <div style={{ flex:1, display:"flex", flexDirection:"column", background:"#F8FAFC", overflowY:"auto", paddingTop: !online ? 40 : 0 }}>
+
+        {/* Offline banner */}
+        {!online && (
+          <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"9px 16px", fontSize:12, fontWeight:700, color:"white", background:"#DC2626" }}>
+            <WifiOff size={13}/> لا يوجد اتصال بالإنترنت — تحقق من الشبكة
+          </div>
+        )}
+
+        {/* Mobile logo */}
+        <div className="lg:hidden" style={{ display:"flex", flexDirection:"column", alignItems:"center", paddingTop:"calc(env(safe-area-inset-top,0px) + 40px)", paddingBottom:8, background:"#0F172A" }}>
+          <button onClick={handleLogoClick} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:10 }}>
+            <div style={{ width:56, height:56, borderRadius:16, background:"#4F46E5", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 8px 24px rgba(79,70,229,0.4)" }}>
+              <Store size={26} color="#fff"/>
+            </div>
+            <div style={{ textAlign:"center" }}>
+              <p style={{ color:"#F9FAFB", fontWeight:800, fontSize:18, letterSpacing:"-0.025em" }}>Sowwanjo POS</p>
+              <p style={{ color:"#475569", fontSize:11, marginTop:2 }}>نظام نقاط البيع السحابي</p>
+            </div>
+          </button>
         </div>
 
-        {/* ════════════════════════════════════
-            FORM PANEL
-        ════════════════════════════════════ */}
-        <div style={{ width:"100%", display:"flex", flexDirection:"column", alignItems:"center", paddingTop: !online ? "calc(env(safe-area-inset-top,0px) + 40px)" : "env(safe-area-inset-top,0px)", paddingBottom:"env(safe-area-inset-bottom,0px)" }} className="lg:w-[520px] lg:max-w-[520px]">
+        {/* Form area */}
+        <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:"32px 24px", paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 32px)" }}>
+          <div style={{ width:"100%", maxWidth:400 }}>
 
-          {/* Mobile logo */}
-          <div className="lg:hidden lf0" style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"40px 24px 8px", textAlign:"center" }}>
-            <button onClick={handleLogoClick} style={{ background:"none", border:"none", cursor:"pointer" }}>
-              <div style={{ width:68, height:68, borderRadius:22, background:"linear-gradient(135deg,#3B82F6,#1D4ED8)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", boxShadow:"0 0 0 1px rgba(59,130,246,0.35),0 10px 40px rgba(37,99,235,0.4)" }}>
-                <Store size={30} color="white"/>
+            {/* Heading */}
+            <div className="lf0" style={{ marginBottom:28 }}>
+              <h2 style={{ fontWeight:900, color:"#111827", fontSize:22, letterSpacing:"-0.035em", marginBottom:6, lineHeight:1.2 }}>
+                {mode === "admin" && adminUnlocked ? "بوابة الإدارة العليا" : "تسجيل الدخول"}
+              </h2>
+              <p style={{ color:"#6B7280", fontSize:13 }}>
+                {mode === "admin" && adminUnlocked ? "الوصول مقيد — بيانات المدير فقط" : "أدخل بيانات حسابك للمتابعة"}
+              </p>
+            </div>
+
+            {/* Admin unlock badge */}
+            {adminUnlocked && (
+              <div className="lf0" style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 14px", borderRadius:10, marginBottom:20, background:"#FEF3C7", border:"1px solid #FDE68A" }}>
+                <Shield size={14} color="#D97706"/>
+                <p style={{ fontSize:12, fontWeight:700, color:"#92400E" }}>تم تفعيل وضع الإدارة العليا</p>
               </div>
-            </button>
-            <p style={{ fontWeight:900, color:"white", fontSize:21, letterSpacing:"-0.025em" }}>Sowwanjo POS</p>
-            <p style={{ color:"#334155", fontSize:12, marginTop:4 }}>نظام نقاط البيع السحابي</p>
-          </div>
+            )}
 
-          {/* Form card */}
-          <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", width:"100%", padding:"16px 20px 32px" }}>
-            <div className="lgn-card lf0" style={{ width:"100%", maxWidth:420, padding:"36px 32px" }}>
+            {/* Mode tabs */}
+            {adminUnlocked && (
+              <div className="lf1" style={{ display:"flex", padding:3, borderRadius:10, marginBottom:20, background:"#E5E7EB", gap:3 }}>
+                {(["store","admin"] as const).map(m => (
+                  <button key={m} className="lgn-tab" onClick={() => { setMode(m); setErr(""); }}
+                    style={{ background:mode===m?"#fff":"transparent", color:mode===m?"#111827":"#6B7280", boxShadow:mode===m?"0 1px 4px rgba(0,0,0,0.12)":"none" }}>
+                    {m==="store" ? "دخول المتجر" : "الإدارة العليا"}
+                  </button>
+                ))}
+              </div>
+            )}
 
-              {/* Desktop logo inside card */}
-              <div className="hidden lg:flex lf0" style={{ alignItems:"center", gap:12, marginBottom:28 }}>
-                <div style={{ width:40, height:40, borderRadius:12, background:"linear-gradient(135deg,#3B82F6,#1D4ED8)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 16px rgba(37,99,235,0.25)" }}>
-                  <Store size={18} color="white"/>
-                </div>
-                <div>
-                  <p style={{ fontWeight:900, color:"#f1f5f9", fontSize:15, letterSpacing:"-0.02em" }}>Sowwanjo POS</p>
-                  <p style={{ color:"#334155", fontSize:11 }}>نظام نقاط البيع السحابي</p>
+            {/* Fields */}
+            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+
+              {/* Email/phone */}
+              <div className="lf2">
+                <label style={{ display:"block", fontSize:12, fontWeight:700, color:"#374151", marginBottom:6 }}>
+                  {mode==="admin" ? "اسم المستخدم" : "البريد الإلكتروني أو رقم الهاتف"}
+                </label>
+                <div style={{ position:"relative" }}>
+                  <span style={{ position:"absolute", right:13, top:"50%", transform:"translateY(-50%)", color:"#9CA3AF", pointerEvents:"none", display:"flex" }}>
+                    {mode==="admin" ? <Shield size={15}/> : <Mail size={15}/>}
+                  </span>
+                  <input dir="rtl" className={`lgn-field${err ? " err" : ""}`} type="text" value={email}
+                    onChange={e=>{setEmail(e.target.value); setErr("");}}
+                    placeholder={mode==="admin" ? "admin" : "email@store.jo أو 079..."}
+                    autoComplete={mode==="admin"?"username":"email"} style={{ paddingRight:40 }}/>
                 </div>
               </div>
 
-              {/* Admin unlock badge */}
-              {adminUnlocked && (
-                <div className="lf0" style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:12, marginBottom:20, background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.3)" }}>
-                  <Shield size={14} color="#FBBF24"/>
-                  <p style={{ fontSize:12, fontWeight:700, color:"#FCD34D" }}>تم تفعيل وضع الإدارة العليا</p>
-                </div>
-              )}
-
-              {/* Heading */}
-              <div className="lf1" style={{ marginBottom:26 }}>
-                <h2 style={{ fontWeight:900, color:"white", fontSize:23, letterSpacing:"-0.03em", marginBottom:7, lineHeight:1.2 }}>
-                  {mode === "admin" && adminUnlocked ? "بوابة الإدارة العليا" : "مرحباً بك 👋"}
-                </h2>
-                <p style={{ color:"#475569", fontSize:13, lineHeight:1.5 }}>
-                  {mode === "admin" && adminUnlocked ? "الوصول مقيد بالمصرح لهم فقط" : "أدخل بيانات حساب متجرك للمتابعة"}
-                </p>
-              </div>
-
-              {/* Mode tabs */}
-              {adminUnlocked && (
-                <div className="lf1" style={{ display:"flex", borderRadius:12, padding:3, marginBottom:22, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.08)" }}>
-                  {(["store","admin"] as const).map(m => (
-                    <button key={m} onClick={() => { setMode(m); setErr(""); }} style={{ flex:1, height:36, borderRadius:10, fontSize:12, fontWeight:700, border:"none", cursor:"pointer", transition:"all .2s", background:mode===m?"linear-gradient(135deg,rgba(16,185,129,0.85),rgba(139,92,246,0.85))":"transparent", color:mode===m?"white":"#64748b", boxShadow:mode===m?"0 2px 12px rgba(16,185,129,0.3)":"none", fontFamily:"inherit" }}>
-                      {m==="store" ? "دخول المتجر" : "الإدارة العليا"}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Fields */}
-              <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-
-                {/* Email */}
-                <div className="lf2">
-                  <label style={{ display:"block", fontSize:12, fontWeight:700, color:"#64748b", marginBottom:8 }}>
-                    {mode==="admin" ? "اسم المستخدم" : "البريد الإلكتروني أو رقم الهاتف"} <span style={{ color:"#EF4444" }}>*</span>
-                  </label>
-                  <div style={{ position:"relative" }}>
-                    <span style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", color:"rgba(255,255,255,0.22)", pointerEvents:"none", display:"flex" }}>
-                      {mode==="admin" ? <Shield size={15}/> : <Mail size={15}/>}
-                    </span>
-                    <input dir="rtl" className="lgn-input" type="text" value={email} onChange={e=>setEmail(e.target.value)} placeholder={mode==="admin"?"admin":"example@store.jo أو 0799999999"} autoComplete={mode==="admin"?"username":"email"} style={{ paddingRight:44 }}/>
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div className="lf3">
-                  <label style={{ display:"block", fontSize:12, fontWeight:700, color:"#64748b", marginBottom:8 }}>
-                    كلمة المرور <span style={{ color:"#EF4444" }}>*</span>
-                  </label>
-                  <div style={{ position:"relative" }}>
-                    <span style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", color:"rgba(255,255,255,0.22)", pointerEvents:"none", display:"flex" }}>
-                      <Lock size={15}/>
-                    </span>
-                    <input dir="rtl" className="lgn-input" type={showPass?"text":"password"} value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••••" autoComplete="current-password" onKeyDown={e=>e.key==="Enter"&&doLogin()} onKeyUp={e=>setCapsLock(e.getModifierState("CapsLock"))} style={{ paddingRight:44, paddingLeft:44 }}/>
-                    <button type="button" onClick={()=>setShowPass(!showPass)} style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.3)", padding:0, display:"flex" }}>
-                      {showPass ? <EyeOff size={15}/> : <Eye size={15}/>}
-                    </button>
-                  </div>
-                  {capsLock && (
-                    <p style={{ display:"flex", alignItems:"center", gap:5, marginTop:6, fontSize:11, fontWeight:600, color:"#FBBF24" }}>
-                      <AlertCircle size={11}/> مفتاح Caps Lock مفعّل
-                    </p>
-                  )}
-                </div>
-
-                {/* Remember me */}
-                <div className="lf4" style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", userSelect:"none" }}>
-                    <div onClick={()=>setRememberMe(!rememberMe)} style={{ width:18, height:18, borderRadius:5, border:`1.5px solid ${rememberMe?"#10B981":"rgba(255,255,255,0.18)"}`, background:rememberMe?"#10B981":"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s", cursor:"pointer", flexShrink:0 }}>
-                      {rememberMe && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L4 7L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                    </div>
-                    <span style={{ fontSize:12, fontWeight:600, color:"#475569" }}>تذكرني</span>
-                  </label>
-                </div>
-
-                {/* Error */}
-                {err && (
-                  <div className="lf0" style={{ display:"flex", alignItems:"flex-start", gap:10, padding:"12px 14px", borderRadius:12, background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.3)" }}>
-                    <AlertCircle size={13} color="#F87171" style={{ flexShrink:0, marginTop:1 }}/>
-                    <div>
-                      <p style={{ fontSize:12, fontWeight:600, color:"#FCA5A5" }}>{err}</p>
-                      {(err.includes("مهلة")||err.includes("اتصال")) && (
-                        <button onClick={doLogin} style={{ marginTop:4, fontSize:11, fontWeight:700, color:"#F87171", textDecoration:"underline", background:"none", border:"none", cursor:"pointer", padding:0, fontFamily:"inherit" }}>إعادة المحاولة</button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Submit */}
-                <div className="lf5">
-                  <button className="lgn-btn" onClick={doLogin} disabled={loading||!online} style={{ background:!online?"rgba(30,41,59,0.8)":"linear-gradient(135deg,#10B981 0%,#06B6D4 50%,#8B5CF6 100%)", opacity:loading?0.9:1, cursor:loading||!online?"not-allowed":"pointer", boxShadow:!online?"none":"0 6px 28px rgba(16,185,129,0.35),0 6px 28px rgba(139,92,246,0.2),0 1px 0 rgba(255,255,255,0.12) inset" }}>
-                    {loading ? (
-                      <svg className="lgn-spin" width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="rgba(255,255,255,0.25)" strokeWidth="2"/><path d="M10 2A8 8 0 0 1 18 10" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
-                    ) : !online ? (
-                      <><WifiOff size={16}/> لا يوجد اتصال</>
-                    ) : (
-                      <>دخول <ArrowLeft size={16}/></>
-                    )}
+              {/* Password */}
+              <div className="lf3">
+                <label style={{ display:"block", fontSize:12, fontWeight:700, color:"#374151", marginBottom:6 }}>
+                  كلمة المرور
+                </label>
+                <div style={{ position:"relative" }}>
+                  <span style={{ position:"absolute", right:13, top:"50%", transform:"translateY(-50%)", color:"#9CA3AF", pointerEvents:"none", display:"flex" }}>
+                    <Lock size={15}/>
+                  </span>
+                  <input dir="rtl" className={`lgn-field${err ? " err" : ""}`}
+                    type={showPass?"text":"password"} value={pass}
+                    onChange={e=>{setPass(e.target.value); setErr("");}}
+                    placeholder="••••••••" autoComplete="current-password"
+                    onKeyDown={e=>e.key==="Enter"&&doLogin()}
+                    onKeyUp={e=>setCapsLock(e.getModifierState("CapsLock"))}
+                    style={{ paddingRight:40, paddingLeft:40 }}/>
+                  <button type="button" onClick={()=>setShowPass(!showPass)}
+                    style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"#9CA3AF", padding:0, display:"flex" }}>
+                    {showPass ? <EyeOff size={15}/> : <Eye size={15}/>}
                   </button>
                 </div>
+                {capsLock && (
+                  <p style={{ display:"flex", alignItems:"center", gap:5, marginTop:5, fontSize:11, fontWeight:600, color:"#B45309" }}>
+                    <AlertCircle size={11}/> مفتاح Caps Lock مفعّل
+                  </p>
+                )}
               </div>
 
-              {/* Support note */}
-              {mode==="store" && !adminUnlocked && (
-                <div className="lf6" style={{ marginTop:20, padding:"11px 14px", borderRadius:12, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)" }}>
-                  <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.3)", marginBottom:3, display:"flex", alignItems:"center", gap:5 }}>
-                    <Info size={11}/> لأصحاب المتاجر
-                  </p>
-                  <p style={{ fontSize:11, color:"rgba(255,255,255,0.2)", lineHeight:1.6 }}>
-                    لا تمتلك حساباً؟ تواصل مع مزود الخدمة:<br/>support@sowwanjo.online
-                  </p>
+              {/* Remember me */}
+              <div className="lf4" style={{ display:"flex", alignItems:"center" }}>
+                <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", userSelect:"none" }}>
+                  <div onClick={()=>setRememberMe(!rememberMe)}
+                    style={{ width:17, height:17, borderRadius:5, border:`1.5px solid ${rememberMe?"#4F46E5":"#D1D5DB"}`, background:rememberMe?"#4F46E5":"#fff", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s", cursor:"pointer", flexShrink:0 }}>
+                    {rememberMe && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L4 7L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  <span style={{ fontSize:12, fontWeight:600, color:"#6B7280" }}>تذكرني</span>
+                </label>
+              </div>
+
+              {/* Error */}
+              {err && (
+                <div className="lf0" style={{ display:"flex", alignItems:"flex-start", gap:9, padding:"11px 13px", borderRadius:10, background:"#FEF2F2", border:"1px solid #FECACA" }}>
+                  <AlertCircle size={13} color="#EF4444" style={{ flexShrink:0, marginTop:1 }}/>
+                  <div>
+                    <p style={{ fontSize:12, fontWeight:600, color:"#B91C1C" }}>{err}</p>
+                    {(err.includes("مهلة")||err.includes("اتصال")) && (
+                      <button onClick={doLogin} style={{ marginTop:3, fontSize:11, fontWeight:700, color:"#EF4444", textDecoration:"underline", background:"none", border:"none", cursor:"pointer", padding:0, fontFamily:"inherit" }}>إعادة المحاولة</button>
+                    )}
+                  </div>
                 </div>
               )}
+
+              {/* Submit */}
+              <div className="lf5">
+                <button className="lgn-submit" onClick={doLogin} disabled={loading||!online}>
+                  {loading ? (
+                    <svg className="lgn-spin" width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="rgba(255,255,255,0.3)" strokeWidth="2"/><path d="M10 2A8 8 0 0 1 18 10" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+                  ) : !online ? (
+                    <><WifiOff size={15}/> لا يوجد اتصال</>
+                  ) : (
+                    <>تسجيل الدخول <ArrowLeft size={15}/></>
+                  )}
+                </button>
+              </div>
             </div>
+
+            {/* Support note */}
+            {mode==="store" && !adminUnlocked && (
+              <div className="lf6" style={{ marginTop:20, padding:"11px 14px", borderRadius:10, background:"#F3F4F6", border:"1px solid #E5E7EB" }}>
+                <p style={{ fontSize:11, fontWeight:700, color:"#6B7280", marginBottom:3, display:"flex", alignItems:"center", gap:5 }}>
+                  <Info size={11}/> لأصحاب المتاجر
+                </p>
+                <p style={{ fontSize:11, color:"#9CA3AF", lineHeight:1.6 }}>
+                  لا تمتلك حساباً؟ تواصل مع مزود الخدمة:<br/>
+                  <span style={{ color:"#6B7280", fontWeight:600 }}>support@sowwanjo.online</span>
+                </p>
+              </div>
+            )}
+
+            <p style={{ textAlign:"center", fontSize:11, color:"#D1D5DB", marginTop:24, paddingBottom:"env(safe-area-inset-bottom,0px)" }}>
+              © 2026 Sowwanjo · دينار أردني · RTL
+            </p>
           </div>
-
-          <p style={{ textAlign:"center", fontSize:10, color:"rgba(255,255,255,0.1)", paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 16px)" }}>
-            © 2026 Sowwanjo · دينار أردني · RTL
-          </p>
         </div>
-
       </div>
     </div>
   );
