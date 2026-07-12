@@ -359,6 +359,14 @@ function SADash({ onNav }: { onNav: (s: string) => void }) {
       return s ? JSON.parse(s) : [];
     } catch { return []; }
   });
+  const [saMonthData, setSaMonthData] = useState<{month:string;إيرادات:number;مصروفات:number;أرباح:number}[]>([]);
+
+  useEffect(() => {
+    apiFetch("/super-admin/stats/monthly", {}, getToken())
+      .then(d => { if (Array.isArray(d)) setSaMonthData(d as typeof saMonthData); })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     // تحديث فوري من Backend
@@ -436,7 +444,7 @@ function SADash({ onNav }: { onNav: (s: string) => void }) {
           <p className="font-bold text-foreground mb-1">الإيرادات الشهرية (JOD)</p>
           <p className="text-xs text-muted-foreground mb-4">آخر 6 أشهر</p>
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={monthData}>
+            <AreaChart data={saMonthData.length > 0 ? saMonthData : monthData}>
               <defs>
                 <linearGradient id="sa-dash-rev" x1="0" y1="0" x2="0" y2="1">
                   <stop key="sa-dash-rev-top" offset="5%" stopColor="#4F46E5" stopOpacity={0.15} />
@@ -2112,9 +2120,25 @@ function SASettings() {
     } finally { setBrandSaving(false); }
   };
 
-  const doBackup = () => {
+  const doBackup = async () => {
     setBackupLoading(true);
-    setTimeout(() => { setBackupLoading(false); showToast("تم إنشاء النسخة الاحتياطية وحفظها بنجاح", "success"); }, 1800);
+    try {
+      const API = (import.meta as Record<string,Record<string,string>>).env?.VITE_API_URL || "http://localhost:5000/api";
+      const res = await fetch(`${API}/super-admin/stats/export`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sowwanjo-backup-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("تم تنزيل النسخة الاحتياطية بنجاح ✓", "success");
+    } catch {
+      showToast("فشل تصدير البيانات — تحقق من الاتصال", "error");
+    } finally { setBackupLoading(false); }
   };
 
   if (loadingSett) return <div className="p-6 text-center text-muted-foreground py-20">جاري تحميل الإعدادات...</div>;
