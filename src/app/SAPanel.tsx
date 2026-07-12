@@ -565,6 +565,7 @@ function SAStores() {
   const [resetStoreModal, setResetStoreModal] = useState<StoreData | null>(null);
   const [resetStorePass, setResetStorePass] = useState("");
   const [resetStoreLoading, setResetStoreLoading] = useState(false);
+  const [resetStoreError, setResetStoreError] = useState("");
   const [resetEmpModal, setResetEmpModal] = useState<{ storeId: string; storeName: string; empId: string; empName: string } | null>(null);
   const [resetEmpPass, setResetEmpPass] = useState("");
   const [resetEmpLoading, setResetEmpLoading] = useState(false);
@@ -683,20 +684,25 @@ function SAStores() {
   const openResetStorePass = (store: StoreData) => {
     setResetStoreModal(store);
     setResetStorePass("");
+    setResetStoreError("");
     setDetail(null);
   };
 
   const doResetStorePass = async () => {
     if (!resetStoreModal) return;
-    if (resetStorePass.length < 6) { showToast("كلمة المرور يجب أن تكون 6 أحرف على الأقل", "error"); return; }
+    if (resetStorePass.length < 6) { setResetStoreError("كلمة المرور يجب أن تكون 6 أحرف على الأقل"); return; }
     setResetStoreLoading(true);
+    setResetStoreError("");
     try {
       await apiResetPass(resetStoreModal.id, resetStorePass);
-      showToast(`تم تغيير كلمة مرور "${resetStoreModal.nameAr}" بنجاح ✓`, "success");
+      showToast(`✓ تم تغيير كلمة مرور "${resetStoreModal.nameAr}" — البريد للدخول: ${resetStoreModal.email}`, "success");
       setResetStoreModal(null);
       setResetStorePass("");
+      setResetStoreError("");
     } catch (e) {
-      showToast((e as { error?: string }).error || "فشل تغيير كلمة المرور", "error");
+      const errMsg = (e as { error?: string }).error || "فشل تغيير كلمة المرور — تحقق من الاتصال بالخادم";
+      setResetStoreError(errMsg);
+      showToast(errMsg, "error");
     } finally { setResetStoreLoading(false); }
   };
 
@@ -1031,17 +1037,33 @@ function SAStores() {
       {/* ── New Password Modal ── */}
       {/* ── Reset Store Owner Password Modal ── */}
       {resetStoreModal && (
-        <Modal title="تغيير كلمة مرور المتجر" sub={`صاحب المتجر: ${resetStoreModal.nameAr}`} onClose={() => { setResetStoreModal(null); setResetStorePass(""); }} size="sm">
+        <Modal title="تغيير كلمة مرور المتجر" sub={`متجر: ${resetStoreModal.nameAr}`} onClose={() => { setResetStoreModal(null); setResetStorePass(""); setResetStoreError(""); }} size="sm">
           <div className="space-y-4">
+            {/* Login credentials reminder */}
+            <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 space-y-1.5">
+              <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">بيانات تسجيل الدخول</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Mail size={12} className="text-blue-500 shrink-0" />
+                <span className="text-xs text-blue-700 dark:text-blue-300">البريد للدخول:</span>
+                <code className="text-xs font-mono bg-blue-100 dark:bg-blue-900/50 px-1.5 py-0.5 rounded text-blue-900 dark:text-blue-200 select-all cursor-text">{resetStoreModal.email}</code>
+              </div>
+              <p className="text-[10px] text-blue-500 dark:text-blue-400">هذا ما يجب إدخاله في خانة البريد الإلكتروني عند تسجيل الدخول</p>
+            </div>
             <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl">
               <AlertTriangle size={16} className="text-amber-600 shrink-0" />
               <p className="text-xs text-amber-800 dark:text-amber-300">ستُطبَّق كلمة المرور الجديدة فوراً على حساب صاحب المتجر</p>
             </div>
             <F label="كلمة المرور الجديدة">
-              <TInput value={resetStorePass} onChange={setResetStorePass} type="password" placeholder="6 أحرف على الأقل" />
+              <TInput value={resetStorePass} onChange={v => { setResetStorePass(v); setResetStoreError(""); }} type="password" placeholder="6 أحرف على الأقل" />
             </F>
+            {resetStoreError && (
+              <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
+                <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-700 dark:text-red-300">{resetStoreError}</p>
+              </div>
+            )}
             <div className="flex gap-2">
-              <Btn v="secondary" full onClick={() => { setResetStoreModal(null); setResetStorePass(""); }}>إلغاء</Btn>
+              <Btn v="secondary" full onClick={() => { setResetStoreModal(null); setResetStorePass(""); setResetStoreError(""); }}>إلغاء</Btn>
               <Btn full icon={resetStoreLoading ? <RefreshCw size={13} className="animate-spin" /> : <Key size={13} />} onClick={doResetStorePass} disabled={resetStoreLoading || resetStorePass.length < 6}>
                 {resetStoreLoading ? "جاري الحفظ..." : "حفظ كلمة المرور"}
               </Btn>
