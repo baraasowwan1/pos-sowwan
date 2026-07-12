@@ -1,5 +1,5 @@
 // StorePanel — Store screens
-import { useState, useCallback, useRef, useEffect, createContext, useContext } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo, createContext, useContext } from "react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -695,6 +695,12 @@ function POSTerm({ store }: { store: StoreData }) {
   const [showShift, setShowShift] = useState(false);
   const { data: shiftSales, refresh: refreshShift } = useApi<unknown[]>("/sales", []);
   const [vm, setVm] = useLS<"grid"|"list">(sk(sid,"pos_vm"), "grid");
+  const [scannerMode, setScannerMode] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const DISPLAY_LIMIT = 60;
+  const [displayCount, setDisplayCount] = useState(DISPLAY_LIMIT);
+
   // يقرأ إعداد الطابعة من إعدادات المتجر
   const paper = (() => { try { return localStorage.getItem(sk(sid,"sett_paper")) || "80mm"; } catch { return "80mm"; } })();
   const invNoRef = useRef(`INV-${new Date().getFullYear()}${String(Date.now()).slice(-6)}`);
@@ -713,8 +719,57 @@ function POSTerm({ store }: { store: StoreData }) {
   const ta = (sub - da) * TAX;
   const total = sub - da + ta;
   const change = parseFloat(cash || "0") - total;
-  const cats = ["الكل", ...Array.from(new Set(allProds.map(p => p.category)))];
-  const prods = allProds.filter(p => (!q || p.nameAr.includes(q) || p.barcode.includes(q) || p.sku.toLowerCase().includes(q.toLowerCase())) && (cat === "الكل" || p.category === cat));
+  // Sort all products once: by category then name (Arabic)
+  const sortedProds = useMemo(() =>
+    [...allProds].sort((a, b) =>
+      (a.category || "").localeCompare(b.category || "", "ar") ||
+      (a.nameAr || "").localeCompare(b.nameAr || "", "ar")
+    ), [allProds]);
+
+  // Categories with counts, sorted by count desc
+  const cats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const p of allProds) counts[p.category || "عام"] = (counts[p.category || "عام"] || 0) + 1;
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([c]) => c);
+    return ["الكل", ...sorted];
+  }, [allProds]);
+
+  // Filtered products (memoized)
+  const prods = useMemo(() =>
+    sortedProds.filter(p =>
+      (!q || p.nameAr.includes(q) || (p.barcode || "").includes(q) || (p.sku || "").toLowerCase().includes(q.toLowerCase())) &&
+      (cat === "الكل" || p.category === cat)
+    ), [sortedProds, q, cat]);
+
+  // Reset display count when filter changes
+  useEffect(() => setDisplayCount(DISPLAY_LIMIT), [q, cat]);
+
+  // Infinite scroll: load more when sentinel enters viewport
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) setDisplayCount(c => Math.min(c + DISPLAY_LIMIT, prods.length));
+    }, { threshold: 0.1 });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [prods.length]);
+
+  const displayedProds = prods.slice(0, displayCount);
+
+  // Barcode scanner: detect Enter key → instant add to cart
+  const handleSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter" || !q.trim()) return;
+    const val = q.trim();
+    const found = allProds.find(p => p.barcode === val || p.sku === val || p.nameAr === val);
+    if (found) {
+      add(found);
+      setQ("");
+    } else {
+      showToast(`"${val}" غير موجود في قائمة المنتجات`, "error");
+    }
+  };
+
   const add = (p: Product) => {
     if (p.stock <= 0) { showToast(`"${p.nameAr}" نفد من المخزون`, "error"); return; }
     setCart(prev => {
@@ -915,22 +970,50 @@ function POSTerm({ store }: { store: StoreData }) {
         <div className="p-3 bg-card border-b border-border space-y-2 shrink-0">
           <div className="flex gap-2">
             <div className="flex-1 relative">
-              <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <input value={q} onChange={e => setQ(e.target.value)} placeholder="بحث بالاسم، الباركود، SKU..." className="w-full h-11 rounded-xl border border-border bg-background text-sm pr-9 pl-3 focus:outline-none focus:ring-2 focus:ring-ring/25 focus:border-primary" />
+              {scannerMode
+                ? <Scan size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 pointer-events-none animate-pulse" />
+                : <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              }
+              <input
+                ref={searchRef}
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                onKeyDown={handleSearchKey}
+                placeholder={scannerMode ? "وضع السكانر — امسح الباركود..." : "بحث بالاسم، الباركود، SKU... أو اضغط Enter بعد الباركود"}
+                className={`w-full h-11 rounded-xl border text-sm pr-9 pl-3 focus:outline-none focus:ring-2 focus:ring-ring/25 ${scannerMode ? "border-emerald-400 bg-emerald-50/30 focus:border-emerald-500 dark:bg-emerald-950/20" : "border-border bg-background focus:border-primary"}`}
+              />
             </div>
-            <button title="مسح الباركود" className="w-11 h-11 flex items-center justify-center rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground"><Scan size={18} /></button>
+            <button
+              title={scannerMode ? "إيقاف وضع السكانر" : "تفعيل وضع السكانر"}
+              onClick={() => { setScannerMode(m => !m); setTimeout(() => searchRef.current?.focus(), 50); }}
+              className={`w-11 h-11 flex items-center justify-center rounded-xl border transition-all ${scannerMode ? "bg-emerald-500 border-emerald-500 text-white shadow-md" : "border-border bg-background hover:bg-muted text-muted-foreground"}`}
+            ><Scan size={18} /></button>
             <button onClick={() => setVm(v => v === "grid" ? "list" : "grid")} className="w-11 h-11 flex items-center justify-center rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground">
               {vm === "grid" ? <List size={18} /> : <Grid3X3 size={18} />}
             </button>
           </div>
           <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-            {cats.map(c => <button key={c} onClick={() => setCat(c)} className={`shrink-0 px-3 h-8 rounded-full text-xs font-bold border transition-all ${cat === c ? "bg-primary text-white border-primary" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>{c}</button>)}
+            {cats.map(c => {
+              const count = c === "الكل" ? allProds.length : allProds.filter(p => p.category === c).length;
+              return (
+                <button key={c} onClick={() => setCat(c)} className={`shrink-0 px-3 h-8 rounded-full text-xs font-bold border transition-all flex items-center gap-1 ${cat === c ? "bg-primary text-white border-primary" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>
+                  {c}
+                  <span className={`text-[10px] font-normal ${cat === c ? "opacity-80" : "opacity-50"}`}>({count})</span>
+                </button>
+              );
+            })}
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2 sm:p-3">
+          {prods.length > 0 && (
+            <p className="text-xs text-muted-foreground mb-2 px-1">
+              {prods.length === allProds.length ? `${prods.length.toLocaleString("ar")} منتج` : `${prods.length.toLocaleString("ar")} نتيجة`}
+              {displayCount < prods.length && ` · عرض ${displayCount}`}
+            </p>
+          )}
           {vm === "grid" ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
-              {prods.map(p => {
+              {displayedProds.map(p => {
                 const inCart = cart.find(i => i.product.id === p.id);
                 const outOfStock = p.stock <= 0;
                 const low = !outOfStock && p.stock <= p.minStock;
@@ -955,7 +1038,7 @@ function POSTerm({ store }: { store: StoreData }) {
             </div>
           ) : (
             <div className="space-y-1.5">
-              {prods.map(p => {
+              {displayedProds.map(p => {
                 const inCart = cart.find(i => i.product.id === p.id);
                 const outOfStock = p.stock <= 0;
                 return (
@@ -970,7 +1053,16 @@ function POSTerm({ store }: { store: StoreData }) {
               })}
             </div>
           )}
-          {prods.length === 0 && <Empty icon={<Package size={24} />} title="لا توجد منتجات" desc="جرب البحث بكلمات مختلفة" />}
+          {/* Infinite scroll sentinel */}
+          <div ref={loadMoreRef} className="h-4" />
+          {displayCount < prods.length && (
+            <div className="flex justify-center py-3">
+              <button onClick={() => setDisplayCount(c => Math.min(c + DISPLAY_LIMIT, prods.length))} className="px-4 h-8 rounded-full bg-muted text-xs font-bold text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all">
+                عرض المزيد ({prods.length - displayCount} متبقي)
+              </button>
+            </div>
+          )}
+          {prods.length === 0 && <Empty icon={<Package size={24} />} title="لا توجد منتجات" desc={q ? `لا نتائج لـ "${q}" — جرب الباركود أو اضغط Enter مباشرة` : "جرب البحث بالاسم أو اختر فئة"} />}
         </div>
         {holds.length > 0 && (
           <div className="border-t border-border bg-muted/40 p-2.5 shrink-0">
