@@ -1132,7 +1132,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
           </div>
 
           <p style={{ textAlign:"center", fontSize:10, color:"rgba(255,255,255,0.1)", paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 16px)" }}>
-            © 2025 Sowwanjo · دينار أردني · RTL
+            © 2026 Sowwanjo · دينار أردني · RTL
           </p>
         </div>
 
