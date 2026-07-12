@@ -370,7 +370,7 @@ function EmpScreen() {
   const STATUS_EN_TO_AR: Record<string,string> = { active:"نشط", suspended:"موقوف" };
   const ROLE_OPTS = ["manager","cashier","inventory","accountant"].map(r => ({ value: r, label: ROLE_EN_TO_AR[r] || r }));
   const STATUS_OPTS = ["active","suspended"].map(s => ({ value: s, label: STATUS_EN_TO_AR[s] || s }));
-  const RC: Record<string, { c: string; b: string }> = { manager: { c: "#1D4ED8", b: "#DBEAFE" }, cashier: { c: "#059669", b: "#D1FAE5" }, inventory: { c: "#D97706", b: "#FEF3C7" }, owner: { c: "#7C3AED", b: "#EDE9FE" }, accountant: { c: "#0891B2", b: "#CFFAFE" } };
+  const RC: Record<string, { c: string; b: string }> = { manager: { c: "#4F46E5", b: "#DBEAFE" }, cashier: { c: "#059669", b: "#D1FAE5" }, inventory: { c: "#D97706", b: "#FEF3C7" }, owner: { c: "#7C3AED", b: "#EDE9FE" }, accountant: { c: "#0891B2", b: "#CFFAFE" } };
 
   const [nf, setNf] = useState({ name: '', role: 'cashier', phone: '', branch: 'الفرع الرئيسي', email: '', password: '', autoPass: true });
   const [createdCreds, setCreatedCreds] = useState<{name:string;email:string;password:string}|null>(null);
@@ -424,7 +424,7 @@ function EmpScreen() {
               {e.sales > 0 && <div className="hidden sm:block text-right shrink-0"><p className="text-sm font-black">{e.sales.toFixed(3)} JOD</p><p className="text-xs text-muted-foreground">مبيعات الشهر</p></div>}
               <div className="flex gap-1 shrink-0">
                 <button onClick={() => showToast(`صلاحيات "${e.name}" — الدور: ${e.role}`, "info")} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-primary/10 text-primary"><Shield size={13} /></button>
-                <button onClick={() => setEditEmp({ ...e })} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-blue-100 text-blue-500"><Edit2 size={13} /></button>
+                <button onClick={() => setEditEmp({ ...e })} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground"><Edit2 size={13} /></button>
                 <button onClick={() => delEmp(e.id)} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-red-100 text-red-500"><Trash2 size={13} /></button>
               </div>
             </div>
@@ -619,48 +619,65 @@ function BranchScreen() {
   );
 }
 
+type Coupon = { id: string; code: string; desc: string; uses: number; exp: string; type: string; value: number; maxUses: number; active: boolean };
+
 function LoyaltyScreen() {
-  const sid = useStoreId();
-  const [coupons, setCoupons] = useLS<{code:string;desc:string;uses:number;exp:string;type:string;value:string}[]>(sk(sid, "coupons"), []);
   const { data: custsRaw } = useApi<unknown[]>("/customers", []);
+  const { data: couponsRaw, refresh: refreshCoupons } = useApi<unknown[]>("/coupons", []);
   const [custs, setCusts] = useState<{id:string;name:string;points?:number}[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [showNew, setShowNew] = useState(false);
-  const [nf, setNf] = useState({ code: "", desc: "", exp: "", type: "نسبة", value: "" });
+  const [saving, setSaving] = useState(false);
+  const [nf, setNf] = useState({ code: "", desc: "", exp: "", type: "نسبة", value: "", maxUses: "" });
 
   useEffect(() => { setCusts(normList<{id:string;name:string;points?:number}>(custsRaw)); }, [custsRaw]);
+  useEffect(() => { setCoupons(normList<Coupon>(couponsRaw)); }, [couponsRaw]);
 
-  // Derived stats
   const totalPoints = custs.reduce((a, c) => a + (c.points || 0), 0);
-  const activeCoupons = coupons.filter(c => !c.exp || new Date(c.exp) >= new Date());
+  const activeCoupons = coupons.filter(c => c.active && (!c.exp || new Date(c.exp) >= new Date()));
 
   const TIERS = [
-    { l: "عادي",   min: 0,    max: 199,   icon: "🥉" },
-    { l: "فضي",    min: 200,  max: 499,   icon: "🥈" },
-    { l: "ذهبي",   min: 500,  max: 999,   icon: "🥇" },
-    { l: "بلاتيني",min: 1000, max: 99999, icon: "💎" },
+    { l: "عادي",    min: 0,    max: 199,   icon: "🥉" },
+    { l: "فضي",     min: 200,  max: 499,   icon: "🥈" },
+    { l: "ذهبي",    min: 500,  max: 999,   icon: "🥇" },
+    { l: "بلاتيني", min: 1000, max: 99999, icon: "💎" },
   ];
   const tierCounts = TIERS.map(t => ({
-    ...t,
-    count: custs.filter(c => (c.points || 0) >= t.min && (c.points || 0) <= t.max).length,
+    ...t, count: custs.filter(c => (c.points || 0) >= t.min && (c.points || 0) <= t.max).length,
   }));
 
-  const addCoupon = () => {
-    if (!nf.code || !nf.desc) return;
-    setCoupons(p => [...p, { ...nf, uses: 0 }]);
-    showToast(`تم إضافة القسيمة ${nf.code}`);
-    setShowNew(false); setNf({ code: "", desc: "", exp: "", type: "نسبة", value: "" });
+  const addCoupon = async () => {
+    if (!nf.code || !nf.desc || !nf.value) return;
+    setSaving(true);
+    try {
+      await storeApi.post("/coupons", { code: nf.code.toUpperCase(), desc: nf.desc, type: nf.type, value: parseFloat(nf.value), exp: nf.exp, maxUses: parseInt(nf.maxUses || "0") });
+      showToast(`تم إضافة القسيمة ${nf.code.toUpperCase()}`);
+      setShowNew(false);
+      setNf({ code: "", desc: "", exp: "", type: "نسبة", value: "", maxUses: "" });
+      refreshCoupons();
+    } catch (e) {
+      showToast((e as {error?:string}).error || "فشل الإضافة", "error");
+    } finally { setSaving(false); }
   };
-  const delCoupon = (code: string) => { setCoupons(p => p.filter(c => c.code !== code)); showToast("تم حذف القسيمة", "warning"); };
+
+  const delCoupon = async (id: string) => {
+    try {
+      await storeApi.delete(`/coupons/${id}`);
+      showToast("تم حذف القسيمة", "warning");
+      refreshCoupons();
+    } catch { showToast("فشل الحذف", "error"); }
+  };
+
   const copyCoupon = (code: string) => { navigator.clipboard?.writeText(code); showToast(`تم نسخ الكود: ${code}`, "info"); };
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto h-full">
       <Hdr title="نظام الولاء والمكافآت" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowNew(true)}>قسيمة جديدة</Btn>} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KPI icon={<Star size={18} />} label="إجمالي النقاط" value={totalPoints.toLocaleString("ar-JO")} color="#D97706" />
-        <KPI icon={<Users size={18} />} label="أعضاء الولاء" value={String(custs.length)} color="#7C3AED" />
-        <KPI icon={<Tag size={18} />} label="قسائم نشطة" value={String(activeCoupons.length)} color="#059669" />
-        <KPI icon={<Hash size={18} />} label="إجمالي القسائم" value={String(coupons.length)} color="#1D4ED8" />
+        <KPI icon={<Star size={18} />}  label="إجمالي النقاط"  value={totalPoints.toLocaleString("ar-JO")} color="#D97706" />
+        <KPI icon={<Users size={18} />} label="أعضاء الولاء"   value={String(custs.length)}                color="#7C3AED" />
+        <KPI icon={<Tag size={18} />}   label="قسائم نشطة"     value={String(activeCoupons.length)}        color="#059669" />
+        <KPI icon={<Hash size={18} />}  label="إجمالي القسائم" value={String(coupons.length)}              color="#4F46E5" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="bg-card rounded-2xl border border-border p-5">
@@ -687,6 +704,7 @@ function LoyaltyScreen() {
             </div>
           )}
         </div>
+
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="font-bold mb-4">القسائم النشطة</p>
           {activeCoupons.length === 0 ? (
@@ -696,17 +714,18 @@ function LoyaltyScreen() {
               {activeCoupons.map(c => {
                 const expired = c.exp && new Date(c.exp) < new Date();
                 return (
-                  <div key={c.code} className={`border rounded-xl p-3 flex items-center gap-3 ${expired ? "border-red-200 bg-red-50" : "border-border"}`}>
+                  <div key={c.id} className={`border rounded-xl p-3 flex items-center gap-3 ${expired ? "border-red-200 bg-red-50" : "border-border"}`}>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono font-black text-primary">{c.code}</span>
                         <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{c.value} {c.type === "نسبة" ? "%" : "JOD"}</span>
+                        {c.maxUses > 0 && <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{c.uses}/{c.maxUses} استخدام</span>}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{c.desc} • {c.uses} استخدام{c.exp ? ` • ينتهي ${c.exp}` : ""}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{c.desc}{c.exp ? ` • ينتهي ${c.exp}` : ""}</p>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <button onClick={() => copyCoupon(c.code)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-100 text-blue-500 transition-colors"><Copy size={11} /></button>
-                      <button onClick={() => delCoupon(c.code)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500 transition-colors"><Trash2 size={11} /></button>
+                      <button onClick={() => copyCoupon(c.code)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground transition-colors"><Copy size={11} /></button>
+                      <button onClick={() => delCoupon(c.id)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500 transition-colors"><Trash2 size={11} /></button>
                     </div>
                   </div>
                 );
@@ -724,10 +743,11 @@ function LoyaltyScreen() {
             <F label="وصف القسيمة" req><TInput value={nf.desc} onChange={v=>setNf({...nf,desc:v})} placeholder="خصم 20% على المشتريات" /></F>
             <F label="نوع الخصم"><SInput value={nf.type} onChange={v=>setNf({...nf,type:v})} options={[{value:"نسبة",label:"نسبة مئوية %"},{value:"مبلغ",label:"مبلغ ثابت JOD"}]} /></F>
             <F label={`قيمة الخصم ${nf.type === "نسبة" ? "(%)" : "(JOD)"}`} req><TInput value={nf.value} onChange={v=>setNf({...nf,value:v})} type="number" placeholder={nf.type === "نسبة" ? "20" : "5.000"} /></F>
+            <F label="الحد الأقصى للاستخدام (0 = غير محدود)"><TInput value={nf.maxUses} onChange={v=>setNf({...nf,maxUses:v})} type="number" placeholder="0" /></F>
             <F label="تاريخ الانتهاء"><TInput value={nf.exp} onChange={v=>setNf({...nf,exp:v})} type="date" /></F>
             <div className="flex gap-3 justify-end">
               <Btn v="secondary" onClick={()=>setShowNew(false)}>إلغاء</Btn>
-              <Btn onClick={addCoupon} disabled={!nf.code||!nf.desc||!nf.value} icon={<Plus size={14}/>}>إضافة القسيمة</Btn>
+              <Btn onClick={addCoupon} disabled={!nf.code||!nf.desc||!nf.value||saving} icon={<Plus size={14}/>}>{saving?"جاري الحفظ...":"إضافة القسيمة"}</Btn>
             </div>
           </div>
         </Modal>
