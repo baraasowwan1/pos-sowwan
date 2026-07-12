@@ -915,13 +915,15 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
   };
 
   return (
-    <div dir="rtl" style={{ fontFamily: "'Cairo',sans-serif", minHeight: "100dvh", background: "linear-gradient(145deg,#080d1a 0%,#0c1424 45%,#0a1220 100%)", position: "relative" }}>
+    <div dir="rtl" style={{ fontFamily: "'Cairo',sans-serif", minHeight: "100dvh", background: "linear-gradient(135deg,#020d0a 0%,#051a1a 30%,#060d1f 65%,#0e0520 100%)", position: "relative" }}>
       <style>{`
         @keyframes lgn-blob1 { 0%,100%{transform:translate(0,0) scale(1)}55%{transform:translate(-4%,6%) scale(1.08)} }
         @keyframes lgn-blob2 { 0%,100%{transform:translate(0,0) scale(1)}55%{transform:translate(4%,-5%) scale(1.06)} }
+        @keyframes lgn-blob3 { 0%,100%{transform:translate(0,0) scale(1)}60%{transform:translate(-3%,3%) scale(1.05)} }
         @keyframes lgn-up    { from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)} }
         @keyframes lgn-spin  { to{transform:rotate(360deg)} }
         @keyframes lgn-pulse { 0%,100%{opacity:1}50%{opacity:.5} }
+        @keyframes lgn-aurora { 0%,100%{opacity:.55;transform:scaleX(1)}50%{opacity:.85;transform:scaleX(1.06)} }
         .lf0{animation:lgn-up .5s ease both}
         .lf1{animation:lgn-up .5s ease both .09s}
         .lf2{animation:lgn-up .5s ease both .17s}
@@ -933,7 +935,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
         .lgn-input{
           width:100%;height:50px;border-radius:14px;
           border:1.5px solid rgba(255,255,255,0.09);
-          background:rgba(255,255,255,0.06);
+          background:rgba(255,255,255,0.05);
           color:#f1f5f9;font-size:14px;
           padding:0 46px 0 16px;
           outline:none;transition:border-color .2s,box-shadow .2s,background .2s;
@@ -941,8 +943,8 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
           -webkit-appearance:none;
         }
         .lgn-input:focus{
-          border-color:rgba(59,130,246,0.55);
-          box-shadow:0 0 0 3px rgba(59,130,246,0.13);
+          border-color:rgba(52,211,153,0.5);
+          box-shadow:0 0 0 3px rgba(52,211,153,0.1);
           background:rgba(255,255,255,0.08);
         }
         .lgn-input::placeholder{color:rgba(255,255,255,0.22)}
@@ -962,16 +964,22 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
           border-radius:24px;
           backdrop-filter:blur(24px);
           -webkit-backdrop-filter:blur(24px);
-          box-shadow:0 32px 80px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.05) inset;
+          box-shadow:0 32px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.05) inset;
         }
       `}</style>
 
-      {/* Ambient blobs */}
+      {/* Aurora Borealis blobs */}
       <div style={BG_STYLE}>
-        <div style={{ position:"absolute", top:"-15%", right:"-10%", width:"65vw", height:"65vw", borderRadius:"50%", background:"radial-gradient(circle,rgba(37,99,235,0.14) 0%,transparent 70%)", animation:"lgn-blob1 9s ease-in-out infinite" }} />
-        <div style={{ position:"absolute", bottom:"-20%", left:"-10%", width:"55vw", height:"55vw", borderRadius:"50%", background:"radial-gradient(circle,rgba(99,102,241,0.1) 0%,transparent 70%)", animation:"lgn-blob2 12s ease-in-out infinite" }} />
+        {/* Emerald glow — top right */}
+        <div style={{ position:"absolute", top:"-20%", right:"-15%", width:"70vw", height:"70vw", borderRadius:"50%", background:"radial-gradient(circle,rgba(16,185,129,0.22) 0%,rgba(5,150,105,0.08) 45%,transparent 70%)", animation:"lgn-blob1 11s ease-in-out infinite" }} />
+        {/* Cyan glow — center */}
+        <div style={{ position:"absolute", top:"25%", left:"20%", width:"50vw", height:"50vw", borderRadius:"50%", background:"radial-gradient(circle,rgba(6,182,212,0.16) 0%,rgba(14,165,233,0.06) 50%,transparent 70%)", animation:"lgn-blob3 14s ease-in-out infinite 2s" }} />
+        {/* Violet glow — bottom left */}
+        <div style={{ position:"absolute", bottom:"-20%", left:"-10%", width:"60vw", height:"60vw", borderRadius:"50%", background:"radial-gradient(circle,rgba(139,92,246,0.2) 0%,rgba(109,40,217,0.08) 45%,transparent 70%)", animation:"lgn-blob2 9s ease-in-out infinite 1s" }} />
+        {/* Aurora ribbon — horizontal sweep */}
+        <div style={{ position:"absolute", top:"38%", left:"-10%", right:"-10%", height:"180px", background:"linear-gradient(90deg,transparent 0%,rgba(16,185,129,0.06) 20%,rgba(6,182,212,0.1) 45%,rgba(139,92,246,0.08) 75%,transparent 100%)", filter:"blur(32px)", animation:"lgn-aurora 7s ease-in-out infinite" }} />
         {/* Grid texture */}
-        <div style={{ position:"absolute", inset:0, backgroundImage:"linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px)", backgroundSize:"52px 52px" }} />
+        <div style={{ position:"absolute", inset:0, backgroundImage:"linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)", backgroundSize:"52px 52px" }} />
       </div>
 
       {/* Offline banner */}
@@ -991,7 +999,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
 
           {/* Logo */}
           <button onClick={handleLogoClick} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:12, width:"fit-content" }}>
-            <div style={{ width:46, height:46, borderRadius:14, background:"linear-gradient(135deg,#3B82F6,#1D4ED8)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 0 0 1px rgba(59,130,246,0.4),0 6px 24px rgba(37,99,235,0.3)" }}>
+            <div style={{ width:46, height:46, borderRadius:14, background:"linear-gradient(135deg,#10B981,#06B6D4,#8B5CF6)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 0 0 1px rgba(16,185,129,0.4),0 6px 24px rgba(139,92,246,0.3)" }}>
               <Store size={22} color="white"/>
             </div>
             <div style={{ textAlign:"right" }}>
@@ -1003,13 +1011,13 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
           {/* Hero */}
           <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", paddingTop:48 }}>
             <div style={{ animation:"lgn-up .6s ease both .08s" }}>
-              <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"5px 14px", borderRadius:100, border:"1px solid rgba(59,130,246,0.35)", background:"rgba(59,130,246,0.1)", marginBottom:22 }}>
-                <span style={{ width:6, height:6, borderRadius:"50%", background:"#60a5fa", boxShadow:"0 0 8px #60a5fa", animation:"lgn-pulse 2s ease-in-out infinite" }}/>
-                <span style={{ fontSize:11, fontWeight:700, color:"#60a5fa" }}>الإصدار 2.0 — مصمم للأردن</span>
+              <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"5px 14px", borderRadius:100, border:"1px solid rgba(16,185,129,0.4)", background:"rgba(16,185,129,0.1)", marginBottom:22 }}>
+                <span style={{ width:6, height:6, borderRadius:"50%", background:"#34D399", boxShadow:"0 0 8px #34D399", animation:"lgn-pulse 2s ease-in-out infinite" }}/>
+                <span style={{ fontSize:11, fontWeight:700, color:"#34D399" }}>الإصدار 2.0 — مصمم للأردن</span>
               </div>
               <h1 style={{ fontWeight:900, color:"white", lineHeight:1.15, marginBottom:18, fontSize:"clamp(28px,2.8vw,40px)", letterSpacing:"-0.035em" }}>
                 أذكى نظام POS<br/>
-                <span style={{ background:"linear-gradient(90deg,#3B82F6,#6366F1)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>للأعمال الأردنية</span>
+                <span style={{ background:"linear-gradient(90deg,#10B981,#06B6D4,#8B5CF6)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>للأعمال الأردنية</span>
               </h1>
               <p style={{ color:"#475569", fontSize:14, lineHeight:1.75, maxWidth:380 }}>
                 إدارة المبيعات والمخزون والعملاء في مكان واحد — سحابي، سريع، وآمن.
@@ -1093,7 +1101,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
               {adminUnlocked && (
                 <div className="lf1" style={{ display:"flex", borderRadius:12, padding:3, marginBottom:22, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.08)" }}>
                   {(["store","admin"] as const).map(m => (
-                    <button key={m} onClick={() => { setMode(m); setErr(""); }} style={{ flex:1, height:36, borderRadius:10, fontSize:12, fontWeight:700, border:"none", cursor:"pointer", transition:"all .2s", background:mode===m?"rgba(37,99,235,0.9)":"transparent", color:mode===m?"white":"#64748b", boxShadow:mode===m?"0 2px 10px rgba(37,99,235,0.35)":"none", fontFamily:"inherit" }}>
+                    <button key={m} onClick={() => { setMode(m); setErr(""); }} style={{ flex:1, height:36, borderRadius:10, fontSize:12, fontWeight:700, border:"none", cursor:"pointer", transition:"all .2s", background:mode===m?"linear-gradient(135deg,rgba(16,185,129,0.85),rgba(139,92,246,0.85))":"transparent", color:mode===m?"white":"#64748b", boxShadow:mode===m?"0 2px 12px rgba(16,185,129,0.3)":"none", fontFamily:"inherit" }}>
                       {m==="store" ? "دخول المتجر" : "الإدارة العليا"}
                     </button>
                   ))}
@@ -1140,12 +1148,12 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
                 {/* Remember me */}
                 <div className="lf4" style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                   <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", userSelect:"none" }}>
-                    <div onClick={()=>setRememberMe(!rememberMe)} style={{ width:18, height:18, borderRadius:5, border:`1.5px solid ${rememberMe?"#3B82F6":"rgba(255,255,255,0.18)"}`, background:rememberMe?"#3B82F6":"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s", cursor:"pointer", flexShrink:0 }}>
+                    <div onClick={()=>setRememberMe(!rememberMe)} style={{ width:18, height:18, borderRadius:5, border:`1.5px solid ${rememberMe?"#10B981":"rgba(255,255,255,0.18)"}`, background:rememberMe?"#10B981":"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s", cursor:"pointer", flexShrink:0 }}>
                       {rememberMe && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L4 7L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                     </div>
                     <span style={{ fontSize:12, fontWeight:600, color:"#475569" }}>تذكرني</span>
                   </label>
-                  <span style={{ fontSize:12, fontWeight:700, color:"#3B82F6", cursor:"pointer" }}>نسيت كلمة المرور؟</span>
+                  <span style={{ fontSize:12, fontWeight:700, color:"#34D399", cursor:"pointer" }}>نسيت كلمة المرور؟</span>
                 </div>
 
                 {/* Error */}
@@ -1163,7 +1171,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
 
                 {/* Submit */}
                 <div className="lf5">
-                  <button className="lgn-btn" onClick={doLogin} disabled={loading||!online} style={{ background:!online?"rgba(30,41,59,0.8)":"linear-gradient(135deg,#2563EB 0%,#1D4ED8 100%)", opacity:loading?0.9:1, cursor:loading||!online?"not-allowed":"pointer", boxShadow:!online?"none":"0 6px 24px rgba(37,99,235,0.45),0 1px 0 rgba(255,255,255,0.1) inset" }}>
+                  <button className="lgn-btn" onClick={doLogin} disabled={loading||!online} style={{ background:!online?"rgba(30,41,59,0.8)":"linear-gradient(135deg,#10B981 0%,#06B6D4 50%,#8B5CF6 100%)", opacity:loading?0.9:1, cursor:loading||!online?"not-allowed":"pointer", boxShadow:!online?"none":"0 6px 28px rgba(16,185,129,0.35),0 6px 28px rgba(139,92,246,0.2),0 1px 0 rgba(255,255,255,0.12) inset" }}>
                     {loading ? (
                       <svg className="lgn-spin" width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="rgba(255,255,255,0.25)" strokeWidth="2"/><path d="M10 2A8 8 0 0 1 18 10" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
                     ) : !online ? (
