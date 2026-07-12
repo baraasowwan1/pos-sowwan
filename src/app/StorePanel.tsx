@@ -16,9 +16,9 @@ import {
   Banknote, Landmark, Handshake, Globe, MapPin, Key, User,
   ArrowUpRight, ArrowDownRight, Clipboard, Copy, Power, Monitor,
   Info, ChevronLeft, Grid3X3, List, Hash, Tag, Ruler, Calculator, FlipHorizontal,
-  Flower2, Gift, Bike,
+  Flower2, Gift, Bike, Moon, Sun,
 } from "lucide-react";
-import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules } from "./lib";
+import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules, useDarkMode } from "./lib";
 import { SyncCenter, SyncStatusBadge } from "./SyncCenter";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
 import { SalesScreen, ProductsMgr, InvScreen, CustScreen, SuppScreen, PurchScreen, ExpScreen, ReturnScreen } from "./StorePanelB";
@@ -112,6 +112,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
   const storeCategory = store.category as StoreCategory;
 
   // ── Role-based permissions ──────────────────────────────────────────────────
+  const [darkMode, toggleDark] = useDarkMode();
   const userRole = (() => {
     try { return localStorage.getItem(`sowwanjo_user_role_${storeId}`) || "owner"; } catch { return "owner"; }
   })();
@@ -318,7 +319,10 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
               <span className="text-[10px] text-muted-foreground">{ROLE_AR[userRole] || userRole}</span>
             </div>
             <SyncStatusBadge storeId={storeId} onOpenCenter={() => navTo("sync")} />
-            <span className="hidden sm:flex items-center gap-1 text-xs text-emerald-600 font-medium px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200">
+            <button onClick={toggleDark} title={darkMode ? "الوضع الفاتح" : "الوضع الداكن"} className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground transition-colors">
+              {darkMode ? <Sun size={15}/> : <Moon size={15}/>}
+            </button>
+            <span className="hidden sm:flex items-center gap-1 text-xs text-emerald-600 font-medium px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-400">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> نشط
             </span>
             {/* Announcements Bell */}
