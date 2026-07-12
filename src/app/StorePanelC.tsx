@@ -359,10 +359,10 @@ function StoreReports() {
 function EmpScreen() {
   const sid = useStoreId();
   const { data: empsRaw, refresh: refreshEmps } = useApi<unknown[]>("/users", []);
-  const [emps, setEmps] = useState<{id:string;name:string;role:string;phone:string;sales:number;status:string;branch:string}[]>([]);
-  useEffect(() => { setEmps(normList<{id:string;name:string;role:string;phone:string;sales:number;status:string;branch:string}>(empsRaw)); }, [empsRaw]);
+  const [emps, setEmps] = useState<{id:string;name:string;email:string;role:string;phone:string;sales:number;status:string;branch:string}[]>([]);
+  useEffect(() => { setEmps(normList<{id:string;name:string;email:string;role:string;phone:string;sales:number;status:string;branch:string}>(empsRaw)); }, [empsRaw]);
   const [showNew, setShowNew] = useState(false);
-  const [editEmp, setEditEmp] = useState<{id:number;name:string;role:string;phone:string;sales:number;status:string;branch:string}|null>(null);
+  const [editEmp, setEditEmp] = useState<{id:number;name:string;email:string;role:string;phone:string;sales:number;status:string;branch:string}|null>(null);
   // Role / status mappings — form uses Arabic labels but DB stores English enum values
   const ROLE_AR_TO_EN: Record<string,string> = { مدير:"manager", كاشير:"cashier", "مسؤول مخزون":"inventory", محاسب:"accountant", مالك:"owner" };
   const ROLE_EN_TO_AR: Record<string,string> = { owner:"مالك", manager:"مدير", cashier:"كاشير", inventory:"مسؤول مخزون", accountant:"محاسب" };
@@ -419,6 +419,7 @@ function EmpScreen() {
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${e.status === "active" ? "text-emerald-700 bg-emerald-100" : "text-amber-700 bg-amber-100"}`}>{STATUS_EN_TO_AR[e.status] || e.status}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">{e.phone} • {e.branch}</p>
+                {e.email && <p className="text-xs text-blue-500 mt-0.5 font-mono">{e.email}</p>}
               </div>
               {e.sales > 0 && <div className="hidden sm:block text-right shrink-0"><p className="text-sm font-black">{e.sales.toFixed(3)} JOD</p><p className="text-xs text-muted-foreground">مبيعات الشهر</p></div>}
               <div className="flex gap-1 shrink-0">
@@ -480,7 +481,8 @@ function EmpScreen() {
           <div className="space-y-4">
             <F label="الاسم الكامل" req><TInput value={nf.name} onChange={v=>setNf({...nf,name:v})} placeholder="محمد أحمد السالم" /></F>
             <F label="رقم الهاتف" req><TInput value={nf.phone} onChange={v=>setNf({...nf,phone:v})} placeholder="+962-79-XXX-XXXX" icon={<Phone size={13}/>} /></F>
-            <F label="البريد الإلكتروني (لتسجيل الدخول)" req><TInput value={nf.email} onChange={v=>setNf({...nf,email:v})} placeholder="employee@store.jo" /></F>
+            <F label="البريد الإلكتروني (للدخول على النظام)" req><TInput value={nf.email} onChange={v=>setNf({...nf,email:v})} placeholder="employee@store.jo" /></F>
+            <p className="text-xs text-muted-foreground -mt-2">💡 الموظف يقدر يدخل أيضاً برقم هاتفه المسجّل</p>
             <F label="الدور الوظيفي"><SInput value={nf.role} onChange={v=>setNf({...nf,role:v})} options={ROLE_OPTS} /></F>
             <F label="الفرع"><SInput value={nf.branch} onChange={v=>setNf({...nf,branch:v})} options={["الفرع الرئيسي","فرع مرج الحمام","فرع الزرقاء"].map(b=>({value:b,label:b}))} /></F>
             <div>
@@ -501,6 +503,15 @@ function EmpScreen() {
       {editEmp && (
         <Modal title="تعديل بيانات الموظف" onClose={() => { setEditEmp(null); setEditPass(''); }} size="sm">
           <div className="space-y-4">
+            {editEmp.email && (
+              <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-bold text-blue-700 mb-0.5">بريد الدخول على النظام</p>
+                  <p className="text-sm font-mono text-blue-900">{editEmp.email}</p>
+                </div>
+                <p className="text-xs text-blue-500">أو رقم الهاتف</p>
+              </div>
+            )}
             <F label="الاسم الكامل"><TInput value={editEmp.name} onChange={v=>setEditEmp({...editEmp,name:v})} /></F>
             <F label="رقم الهاتف"><TInput value={editEmp.phone} onChange={v=>setEditEmp({...editEmp,phone:v})} /></F>
             <F label="الدور الوظيفي"><SInput value={editEmp.role} onChange={v=>setEditEmp({...editEmp,role:v})} options={ROLE_OPTS} /></F>
