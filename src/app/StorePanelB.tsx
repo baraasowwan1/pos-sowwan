@@ -82,7 +82,7 @@ function SalesScreen({ store }: { store: StoreData }) {
     return matchQ && matchPay && matchFrom && matchTo;
   });
 
-  const PM: Record<string, string> = { نقدي: "bg-emerald-100 text-emerald-700", بطاقة: "bg-blue-100 text-blue-700", كليك: "bg-purple-100 text-purple-700", مختلط: "bg-orange-100 text-orange-700" };
+  const PM: Record<string, string> = { نقدي: "bg-emerald-100 text-emerald-700", بطاقة: "bg-primary/10 text-primary", كليك: "bg-purple-100 text-purple-700", مختلط: "bg-orange-100 text-orange-700" };
 
   const reprintSale = (s: SaleRecord) => {
     const tax  = Number(localStorage.getItem(`sowwanjo_sett_tax_${store.id}`) || 16);
@@ -106,7 +106,7 @@ function SalesScreen({ store }: { store: StoreData }) {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KPI icon={<ShoppingCart size={18} />} label="مبيعات اليوم" value={`${(stats.today.total || 0).toFixed(3)} JOD`} sub={`${stats.today.count || 0} فاتورة`} color="#1D4ED8" />
+        <KPI icon={<ShoppingCart size={18} />} label="مبيعات اليوم" value={`${(stats.today.total || 0).toFixed(3)} JOD`} sub={`${stats.today.count || 0} فاتورة`} color="#4F46E5" />
         <KPI icon={<TrendingUp size={18} />} label="مبيعات الشهر" value={`${(stats.month.total || 0).toFixed(3)} JOD`} sub={`${stats.month.count || 0} فاتورة`} color="#059669" />
         <KPI icon={<FileText size={18} />} label="إجمالي الفواتير" value={String(stats.totalSales || 0)} color="#7C3AED" />
         <KPI icon={<DollarSign size={18} />} label="متوسط الفاتورة" value={stats.month.count ? `${((stats.month.total || 0) / stats.month.count).toFixed(3)} JOD` : "0.000 JOD"} color="#D97706" />
@@ -378,7 +378,7 @@ function ProductsMgr() {
                     </div>
                     <div className="flex gap-1 shrink-0">
                       <button title="طباعة ملصق" onClick={() => setLabelProd({ ...p })} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-purple-100 text-purple-500 active:scale-90"><Tag size={14} /></button>
-                      <button onClick={() => setEditProd({ ...p })} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-blue-100 text-blue-500 active:scale-90"><Edit2 size={14} /></button>
+                      <button onClick={() => setEditProd({ ...p })} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground active:scale-90"><Edit2 size={14} /></button>
                       <button onClick={async () => { await storeApi.delete(`/products/${p.id}`); await refreshProds(); showToast(`تم حذف "${p.nameAr}"`, "warning"); }} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-red-100 text-red-500 active:scale-90"><Trash2 size={14} /></button>
                     </div>
                   </div>
@@ -416,7 +416,7 @@ function ProductsMgr() {
                       <td className="p-3.5">{p.stock === 0 ? <span className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">نفد</span> : low ? <span className="text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">منخفض</span> : <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">مناسب</span>}</td>
                       <td className="p-3.5"><div className="flex gap-0.5">
                         <button title="طباعة ملصق باركود/QR" onClick={() => setLabelProd({ ...p })} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-purple-100 text-purple-500"><Tag size={11} /></button>
-                        <button onClick={() => setEditProd({ ...p })} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-100 text-blue-500"><Edit2 size={11} /></button>
+                        <button onClick={() => setEditProd({ ...p })} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground"><Edit2 size={11} /></button>
                         <button onClick={async () => { await storeApi.delete(`/products/${p.id}`); await refreshProds(); showToast(`تم حذف "${p.nameAr}"`, "warning"); }} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500"><Trash2 size={11} /></button>
                       </div></td>
                     </tr>
@@ -433,12 +433,12 @@ function ProductsMgr() {
         <Modal title="إضافة منتج جديد" sub={storeCategory === "supermarket" ? "ادخل الباركود للجلب التلقائي من Open Food Facts أو أدخل البيانات يدوياً" : "أدخل بيانات المنتج الجديد"} onClose={() => setShowAdd(false)} size="lg">
 
           {/* Open Food Facts Section — supermarket only */}
-          {modules.openFoodFacts && <div className="mb-5 p-4 bg-gradient-to-l from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl">
+          {modules.openFoodFacts && <div className="mb-5 p-4 bg-primary/5 border border-primary/20 rounded-xl">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center"><Scan size={14} className="text-blue-600" /></div>
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center"><Scan size={14} className="text-primary" /></div>
               <div>
-                <p className="text-sm font-bold text-blue-800">جلب تلقائي من Open Food Facts API</p>
-                <p className="text-xs text-blue-600">قاعدة بيانات عالمية مجانية تحتوي على ملايين منتج السوبرماركت</p>
+                <p className="text-sm font-bold text-foreground">جلب تلقائي من Open Food Facts API</p>
+                <p className="text-xs text-muted-foreground">قاعدة بيانات عالمية مجانية تحتوي على ملايين منتج السوبرماركت</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -455,7 +455,7 @@ function ProductsMgr() {
             )}
 
             {ofoResult && (
-              <div className="mt-3 p-3 bg-white border border-blue-200 rounded-xl flex items-start gap-3">
+              <div className="mt-3 p-3 bg-card border border-border rounded-xl flex items-start gap-3">
                 {(ofoResult.image_front_url || ofoResult.image_url) && (
                   <img src={ofoResult.image_front_url || ofoResult.image_url} alt="" className="w-16 h-16 rounded-xl object-contain bg-gray-50 shrink-0 border border-gray-100" />
                 )}
@@ -499,9 +499,9 @@ function ProductsMgr() {
                 <p className="text-lg font-black text-emerald-700">{(((parseFloat(f.sellPrice) - parseFloat(f.costPrice)) / parseFloat(f.costPrice)) * 100).toFixed(1)}%</p>
                 <p className="text-xs text-emerald-600">هامش الربح</p>
               </div>
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                <p className="text-lg font-black text-blue-700">{(parseFloat(f.sellPrice) - parseFloat(f.costPrice)).toFixed(3)}</p>
-                <p className="text-xs text-blue-600">ربح الوحدة (JOD)</p>
+              <div className="p-3 bg-card border border-border rounded-xl" style={{borderRightWidth:3,borderRightColor:"#4F46E5"}}>
+                <p className="text-lg font-black text-primary">{(parseFloat(f.sellPrice) - parseFloat(f.costPrice)).toFixed(3)}</p>
+                <p className="text-xs text-muted-foreground">ربح الوحدة (JOD)</p>
               </div>
               <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl">
                 <p className="text-lg font-black text-purple-700">{f.stock ? (parseFloat(f.stock) * parseFloat(f.costPrice)).toFixed(3) : "0.000"}</p>
@@ -662,7 +662,7 @@ function InvScreen() {
       } />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI icon={<Boxes size={18} />} label="إجمالي الأصناف" value={invProds.length.toLocaleString()} color="#1D4ED8" />
+        <KPI icon={<Boxes size={18} />} label="إجمالي الأصناف" value={invProds.length.toLocaleString()} color="#4F46E5" />
         <KPI icon={<AlertTriangle size={18} />} label="منخفض المخزون" value={String(lowStock)} color="#D97706" />
         <KPI icon={<XCircle size={18} />} label="نفد المخزون" value={String(outStock)} color="#DC2626" />
         <KPI icon={<DollarSign size={18} />} label="قيمة المخزون" value={`${totalVal.toFixed(3)} JOD`} color="#059669" />
@@ -825,7 +825,7 @@ function CustScreen() {
     <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
       <Hdr title="إدارة العملاء" action={<><Btn v="secondary" s="sm" icon={<Upload size={13} />} onClick={() => showToast("اسحب ملف CSV لاستيراد العملاء", "info")}>استيراد</Btn><Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowNewC(true)}>عميل جديد</Btn></>} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI icon={<Users size={18} />} label="إجمالي العملاء" value={custs.length.toLocaleString()} color="#1D4ED8" />
+        <KPI icon={<Users size={18} />} label="إجمالي العملاء" value={custs.length.toLocaleString()} color="#4F46E5" />
         <KPI icon={<Star size={18} />} label="عملاء مميزون" value={String(custs.filter(c => c.level !== "عادي").length)} color="#D97706" />
         <KPI icon={<DollarSign size={18} />} label="إجمالي المشتريات" value={`${custs.reduce((a,c)=>a+c.total,0).toFixed(3)} JOD`} color="#059669" />
         <KPI icon={<Wallet size={18} />} label="نقاط الولاء" value={custs.reduce((a,c)=>a+c.points,0).toLocaleString()} color="#7C3AED" />
@@ -1040,7 +1040,7 @@ function PurchScreen() {
     <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
       <Hdr title="طلبات الشراء" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => { setHdr(blankForm()); setLines([]); setShowAdd(true); }}>طلب شراء جديد</Btn>} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KPI icon={<ClipboardList size={18} />} label="طلبات الشهر" value={String(thisMonth.length)} color="#1D4ED8" />
+        <KPI icon={<ClipboardList size={18} />} label="طلبات الشهر" value={String(thisMonth.length)} color="#4F46E5" />
         <KPI icon={<DollarSign size={18} />} label="إجمالي المشتريات" value={`${totalAll.toFixed(3)} JOD`} color="#059669" />
         <KPI icon={<Truck size={18} />} label="قيد الاستلام" value={String(pending)} color="#D97706" />
         <KPI icon={<Check size={18} />} label="مكتملة" value={String(orders.filter(o => ["received","مكتمل"].includes(o.status)).length)} color="#7C3AED" />
@@ -1282,7 +1282,7 @@ function ExpScreen() {
         <KPI icon={<Wallet size={18} />} label="مصروفات الشهر" value={`${total.toFixed(3)} JOD`} color="#DC2626" />
         <KPI icon={<Landmark size={18} />} label="ثابتة" value={`${exps.filter(e=>e.cat==="ثابت").reduce((a,e)=>a+e.amount,0).toFixed(3)} JOD`} color="#D97706" />
         <KPI icon={<Activity size={18} />} label="متغيرة ومتنوعة" value={`${exps.filter(e=>e.cat!=="ثابت").reduce((a,e)=>a+e.amount,0).toFixed(3)} JOD`} color="#7C3AED" />
-        <KPI icon={<Percent size={18} />} label="عدد المصروفات" value={String(exps.length)} color="#1D4ED8" />
+        <KPI icon={<Percent size={18} />} label="عدد المصروفات" value={String(exps.length)} color="#4F46E5" />
       </div>
       <div className="bg-card rounded-2xl border border-border divide-y divide-border/60 overflow-hidden">
         {exps.map(e => (
@@ -1290,7 +1290,7 @@ function ExpScreen() {
             <div className="flex-1 min-w-0"><p className="font-bold">{e.desc}</p><div className="flex items-center gap-2 mt-0.5"><span className={`text-xs font-bold px-2 py-0.5 rounded-full ${CE[e.cat]}`}>{e.cat}</span><span className="text-xs text-muted-foreground">{e.date} • {e.method}</span></div></div>
             <p className="font-black text-red-600 text-lg shrink-0">{e.amount.toFixed(3)} JOD</p>
             <div className="flex gap-1 shrink-0">
-              <button onClick={() => setEditExp({ ...e })} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-100 text-blue-500"><Edit2 size={11} /></button>
+              <button onClick={() => setEditExp({ ...e })} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground"><Edit2 size={11} /></button>
               <button onClick={() => delExp(e.id)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500"><Trash2 size={11} /></button>
             </div>
           </div>
