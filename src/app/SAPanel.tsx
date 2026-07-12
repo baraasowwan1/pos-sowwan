@@ -2433,14 +2433,26 @@ function SAMasterCatalog() {
 
   useEffect(() => { loadStats(); loadProducts(1); loadStores(); }, []);
 
-  // Parse Excel file in browser using xlsx
+  // Load xlsx from CDN at runtime (avoids bundling / build-time resolution)
+  const loadXLSX = async (): Promise<{ read: (data: ArrayBuffer, opts: { type: string }) => { Sheets: Record<string, unknown>; SheetNames: string[] }; utils: { sheet_to_json: (ws: unknown, opts: { header: number; defval: string }) => unknown[][] } }> => {
+    if ((window as Record<string, unknown>)["XLSX"]) return (window as Record<string, unknown>)["XLSX"] as ReturnType<typeof loadXLSX> extends Promise<infer T> ? T : never;
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+      script.onload = () => resolve((window as Record<string, unknown>)["XLSX"] as ReturnType<typeof loadXLSX> extends Promise<infer T> ? T : never);
+      script.onerror = () => reject(new Error("فشل تحميل مكتبة XLSX"));
+      document.head.appendChild(script);
+    });
+  };
+
+  // Parse Excel file in browser using xlsx (loaded from CDN)
   const handleFile = async (file: File) => {
     if (!file) return;
     setImportPhase("parsing");
     setImportError("");
     setPreview(null);
     try {
-      const { read, utils } = await import("xlsx");
+      const { read, utils } = await loadXLSX();
       const buffer = await file.arrayBuffer();
       const wb = read(buffer, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
