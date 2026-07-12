@@ -830,6 +830,13 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
         };
         try {
           localStorage.setItem(`sowwanjo_storeinfo_${normalizedStore.id}`, JSON.stringify(normalizedStore));
+          // Save user role for permission enforcement in StoreLayout
+          if (res.user?.role) {
+            localStorage.setItem(`sowwanjo_user_role_${normalizedStore.id}`, res.user.role);
+          }
+          if (res.user?.name) {
+            localStorage.setItem(`sowwanjo_user_name_${normalizedStore.id}`, res.user.name);
+          }
         } catch {}
         if (rememberMe) {
           try { localStorage.setItem("sowwanjo_remember_email", email); } catch {}
@@ -1132,7 +1139,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
           </div>
 
           <p style={{ textAlign:"center", fontSize:10, color:"rgba(255,255,255,0.1)", paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 16px)" }}>
-            © 2026 Sowwanjo · دينار أردني · RTL
+            © 2025 Sowwanjo · دينار أردني · RTL
           </p>
         </div>
 
