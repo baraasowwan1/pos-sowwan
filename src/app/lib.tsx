@@ -816,6 +816,26 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
     return () => { window.removeEventListener("online", up); window.removeEventListener("offline", dn); };
   }, []);
 
+  // Load branding from backend and apply CSS variables + cached values
+  useEffect(() => {
+    const cached = (() => { try { return JSON.parse(localStorage.getItem("sowwanjo_branding") || "{}"); } catch { return {}; } })();
+    const apply = (b: Record<string, string>) => {
+      const r = document.documentElement;
+      if (b.primaryColor)   { r.style.setProperty("--primary", b.primaryColor); r.style.setProperty("--ring", b.primaryColor); r.style.setProperty("--chart-1", b.primaryColor); }
+      if (b.accentColor)    { r.style.setProperty("--accent", b.accentColor); }
+      if (b.platformName)   document.title = b.platformName;
+    };
+    if (cached.primaryColor) apply(cached);
+    fetch(`${API}/branding`)
+      .then(r => r.json())
+      .then((b: Record<string, string>) => {
+        apply(b);
+        try { localStorage.setItem("sowwanjo_branding", JSON.stringify(b)); } catch {}
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleLogoClick = () => {
     const next = logoClicks + 1;
     setLogoClicks(next);
@@ -946,6 +966,16 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [twText, twTyping, twIdx]);
 
+  /* Read live CSS variable so SA branding changes reflect immediately */
+  const cssVar = (v: string, fallback: string) => {
+    try {
+      const val = getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+      return val || fallback;
+    } catch { return fallback; }
+  };
+  const brandPrimary = cssVar("--primary", "#4F46E5");
+  const brandAccent  = cssVar("--accent",  "#10B981");
+
   /* shared palette tokens for login */
   const P = {
     bg:   "linear-gradient(145deg,#0d0b1e 0%,#1a1333 40%,#0d2417 100%)",
@@ -953,11 +983,12 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
     border:"rgba(255,255,255,0.10)",
     fieldBg:"rgba(255,255,255,0.07)",
     fieldFocus:"rgba(134,239,172,0.55)",
-    accent:"#6EE7B7",   /* emerald-300 */
+    accent:"#6EE7B7",
     accentGlow:"rgba(110,231,183,0.18)",
     indigo:"rgba(99,102,241,0.45)",
     em:"rgba(16,185,129,0.38)",
   };
+  void P; /* suppress unused warning — kept for future use */
 
   return (
     <div dir="rtl" style={{ fontFamily:"'Cairo',sans-serif", minHeight:"100dvh", display:"flex", background:"linear-gradient(145deg,#0d0b1e 0%,#1a1040 45%,#0f1d30 100%)" }}>
@@ -971,7 +1002,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
         @keyframes lgn-grad  { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
         @keyframes lgn-cur   { 0%,49%{opacity:1} 50%,100%{opacity:0} }
         @keyframes lgn-chip  { from{opacity:0;transform:translateX(14px)} to{opacity:1;transform:translateX(0)} }
-        @keyframes lgn-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(110,231,183,0.35)} 50%{box-shadow:0 0 0 8px rgba(110,231,183,0)} }
+        @keyframes lgn-pulse { 0%,100%{box-shadow:0 0 0 0 ${brandAccent}55} 50%{box-shadow:0 0 0 8px ${brandAccent}00} }
         /* ── Animation classes ── */
         .lf0{animation:lgn-up .55s cubic-bezier(.22,1,.36,1) both}
         .lf1{animation:lgn-up .55s cubic-bezier(.22,1,.36,1) both .09s}
@@ -984,7 +1015,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
         /* Typewriter cursor */
         .lgn-cursor{
           display:inline-block; width:2.5px; height:1em;
-          background:#6EE7B7; margin-right:3px; vertical-align:middle;
+          background:${brandAccent}; margin-right:3px; vertical-align:middle;
           border-radius:2px; animation:lgn-cur .7s step-end infinite;
         }
         /* Form fields — glass on dark */
@@ -1002,8 +1033,8 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
           -webkit-backdrop-filter:blur(6px);
         }
         .lgn-field:focus{
-          border-color:rgba(110,231,183,0.55);
-          box-shadow:0 0 0 3px rgba(110,231,183,0.10);
+          border-color:${brandAccent}88;
+          box-shadow:0 0 0 3px ${brandAccent}18;
           background:rgba(255,255,255,0.09);
         }
         .lgn-field::placeholder{color:rgba(255,255,255,0.22)}
@@ -1013,17 +1044,17 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
         /* Submit button */
         .lgn-submit{
           width:100%; height:50px; border-radius:13px;
-          background:linear-gradient(130deg,#10B981 0%,#059669 100%);
+          background:linear-gradient(130deg,${brandAccent} 0%,${brandPrimary} 100%);
           color:#fff; font-size:15px; font-weight:800;
           border:none; cursor:pointer;
           display:flex; align-items:center; justify-content:center; gap:9px;
           transition:opacity .18s, transform .12s, box-shadow .18s;
           font-family:"Cairo",sans-serif;
           letter-spacing:-0.01em;
-          box-shadow:0 4px 22px rgba(16,185,129,0.38);
+          box-shadow:0 4px 22px ${brandPrimary}60;
           animation:lgn-pulse 2.4s ease-in-out 1.2s infinite;
         }
-        .lgn-submit:hover:not(:disabled){opacity:0.9; box-shadow:0 6px 28px rgba(16,185,129,0.5); animation:none;}
+        .lgn-submit:hover:not(:disabled){opacity:0.9; box-shadow:0 6px 28px ${brandPrimary}80; animation:none;}
         .lgn-submit:active:not(:disabled){transform:scale(0.982); animation:none;}
         .lgn-submit:disabled{opacity:0.4; cursor:not-allowed; box-shadow:none; animation:none;}
         .lgn-tab{
@@ -1059,8 +1090,8 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
 
           {/* Logo */}
           <button onClick={handleLogoClick} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:12, width:"fit-content", padding:0 }}>
-            <div style={{ width:42, height:42, borderRadius:12, background:"rgba(110,231,183,0.12)", border:"1.5px solid rgba(110,231,183,0.25)", display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)", flexShrink:0 }}>
-              <Store size={20} color="#6EE7B7"/>
+            <div style={{ width:42, height:42, borderRadius:12, background:`${brandAccent}1e`, border:`1.5px solid ${brandAccent}40`, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)", flexShrink:0 }}>
+              <Store size={20} color={brandAccent}/>
             </div>
             <div style={{ textAlign:"right" }}>
               <p style={{ color:"#fff", fontWeight:800, fontSize:16, letterSpacing:"-0.025em", lineHeight:1.2 }}>Sowwanjo POS</p>
@@ -1072,9 +1103,9 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
           <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center" }}>
 
             <div style={{ animation:"lgn-up .6s cubic-bezier(.22,1,.36,1) both .08s" }}>
-              <div style={{ display:"inline-flex", alignItems:"center", gap:7, padding:"4px 11px", borderRadius:100, background:"rgba(110,231,183,0.10)", border:"1px solid rgba(110,231,183,0.22)", marginBottom:20 }}>
-                <span style={{ width:5, height:5, borderRadius:"50%", background:"#6EE7B7", display:"block" }}/>
-                <span style={{ fontSize:10.5, fontWeight:700, color:"#6EE7B7", letterSpacing:"0.08em" }}>منصة الأعمال الأردنية</span>
+              <div style={{ display:"inline-flex", alignItems:"center", gap:7, padding:"4px 11px", borderRadius:100, background:`${brandAccent}1a`, border:`1px solid ${brandAccent}38`, marginBottom:20 }}>
+                <span style={{ width:5, height:5, borderRadius:"50%", background:brandAccent, display:"block" }}/>
+                <span style={{ fontSize:10.5, fontWeight:700, color:brandAccent, letterSpacing:"0.08em" }}>منصة الأعمال الأردنية</span>
               </div>
 
               {/* Typewriter */}
@@ -1095,7 +1126,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
                 { icon:<Shield size={13}/>,   text:"سحابي · مشفّر · محمي 100%", d:"0.50s" },
               ]).map(({icon,text,d}) => (
                 <div key={text} className="lgn-feat" style={{ animationDelay:d, display:"flex", alignItems:"center", gap:11 }}>
-                  <div style={{ width:29, height:29, borderRadius:8, background:"rgba(110,231,183,0.10)", border:"1px solid rgba(110,231,183,0.18)", display:"flex", alignItems:"center", justifyContent:"center", color:"#6EE7B7", flexShrink:0 }}>{icon}</div>
+                  <div style={{ width:29, height:29, borderRadius:8, background:`${brandAccent}1a`, border:`1px solid ${brandAccent}2e`, display:"flex", alignItems:"center", justifyContent:"center", color:brandAccent, flexShrink:0 }}>{icon}</div>
                   <span style={{ fontSize:12.5, color:"rgba(255,255,255,0.55)", fontWeight:500 }}>{text}</span>
                 </div>
               ))}
@@ -1105,7 +1136,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
             <div style={{ display:"flex", marginTop:38, paddingTop:24, borderTop:"1px solid rgba(255,255,255,0.07)", animation:"lgn-up .6s cubic-bezier(.22,1,.36,1) both .58s" }}>
               {(([["١٢٠+","متجر نشط"],["٩٩.٩٪","وقت التشغيل"],["٥٠٠+","فاتورة/يوم"]] as [string,string][])).map(([n,l],i) => (
                 <div key={l} style={{ flex:1, paddingRight:i<2?18:0, borderRight:i<2?"1px solid rgba(255,255,255,0.07)":"none", marginRight:i<2?18:0 }}>
-                  <p style={{ color:"#6EE7B7", fontWeight:900, fontSize:19, letterSpacing:"-0.04em", lineHeight:1 }}>{n}</p>
+                  <p style={{ color:brandAccent, fontWeight:900, fontSize:19, letterSpacing:"-0.04em", lineHeight:1 }}>{n}</p>
                   <p style={{ color:"rgba(255,255,255,0.32)", fontSize:10.5, marginTop:4 }}>{l}</p>
                 </div>
               ))}
@@ -1142,8 +1173,8 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
 
           {/* Logo + name */}
           <button onClick={handleLogoClick} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:11, padding:0, marginBottom:24, animation:"lgn-down .5s cubic-bezier(.22,1,.36,1) both" }}>
-            <div style={{ width:44, height:44, borderRadius:13, background:"rgba(110,231,183,0.12)", border:"1.5px solid rgba(110,231,183,0.28)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <Store size={20} color="#6EE7B7"/>
+            <div style={{ width:44, height:44, borderRadius:13, background:`${brandAccent}1e`, border:`1.5px solid ${brandAccent}47`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <Store size={20} color={brandAccent}/>
             </div>
             <div style={{ textAlign:"right" }}>
               <p style={{ color:"#fff", fontWeight:800, fontSize:16, letterSpacing:"-0.025em", lineHeight:1.2 }}>Sowwanjo POS</p>
@@ -1162,8 +1193,8 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
           {/* Chip row */}
           <div style={{ display:"flex", flexWrap:"wrap", gap:8, animation:"lgn-up .6s cubic-bezier(.22,1,.36,1) both .22s" }}>
             {(["تقارير فورية","إدارة المخزون","صلاحيات متعددة","سحابي وآمن"] as string[]).map((c,i) => (
-              <div key={c} className="lgn-chip" style={{ animationDelay:`${0.26+i*0.07}s`, display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:100, background:"rgba(110,231,183,0.09)", border:"1px solid rgba(110,231,183,0.22)" }}>
-                <span style={{ width:4, height:4, borderRadius:"50%", background:"#6EE7B7", display:"block" }}/>
+              <div key={c} className="lgn-chip" style={{ animationDelay:`${0.26+i*0.07}s`, display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:100, background:`${brandAccent}17`, border:`1px solid ${brandAccent}38` }}>
+                <span style={{ width:4, height:4, borderRadius:"50%", background:brandAccent, display:"block" }}/>
                 <span style={{ fontSize:11, fontWeight:600, color:"rgba(110,231,183,0.85)" }}>{c}</span>
               </div>
             ))}
@@ -1208,7 +1239,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
               <div className="lf1" style={{ display:"flex", padding:3, borderRadius:11, marginBottom:20, background:"rgba(255,255,255,0.05)", gap:3, border:"1px solid rgba(255,255,255,0.08)" }}>
                 {(["store","admin"] as const).map(m => (
                   <button key={m} className="lgn-tab" onClick={()=>{setMode(m);setErr("");}}
-                    style={{ background:mode===m?"rgba(110,231,183,0.12)":"transparent", color:mode===m?"#6EE7B7":"rgba(255,255,255,0.38)", boxShadow:mode===m?"0 1px 4px rgba(0,0,0,0.3)":"none", border:mode===m?"1px solid rgba(110,231,183,0.22)":"1px solid transparent" }}>
+                    style={{ background:mode===m?`${brandAccent}1e`:"transparent", color:mode===m?brandAccent:"rgba(255,255,255,0.38)", boxShadow:mode===m?"0 1px 4px rgba(0,0,0,0.3)":"none", border:mode===m?`1px solid ${brandAccent}38`:"1px solid transparent" }}>
                     {m==="store" ? "دخول المتجر" : "الإدارة العليا"}
                   </button>
                 ))}
@@ -1221,7 +1252,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
               <div className="lf2">
                 <label className="lgn-label">{mode==="admin" ? "اسم المستخدم" : "البريد الإلكتروني أو رقم الهاتف"}</label>
                 <div style={{ position:"relative" }}>
-                  <span style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", color:"rgba(110,231,183,0.5)", pointerEvents:"none", display:"flex" }}>
+                  <span style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", color:`${brandAccent}80`, pointerEvents:"none", display:"flex" }}>
                     {mode==="admin" ? <Shield size={14}/> : <Mail size={14}/>}
                   </span>
                   <input dir="rtl" className={`lgn-field${err?" err":""}`} type="text" value={email}
@@ -1234,7 +1265,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
               <div className="lf3">
                 <label className="lgn-label">كلمة المرور</label>
                 <div style={{ position:"relative" }}>
-                  <span style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", color:"rgba(110,231,183,0.5)", pointerEvents:"none", display:"flex" }}>
+                  <span style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", color:`${brandAccent}80`, pointerEvents:"none", display:"flex" }}>
                     <Lock size={14}/>
                   </span>
                   <input dir="rtl" className={`lgn-field${err?" err":""}`}
@@ -1259,7 +1290,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
               <div className="lf4">
                 <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", userSelect:"none", width:"fit-content" }}>
                   <div onClick={()=>setRememberMe(!rememberMe)}
-                    style={{ width:17, height:17, borderRadius:5, border:`1.5px solid ${rememberMe?"#10B981":"rgba(255,255,255,0.2)"}`, background:rememberMe?"#10B981":"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .16s", cursor:"pointer", flexShrink:0 }}>
+                    style={{ width:17, height:17, borderRadius:5, border:`1.5px solid ${rememberMe?brandAccent:"rgba(255,255,255,0.2)"}`, background:rememberMe?brandAccent:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .16s", cursor:"pointer", flexShrink:0 }}>
                     {rememberMe && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L4 7L9 1" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                   </div>
                   <span style={{ fontSize:12, fontWeight:600, color:"rgba(255,255,255,0.40)" }}>تذكرني</span>
@@ -1298,7 +1329,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
                 </p>
                 <p style={{ fontSize:11, color:"rgba(255,255,255,0.28)", lineHeight:1.7 }}>
                   لا تمتلك حساباً؟ تواصل مع مزود الخدمة:<br/>
-                  <span style={{ color:"#6EE7B7", fontWeight:700 }}>support@sowwanjo.online</span>
+                  <span style={{ color:brandAccent, fontWeight:700 }}>support@sowwanjo.online</span>
                 </p>
               </div>
             )}
