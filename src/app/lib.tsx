@@ -30,6 +30,57 @@ export const getToken = () => { try { return localStorage.getItem("sowwanjo_jwt"
 export const setToken = (t: string) => { try { localStorage.setItem("sowwanjo_jwt", t); } catch {} };
 export const clearToken = () => { try { localStorage.removeItem("sowwanjo_jwt"); } catch {} };
 
+// ── Dark mode ─────────────────────────────────────────────────────────────────
+const applyDark = (dark: boolean) => {
+  document.documentElement.classList.toggle("dark", dark);
+  try { localStorage.setItem("sowwanjo_dark", dark ? "1" : "0"); } catch {}
+};
+export const useDarkMode = (): [boolean, () => void] => {
+  const [dark, setDark] = useState<boolean>(() => {
+    try { return localStorage.getItem("sowwanjo_dark") === "1"; } catch { return false; }
+  });
+  useEffect(() => { applyDark(dark); }, [dark]);
+  const toggle = () => setDark(d => !d);
+  return [dark, toggle];
+};
+
+// ── Platform Branding ─────────────────────────────────────────────────────────
+export interface PlatformBranding {
+  platformName?: string;
+  platformShortName?: string;
+  logoUrl?: string;
+  iconUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
+  loginTitle?: string;
+  loginSubtitle?: string;
+  supportEmail?: string;
+  supportPhone?: string;
+  websiteUrl?: string;
+  footerCopyright?: string;
+  sidebarStyle?: "dark" | "light";
+}
+
+export function applyBranding(b: PlatformBranding) {
+  if (!b) return;
+  const root = document.documentElement;
+  if (b.primaryColor) { root.style.setProperty("--primary", b.primaryColor); root.style.setProperty("--ring", b.primaryColor); }
+  if (b.secondaryColor) root.style.setProperty("--accent", b.secondaryColor);
+  if (b.accentColor) root.style.setProperty("--chart-3", b.accentColor);
+  if (b.platformName) document.title = b.platformName;
+  if (b.iconUrl) {
+    let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+    if (!link) { link = document.createElement("link"); link.rel = "icon"; document.head.appendChild(link); }
+    link.href = b.iconUrl;
+  }
+  try { localStorage.setItem("sowwanjo_branding", JSON.stringify(b)); } catch {}
+}
+
+export function getCachedBranding(): PlatformBranding | null {
+  try { const s = localStorage.getItem("sowwanjo_branding"); return s ? JSON.parse(s) : null; } catch { return null; }
+}
+
 // دخول المتجر من Backend
 export async function apiLoginStore(email: string, password: string) {
   return apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }) as Promise<{token:string;store:{id:string;nameAr:string;category:string;plan:string;status:string}}>;
