@@ -25,6 +25,15 @@ import { SalesScreen, ProductsMgr, InvScreen, CustScreen, SuppScreen, PurchScree
 import { StoreReports, EmpScreen, BranchScreen, LoyaltyScreen, PrintJobsScreen, PrintMatsScreen, PrintPricesScreen, StoreSetts } from "./StorePanelC";
 import { FlowerOrdersScreen, BouquetBuilderScreen, DeliveryMgmtScreen } from "./StorePanelD";
 
+// Role → allowed screen IDs (* = all screens)
+const ROLE_SCREENS: Record<string, string[] | "*"> = {
+  owner:      "*",
+  manager:    ["dashboard","pos","sales","products","inventory","customers","suppliers","purchases","expenses","returns","reports","employees","branches","loyalty","print_jobs","print_mats","print_prices","flower_orders","bouquet","delivery_mgmt","sync"],
+  cashier:    ["dashboard","pos","sales","customers"],
+  inventory:  ["dashboard","products","inventory","suppliers","purchases"],
+  accountant: ["dashboard","sales","reports","expenses"],
+};
+
 const STORE_NAV = [
   { id: "dashboard",  label: "الرئيسية",       icon: <LayoutDashboard size={15} /> },
   { id: "pos",        label: "نقطة البيع",      icon: <ShoppingCart size={15} /> },
@@ -86,7 +95,13 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
     expiresAt:rawStore?.expiresAt|| new Date(Date.now() + 365*86400000).toISOString().split("T")[0],
   };
   const [screen, setScreen] = useState(() => {
-    try { return localStorage.getItem(`sowwanjo_store_screen_${storeId}`) || "dashboard"; } catch { return "dashboard"; }
+    try {
+      const saved = localStorage.getItem(`sowwanjo_store_screen_${storeId}`) || "dashboard";
+      const role = localStorage.getItem(`sowwanjo_user_role_${storeId}`) || "owner";
+      const perm = ROLE_SCREENS[role] ?? "*";
+      if (perm === "*" || (perm as string[]).includes(saved)) return saved;
+      return (perm as string[])[0] || "dashboard";
+    } catch { return "dashboard"; }
   });
   const [col, setCol] = useState(false);
   const navTo = (s: string) => {
@@ -95,7 +110,21 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
   };
   const cat = CAT[store.category as StoreCategory] || CAT["supermarket"];
   const storeCategory = store.category as StoreCategory;
+
+  // ── Role-based permissions ──────────────────────────────────────────────────
+  const userRole = (() => {
+    try { return localStorage.getItem(`sowwanjo_user_role_${storeId}`) || "owner"; } catch { return "owner"; }
+  })();
+  const userName = (() => {
+    try { return localStorage.getItem(`sowwanjo_user_name_${storeId}`) || store.nameAr; } catch { return store.nameAr; }
+  })();
+  const ROLE_AR: Record<string,string> = { owner:"مالك", manager:"مدير", cashier:"كاشير", inventory:"مسؤول مخزون", accountant:"محاسب" };
+
+  const allowed = ROLE_SCREENS[userRole] ?? "*";
+  const canSee = (id: string) => allowed === "*" || (allowed as string[]).includes(id);
+
   const visibleNav = STORE_NAV.filter(n => {
+    if (!canSee(n.id)) return false;
     if (n.id === "print_jobs" || n.id === "print_mats" || n.id === "print_prices") return storeCategory === "print_shop";
     if (n.id === "flower_orders" || n.id === "bouquet" || n.id === "delivery_mgmt") return storeCategory === "flower_shop";
     return true;
@@ -190,8 +219,18 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="p-1.5 border-t border-sidebar-border space-y-px">
+        {/* Footer — user info + logout */}
+        <div className="p-1.5 border-t border-sidebar-border space-y-1">
+          {/* User card — visible when sidebar is expanded */}
+          <div className={`${col ? "lg:hidden" : "lg:flex"} hidden items-center gap-2 px-2 py-1.5 rounded-md`}>
+            <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black text-white" style={{ background: "#2563EB" }}>
+              {userName.charAt(0)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold leading-tight truncate" style={{ color: "#F1F5F9" }}>{userName}</p>
+              <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{ROLE_AR[userRole] || userRole}</p>
+            </div>
+          </div>
           <button onClick={() => setCol(!col)} className="hidden lg:flex w-full items-center justify-center h-7 rounded-md text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
             {col ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
           </button>
@@ -241,7 +280,16 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
                 );
               })}
             </nav>
-            <div className="p-1.5 border-t border-sidebar-border" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}>
+            <div className="p-1.5 border-t border-sidebar-border space-y-1" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}>
+              <div className="flex items-center gap-2.5 px-2 py-2 rounded-md">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-black text-white text-sm" style={{ background: "#2563EB" }}>
+                  {userName.charAt(0)}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold leading-tight truncate" style={{ color: "#F1F5F9" }}>{userName}</p>
+                  <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>{ROLE_AR[userRole] || userRole}</p>
+                </div>
+              </div>
               <button onClick={onLogout} className="w-full flex items-center gap-2 h-8 rounded-md px-2.5 text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-colors">
                 <LogOut size={13} />تسجيل الخروج
               </button>
@@ -260,7 +308,15 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
               <p className="text-sm font-semibold truncate">{visibleNav.find(n => n.id === screen)?.label || STORE_NAV.find(n => n.id === screen)?.label}</p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            {/* Logged-in user chip */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/60 border border-border">
+              <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black text-white shrink-0" style={{ background: "#2563EB" }}>
+                {userName.charAt(0)}
+              </div>
+              <span className="text-xs font-semibold text-foreground max-w-[80px] truncate">{userName}</span>
+              <span className="text-[10px] text-muted-foreground">{ROLE_AR[userRole] || userRole}</span>
+            </div>
             <SyncStatusBadge storeId={storeId} onOpenCenter={() => navTo("sync")} />
             <span className="hidden sm:flex items-center gap-1 text-xs text-emerald-600 font-medium px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> نشط
@@ -307,34 +363,45 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
           </div>
         </header>
         <main className="flex-1 overflow-hidden" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 3.5rem)" }}>
-          {screen === "dashboard" && <StoreDash store={store} />}
-          {screen === "pos"       && <POSTerm store={store} />}
-          {screen === "sales"     && <SalesScreen store={store} />}
-          {screen === "products"  && <ProductsMgr />}
-          {screen === "inventory" && <InvScreen />}
-          {screen === "customers" && <CustScreen />}
-          {screen === "suppliers" && <SuppScreen />}
-          {screen === "purchases" && <PurchScreen />}
-          {screen === "expenses"  && <ExpScreen />}
-          {screen === "returns"   && <ReturnScreen />}
-          {screen === "reports"   && <StoreReports />}
-          {screen === "employees" && <EmpScreen />}
-          {screen === "branches"  && <BranchScreen />}
-          {screen === "loyalty"       && <LoyaltyScreen />}
-          {screen === "print_jobs"    && <PrintJobsScreen store={store} />}
-          {screen === "print_mats"   && <PrintMatsScreen />}
-          {screen === "print_prices" && <PrintPricesScreen />}
-          {screen === "flower_orders" && <FlowerOrdersScreen store={store} />}
-          {screen === "bouquet"       && <BouquetBuilderScreen store={store} />}
-          {screen === "delivery_mgmt" && <DeliveryMgmtScreen store={store} />}
-          {screen === "settings"     && <StoreSetts store={store} />}
-          {screen === "sync"         && <SyncCenter storeId={storeId} />}
+          {!canSee(screen) ? (
+            <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
+              <div className="w-20 h-20 rounded-2xl bg-red-100 flex items-center justify-center"><Shield size={36} className="text-red-400" /></div>
+              <h2 className="text-xl font-black">غير مصرح لك بالوصول</h2>
+              <p className="text-muted-foreground text-sm">صلاحيتك ({userRole}) لا تتيح الوصول لهذه الصفحة.</p>
+              <button onClick={() => navTo("dashboard")} className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold">العودة للرئيسية</button>
+            </div>
+          ) : (
+            <>
+              {screen === "dashboard" && <StoreDash store={store} />}
+              {screen === "pos"       && <POSTerm store={store} />}
+              {screen === "sales"     && <SalesScreen store={store} />}
+              {screen === "products"  && <ProductsMgr />}
+              {screen === "inventory" && <InvScreen />}
+              {screen === "customers" && <CustScreen />}
+              {screen === "suppliers" && <SuppScreen />}
+              {screen === "purchases" && <PurchScreen />}
+              {screen === "expenses"  && <ExpScreen />}
+              {screen === "returns"   && <ReturnScreen />}
+              {screen === "reports"   && <StoreReports />}
+              {screen === "employees" && <EmpScreen />}
+              {screen === "branches"  && <BranchScreen />}
+              {screen === "loyalty"       && <LoyaltyScreen />}
+              {screen === "print_jobs"    && <PrintJobsScreen store={store} />}
+              {screen === "print_mats"   && <PrintMatsScreen />}
+              {screen === "print_prices" && <PrintPricesScreen />}
+              {screen === "flower_orders" && <FlowerOrdersScreen store={store} />}
+              {screen === "bouquet"       && <BouquetBuilderScreen store={store} />}
+              {screen === "delivery_mgmt" && <DeliveryMgmtScreen store={store} />}
+              {screen === "settings"     && <StoreSetts store={store} />}
+              {screen === "sync"         && <SyncCenter storeId={storeId} />}
+            </>
+          )}
         </main>
 
         {/* Mobile bottom nav */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-40 flex"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-          {storeBottomNav.map(n => (
+          {storeBottomNav.filter(n => canSee(n.id)).map(n => (
             <button key={n.id} onClick={() => navTo(n.id)}
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[52px] transition-colors ${screen === n.id ? "text-primary" : "text-muted-foreground"}`}>
               <span>{n.icon}</span>
