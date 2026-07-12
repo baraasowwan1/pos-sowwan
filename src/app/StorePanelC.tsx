@@ -372,25 +372,30 @@ function EmpScreen() {
   const STATUS_OPTS = ["active","suspended"].map(s => ({ value: s, label: STATUS_EN_TO_AR[s] || s }));
   const RC: Record<string, { c: string; b: string }> = { manager: { c: "#1D4ED8", b: "#DBEAFE" }, cashier: { c: "#059669", b: "#D1FAE5" }, inventory: { c: "#D97706", b: "#FEF3C7" }, owner: { c: "#7C3AED", b: "#EDE9FE" }, accountant: { c: "#0891B2", b: "#CFFAFE" } };
 
-  const [nf, setNf] = useState({ name: '', role: 'cashier', phone: '', branch: 'الفرع الرئيسي' });
+  const [nf, setNf] = useState({ name: '', role: 'cashier', phone: '', branch: 'الفرع الرئيسي', email: '', password: '', autoPass: true });
+  const [createdCreds, setCreatedCreds] = useState<{name:string;email:string;password:string}|null>(null);
+  const [editPass, setEditPass] = useState('');
   const addEmp = async () => {
-    if (!nf.name || !nf.phone) return;
+    if (!nf.name || !nf.phone || !nf.email) return;
     try {
-      // nf.role is already an English enum value — send directly
-      await storeApi.post("/users", { name: nf.name, phone: nf.phone, role: nf.role, email: `${nf.phone.replace(/[^0-9]/g,"")}@store.jo` });
+      const body: Record<string,string> = { name: nf.name, phone: nf.phone, role: nf.role, email: nf.email };
+      if (!nf.autoPass && nf.password) body["password"] = nf.password;
+      const res = await storeApi.post("/users", body) as { generatedPassword?: string };
       await refreshEmps();
-      showToast(`تم إضافة "${nf.name}" وحفظه في قاعدة البيانات ✅`);
+      const finalPass = (!nf.autoPass && nf.password) ? nf.password : (res.generatedPassword || "—");
+      setCreatedCreds({ name: nf.name, email: nf.email, password: finalPass });
     } catch (e) { showToast((e as {error?:string}).error || "خطأ في إضافة الموظف", "error"); return; }
-    setShowNew(false); setNf({ name: '', role: 'cashier', phone: '', branch: 'الفرع الرئيسي' });
+    setShowNew(false); setNf({ name: '', role: 'cashier', phone: '', branch: 'الفرع الرئيسي', email: '', password: '', autoPass: true });
   };
   const delEmp = async (id: string) => { await storeApi.delete(`/users/${id}`); await refreshEmps(); showToast("تم حذف الموظف", "warning"); };
   const saveEdit = async () => {
     if (!editEmp) return;
-    // role may arrive as Arabic (from old state) — normalize to English before sending
     const enRole = ROLE_AR_TO_EN[editEmp.role] || editEmp.role;
     const enStatus = STATUS_AR_TO_EN[editEmp.status] || editEmp.status;
-    await storeApi.put(`/users/${editEmp.id}`, { name: editEmp.name, role: enRole, status: enStatus });
-    await refreshEmps(); showToast("تم حفظ تعديلات الموظف"); setEditEmp(null);
+    const body: Record<string,string> = { name: editEmp.name, phone: editEmp.phone || '', role: enRole, status: enStatus };
+    if (editPass.trim()) body["password"] = editPass.trim();
+    await storeApi.put(`/users/${editEmp.id}`, body);
+    await refreshEmps(); showToast("تم حفظ تعديلات الموظف"); setEditEmp(null); setEditPass('');
   };
 
   return (
@@ -442,25 +447,68 @@ function EmpScreen() {
         </div>
       </div>
 
+      {/* ── بيانات الدخول بعد الإنشاء ── */}
+      {createdCreds && (
+        <Modal title="تم إضافة الموظف بنجاح ✅" onClose={() => setCreatedCreds(null)} size="sm">
+          <div className="space-y-4">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-2">
+              <p className="text-sm font-bold text-emerald-800 mb-3">بيانات تسجيل الدخول — احتفظ بها وسلّمها للموظف</p>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">الاسم</span>
+                <span className="font-bold text-sm">{createdCreds.name}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">البريد الإلكتروني</span>
+                <span className="font-bold text-sm font-mono">{createdCreds.email}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">كلمة المرور</span>
+                <span className="font-black text-base font-mono tracking-widest text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg select-all">{createdCreds.password}</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">يمكن للموظف تغيير كلمة المرور لاحقاً من الإعدادات.</p>
+            <div className="flex gap-3 justify-end">
+              <Btn onClick={() => { navigator.clipboard?.writeText(`البريد: ${createdCreds.email}\nكلمة المرور: ${createdCreds.password}`); showToast("تم النسخ ✅"); }} v="secondary" icon={<Copy size={13}/>}>نسخ البيانات</Btn>
+              <Btn onClick={() => setCreatedCreds(null)} icon={<Check size={14}/>}>تم</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {showNew && (
         <Modal title="إضافة موظف جديد" onClose={() => setShowNew(false)} size="sm">
           <div className="space-y-4">
             <F label="الاسم الكامل" req><TInput value={nf.name} onChange={v=>setNf({...nf,name:v})} placeholder="محمد أحمد السالم" /></F>
             <F label="رقم الهاتف" req><TInput value={nf.phone} onChange={v=>setNf({...nf,phone:v})} placeholder="+962-79-XXX-XXXX" icon={<Phone size={13}/>} /></F>
+            <F label="البريد الإلكتروني (لتسجيل الدخول)" req><TInput value={nf.email} onChange={v=>setNf({...nf,email:v})} placeholder="employee@store.jo" /></F>
             <F label="الدور الوظيفي"><SInput value={nf.role} onChange={v=>setNf({...nf,role:v})} options={ROLE_OPTS} /></F>
             <F label="الفرع"><SInput value={nf.branch} onChange={v=>setNf({...nf,branch:v})} options={["الفرع الرئيسي","فرع مرج الحمام","فرع الزرقاء"].map(b=>({value:b,label:b}))} /></F>
-            <div className="flex gap-3 justify-end"><Btn v="secondary" onClick={()=>setShowNew(false)}>إلغاء</Btn><Btn onClick={addEmp} disabled={!nf.name||!nf.phone} icon={<Plus size={14}/>}>إضافة الموظف</Btn></div>
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer mb-3 select-none">
+                <div onClick={()=>setNf({...nf,autoPass:!nf.autoPass})} className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 ${nf.autoPass?"bg-primary":"bg-muted-foreground/30"}`}>
+                  <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${nf.autoPass?"translate-x-0":"translate-x-4"}`}/>
+                </div>
+                <span className="text-xs font-semibold text-muted-foreground">توليد كلمة مرور تلقائياً</span>
+              </label>
+              {!nf.autoPass && (
+                <F label="كلمة المرور"><TInput value={nf.password} onChange={v=>setNf({...nf,password:v})} placeholder="8 أحرف على الأقل" /></F>
+              )}
+            </div>
+            <div className="flex gap-3 justify-end"><Btn v="secondary" onClick={()=>setShowNew(false)}>إلغاء</Btn><Btn onClick={addEmp} disabled={!nf.name||!nf.phone||!nf.email} icon={<Plus size={14}/>}>إضافة الموظف</Btn></div>
           </div>
         </Modal>
       )}
       {editEmp && (
-        <Modal title="تعديل بيانات الموظف" onClose={() => setEditEmp(null)} size="sm">
+        <Modal title="تعديل بيانات الموظف" onClose={() => { setEditEmp(null); setEditPass(''); }} size="sm">
           <div className="space-y-4">
             <F label="الاسم الكامل"><TInput value={editEmp.name} onChange={v=>setEditEmp({...editEmp,name:v})} /></F>
             <F label="رقم الهاتف"><TInput value={editEmp.phone} onChange={v=>setEditEmp({...editEmp,phone:v})} /></F>
             <F label="الدور الوظيفي"><SInput value={editEmp.role} onChange={v=>setEditEmp({...editEmp,role:v})} options={ROLE_OPTS} /></F>
             <F label="الحالة"><SInput value={editEmp.status} onChange={v=>setEditEmp({...editEmp,status:v})} options={STATUS_OPTS} /></F>
-            <div className="flex gap-3 justify-end"><Btn v="secondary" onClick={()=>setEditEmp(null)}>إلغاء</Btn><Btn onClick={saveEdit} icon={<Check size={14}/>}>حفظ التعديلات</Btn></div>
+            <F label="كلمة مرور جديدة (اتركها فارغة إن لم تريد تغييرها)">
+              <TInput value={editPass} onChange={setEditPass} placeholder="••••••••" />
+            </F>
+            <div className="flex gap-3 justify-end"><Btn v="secondary" onClick={()=>{ setEditEmp(null); setEditPass(''); }}>إلغاء</Btn><Btn onClick={saveEdit} icon={<Check size={14}/>}>حفظ التعديلات</Btn></div>
           </div>
         </Modal>
       )}
