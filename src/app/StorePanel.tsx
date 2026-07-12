@@ -205,10 +205,10 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
               <div key={gi} className={gi > 0 ? "pt-1.5 mt-1.5 border-t border-sidebar-border" : ""}>
                 {groupItems.map(n => (
                   <button key={n.id} onClick={() => navTo(n.id)} title={n.label}
-                    className={`w-full flex items-center gap-2.5 h-8 rounded-md text-xs font-medium transition-colors mb-0.5
+                    className={`w-full flex items-center gap-2.5 h-8 rounded-lg text-xs font-medium transition-all mb-0.5 relative
                       justify-center md:justify-center ${col ? "lg:justify-center" : "lg:justify-start lg:px-2.5"} px-2
                       ${screen === n.id
-                        ? "bg-sidebar-primary/15 text-sidebar-primary"
+                        ? "bg-sidebar-primary/20 text-sidebar-primary font-semibold"
                         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       }`}>
                     <span className="shrink-0">{n.icon}</span>
@@ -224,7 +224,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
         <div className="p-1.5 border-t border-sidebar-border space-y-1">
           {/* User card — visible when sidebar is expanded */}
           <div className={`${col ? "lg:hidden" : "lg:flex"} hidden items-center gap-2 px-2 py-1.5 rounded-md`}>
-            <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black text-white" style={{ background: "#2563EB" }}>
+            <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black text-white" style={{ background: "#4F46E5" }}>
               {userName.charAt(0)}
             </div>
             <div className="min-w-0 flex-1">
@@ -268,9 +268,9 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
                   <div key={gi} className={gi > 0 ? "pt-1.5 mt-1.5 border-t border-sidebar-border" : ""}>
                     {groupItems.map(n => (
                       <button key={n.id} onClick={() => { navTo(n.id); setStoreMobileMenu(false); }}
-                        className={`w-full flex items-center gap-2.5 h-9 rounded-md px-2.5 text-sm font-medium transition-colors mb-0.5
+                        className={`w-full flex items-center gap-2.5 h-9 rounded-lg px-2.5 text-sm font-medium transition-all mb-0.5
                           ${screen === n.id
-                            ? "bg-sidebar-primary/15 text-sidebar-primary"
+                            ? "bg-sidebar-primary/20 text-sidebar-primary font-semibold"
                             : "text-sidebar-foreground hover:bg-sidebar-accent"
                           }`}>
                         <span className="shrink-0">{n.icon}</span>
@@ -301,7 +301,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* ── Top header ─────────────────────────────────────────────────────── */}
-        <header className="h-12 bg-card border-b border-border flex items-center justify-between px-3 sm:px-4 shrink-0 gap-2" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+        <header className="h-13 bg-card border-b border-border flex items-center justify-between px-3 sm:px-4 shrink-0 gap-2" style={{ height: 52, paddingTop: "env(safe-area-inset-top)" }}>
           <div className="flex items-center gap-2 min-w-0">
             <button onClick={() => setStoreMobileMenu(true)} className="md:hidden w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground"><Menu size={16} /></button>
             <button onClick={() => setCol(!col)} className="hidden md:flex w-8 h-8 items-center justify-center rounded-md hover:bg-muted text-muted-foreground"><Menu size={15} /></button>
@@ -459,72 +459,73 @@ function StoreDash({ store }: { store: StoreData }) {
       </div>
       <div className="grid grid-cols-3 gap-4">
         {[
-          { c: "bg-emerald-50 border-emerald-200", ic: <CheckCircle size={20} className="text-emerald-600" />, n: String(summary.today?.count || 0),  l: "فواتير اليوم", tc: "text-emerald-700" },
-          { c: "bg-amber-50 border-amber-200",     ic: <AlertTriangle size={20} className="text-amber-600" />,  n: String(summary.lowStock || 0),       l: "مخزون منخفض",  tc: "text-amber-700" },
-          { c: "bg-blue-50 border-blue-200",        ic: <RotateCcw size={20} className="text-blue-600" />,      n: String(summary.todayReturns || 0),   l: "مرتجعات اليوم",tc: "text-blue-700" },
+          { color: "#10B981", ic: <CheckCircle size={16} />, n: String(summary.today?.count || 0),  l: "فواتير اليوم" },
+          { color: "#F59E0B", ic: <AlertTriangle size={16} />, n: String(summary.lowStock || 0),    l: "مخزون منخفض" },
+          { color: "#6366F1", ic: <RotateCcw size={16} />,  n: String(summary.todayReturns || 0),   l: "مرتجعات اليوم" },
         ].map(x => (
-          <div key={x.l} className={`${x.c} border rounded-2xl p-4 flex items-center gap-3`}>
-            {x.ic}<div><p className={`text-xl font-black ${x.tc}`}>{x.n}</p><p className={`text-xs ${x.tc}`}>{x.l}</p></div>
+          <div key={x.l} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3" style={{ borderRightWidth: 3, borderRightColor: x.color }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${x.color}15`, color: x.color }}>{x.ic}</div>
+            <div><p className="text-lg font-bold text-foreground leading-tight">{x.n}</p><p className="text-xs text-muted-foreground">{x.l}</p></div>
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 bg-card rounded-2xl border border-border p-5">
-          <p className="font-bold mb-4">مبيعات وأرباح الأسبوع (JOD)</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 bg-card rounded-xl border border-border p-5">
+          <p className="text-sm font-semibold mb-4 text-foreground">مبيعات وأرباح الأسبوع (JOD)</p>
           <ResponsiveContainer width="100%" height={190}>
             <BarChart data={weekChartData} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="day" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip formatter={(v: number) => [`${v} JOD`]} />
-              <Bar key="week-sales" dataKey="مبيعات" fill="#1D4ED8" radius={[4, 4, 0, 0]} />
-              <Bar key="week-prof" dataKey="أرباح" fill="#059669" radius={[4, 4, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="day" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+              <Tooltip formatter={(v: number) => [`${v} JOD`]} contentStyle={{ borderRadius: 10, fontSize: 12, border: "1px solid var(--border)" }} />
+              <Bar key="week-sales" dataKey="مبيعات" fill="#4F46E5" radius={[4, 4, 0, 0]} />
+              <Bar key="week-prof" dataKey="أرباح" fill="#10B981" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="bg-card rounded-2xl border border-border p-5">
-          <p className="font-bold mb-4">المبيعات بالساعة</p>
+        <div className="bg-card rounded-xl border border-border p-5">
+          <p className="text-sm font-semibold mb-4 text-foreground">المبيعات بالساعة</p>
           <ResponsiveContainer width="100%" height={190}>
             <AreaChart data={hourChartData}>
               <defs>
                 <linearGradient id="store-dash-hour" x1="0" y1="0" x2="0" y2="1">
-                  <stop key="sdh-top" offset="5%" stopColor="#1D4ED8" stopOpacity={0.15} />
-                  <stop key="sdh-bot" offset="95%" stopColor="#1D4ED8" stopOpacity={0} />
+                  <stop key="sdh-top" offset="5%" stopColor="#4F46E5" stopOpacity={0.18} />
+                  <stop key="sdh-bot" offset="95%" stopColor="#4F46E5" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="h" tick={{ fontSize: 9 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="h" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 9 }} hide />
-              <Tooltip formatter={(v: number) => [`${v} JOD`]} />
-              <Area key="area-hour" type="monotone" dataKey="v" stroke="#1D4ED8" strokeWidth={2} fill="url(#store-dash-hour)" name="المبيعات" />
+              <Tooltip formatter={(v: number) => [`${v} JOD`]} contentStyle={{ borderRadius: 10, fontSize: 12, border: "1px solid var(--border)" }} />
+              <Area key="area-hour" type="monotone" dataKey="v" stroke="#4F46E5" strokeWidth={2} fill="url(#store-dash-hour)" name="المبيعات" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="bg-card rounded-2xl border border-border p-5">
-          <p className="font-bold mb-3">أحدث الفواتير</p>
-          <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-card rounded-xl border border-border p-5">
+          <p className="text-sm font-semibold mb-3 text-foreground">أحدث الفواتير</p>
+          <div className="space-y-0">
             {salesLoading ? (
-              <div className="space-y-2">{[1,2,3].map(i=><div key={i} className="h-10 bg-muted animate-pulse rounded-xl"/>)}</div>
+              <div className="space-y-2">{[1,2,3].map(i=><div key={i} className="h-10 bg-muted animate-pulse rounded-lg"/>)}</div>
             ) : recentSales.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-6">لا توجد فواتير بعد — ابدأ بإصدار أول فاتورة</p>
             ) : recentSales.map(inv => (
-              <div key={inv._id} className="flex items-center justify-between py-2 border-b border-border/60 last:border-0">
+              <div key={inv._id} className="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0 hover:bg-muted/30 -mx-2 px-2 rounded-lg transition-colors">
                 <div>
-                  <p className="text-sm font-bold">{inv.invoiceNo || inv._id.slice(-6).toUpperCase()}</p>
-                  <p className="text-xs text-muted-foreground">{inv.customerName || "عميل نقدي"} • {new Date(inv.createdAt).toLocaleTimeString("ar-JO", {hour:"2-digit",minute:"2-digit"})}</p>
+                  <p className="text-xs font-bold font-mono text-foreground">{inv.invoiceNo || inv._id.slice(-6).toUpperCase()}</p>
+                  <p className="text-xs text-muted-foreground">{inv.customerName || "عميل نقدي"} · {new Date(inv.createdAt).toLocaleTimeString("ar-JO", {hour:"2-digit",minute:"2-digit"})}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold">{Number(inv.total).toFixed(3)} JOD</p>
-                  <p className="text-xs font-bold text-emerald-600">{inv.payMethod}</p>
+                  <p className="text-sm font-bold text-foreground">{Number(inv.total).toFixed(3)} JOD</p>
+                  <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">{inv.payMethod}</span>
                 </div>
               </div>
             ))}
           </div>
         </div>
-        <div className="bg-card rounded-2xl border border-border p-5">
-          <p className="font-bold mb-3">تنبيهات المخزون</p>
+        <div className="bg-card rounded-xl border border-border p-5">
+          <p className="text-sm font-semibold mb-3 text-foreground">تنبيهات المخزون</p>
           <div className="space-y-2">
             {lowStockProds.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-6">لا توجد منتجات منخفضة المخزون 🎉</p>
@@ -882,10 +883,10 @@ function POSTerm({ store }: { store: StoreData }) {
   // If no session, show session open screen
   if (!session) {
     return (
-      <div className="flex h-full items-center justify-center p-6" style={{ background: "linear-gradient(160deg,#F0F9FF,#E0F2FE)" }}>
-        <div className="bg-card rounded-3xl border border-border shadow-xl p-8 max-w-md w-full text-center">
-          <div className="w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <Wallet size={36} className="text-blue-500" />
+      <div className="flex h-full items-center justify-center p-6 bg-background">
+        <div className="bg-card rounded-2xl border border-border shadow-md p-8 max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <Wallet size={36} className="text-primary" />
           </div>
           <h2 className="text-2xl font-black mb-2">فتح جلسة POS</h2>
           <p className="text-muted-foreground text-sm mb-6">أدخل الرصيد الافتتاحي في الدرج النقدي لبدء العمل</p>
@@ -908,7 +909,7 @@ function POSTerm({ store }: { store: StoreData }) {
   }
 
   return (
-    <div className="flex h-full overflow-hidden" style={{ background: "#F8FAFC" }}>
+    <div className="flex h-full overflow-hidden bg-background">
       {/* Products */}
       <div className="flex-1 flex flex-col overflow-hidden border-l border-border">
         <div className="p-3 bg-card border-b border-border space-y-2 shrink-0">
@@ -972,10 +973,10 @@ function POSTerm({ store }: { store: StoreData }) {
           {prods.length === 0 && <Empty icon={<Package size={24} />} title="لا توجد منتجات" desc="جرب البحث بكلمات مختلفة" />}
         </div>
         {holds.length > 0 && (
-          <div className="border-t border-amber-200 bg-amber-50 p-2.5 shrink-0">
-            <p className="text-xs font-bold text-amber-700 mb-1.5">طلبات معلقة ({holds.length})</p>
+          <div className="border-t border-border bg-muted/40 p-2.5 shrink-0">
+            <p className="text-xs font-bold text-muted-foreground mb-1.5">طلبات معلقة ({holds.length})</p>
             <div className="flex gap-1.5 overflow-x-auto">
-              {holds.map((h, i) => <button key={i} onClick={() => resume(i)} className="shrink-0 px-3 h-7 rounded-full bg-amber-200 text-amber-800 text-xs font-bold hover:bg-amber-300">طلب {i + 1} ({h.length} صنف)</button>)}
+              {holds.map((h, i) => <button key={i} onClick={() => resume(i)} className="shrink-0 px-3 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20">طلب {i + 1} ({h.length} صنف)</button>)}
             </div>
           </div>
         )}
@@ -1094,11 +1095,11 @@ function POSTerm({ store }: { store: StoreData }) {
       {showPay && (
         <Modal title="إتمام عملية الدفع" sub={invNo} onClose={() => setShowPay(false)}>
           <div className="space-y-4">
-            <div className="bg-gradient-to-br from-primary to-blue-700 rounded-2xl p-5 text-center">
-              <p className="text-blue-200 text-sm mb-1">المبلغ المستحق</p>
+            <div className="bg-primary rounded-2xl p-5 text-center">
+              <p className="text-white/60 text-sm mb-1">المبلغ المستحق</p>
               <p className="text-5xl font-black text-white">{total.toFixed(3)}</p>
-              <p className="text-blue-200 font-bold mt-1">دينار أردني</p>
-              {selectedCustomer && <p className="text-blue-300 text-xs mt-2">العميل: {selectedCustomer.name}</p>}
+              <p className="text-white/60 font-bold mt-1">دينار أردني</p>
+              {selectedCustomer && <p className="text-white/50 text-xs mt-2">العميل: {selectedCustomer.name}</p>}
             </div>
             <div className="grid grid-cols-3 gap-2">
               {([
@@ -1132,10 +1133,10 @@ function POSTerm({ store }: { store: StoreData }) {
             )}
 
             {pay === "cliq" && (
-              <div className="space-y-3 p-4 bg-blue-50 border-2 border-blue-200 rounded-2xl">
+              <div className="space-y-3 p-4 bg-muted/40 border border-border rounded-xl">
                 <div className="flex items-center gap-2 mb-1">
-                  <CreditCard size={20} className="text-blue-500" />
-                  <p className="font-bold text-blue-700">دفع عبر كليك</p>
+                  <CreditCard size={20} className="text-primary" />
+                  <p className="font-bold text-foreground">دفع عبر كليك</p>
                 </div>
                 <F label="رقم مرجع المعاملة (اختياري)">
                   <TInput value={cliqRef} onChange={setCliqRef} placeholder="مثال: TX-123456" />
@@ -1147,15 +1148,15 @@ function POSTerm({ store }: { store: StoreData }) {
             )}
 
             {pay === "card" && (
-              <div className="space-y-3 p-4 bg-indigo-50 border-2 border-indigo-200 rounded-2xl">
+              <div className="space-y-3 p-4 bg-muted/40 border border-border rounded-xl">
                 <div className="flex items-center gap-2 mb-1">
-                  <CreditCard size={20} className="text-indigo-500" />
-                  <p className="font-bold text-indigo-700">دفع بالبطاقة</p>
+                  <CreditCard size={20} className="text-primary" />
+                  <p className="font-bold text-foreground">دفع بالبطاقة</p>
                 </div>
                 <F label="رقم المرجع / التفويض (اختياري)">
                   <TInput value={cardRef} onChange={setCardRef} placeholder="مثال: AUTH-789012" />
                 </F>
-                <p className="text-xs text-indigo-500">أدخل البطاقة في القارئ وانتظر التفويض</p>
+                <p className="text-xs text-muted-foreground">أدخل البطاقة في القارئ وانتظر التفويض</p>
               </div>
             )}
 
@@ -1234,10 +1235,10 @@ function POSTerm({ store }: { store: StoreData }) {
           <Modal title="مبيعات الشفت الحالي" sub={session ? `فُتح: ${new Date(session.openedAt).toLocaleString("ar-JO")}` : ""} onClose={() => setShowShift(false)} wide>
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-primary/5 rounded-xl p-3 text-center"><p className="text-xs text-muted-foreground mb-1">فواتير</p><p className="font-black text-xl">{shiftTotals.count}</p></div>
-                <div className="bg-emerald-50 rounded-xl p-3 text-center"><p className="text-xs text-muted-foreground mb-1">إجمالي المبيعات</p><p className="font-black text-xl text-emerald-700">{shiftTotals.gross.toFixed(3)} JOD</p></div>
-                <div className="bg-blue-50 rounded-xl p-3 text-center"><p className="text-xs text-muted-foreground mb-1">نقدي</p><p className="font-black text-xl text-blue-700">{shiftTotals.cash.toFixed(3)} JOD</p></div>
-                <div className="bg-violet-50 rounded-xl p-3 text-center"><p className="text-xs text-muted-foreground mb-1">كليك + بطاقة</p><p className="font-black text-xl text-violet-700">{(shiftTotals.cliq + shiftTotals.card).toFixed(3)} JOD</p></div>
+                <div className="bg-card border border-border rounded-xl p-3 text-center"><p className="text-xs text-muted-foreground mb-1">فواتير</p><p className="font-black text-xl text-foreground">{shiftTotals.count}</p></div>
+                <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#22C55E"}}><p className="text-xs text-muted-foreground mb-1">إجمالي المبيعات</p><p className="font-black text-xl text-emerald-600">{shiftTotals.gross.toFixed(3)} JOD</p></div>
+                <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#4F46E5"}}><p className="text-xs text-muted-foreground mb-1">نقدي</p><p className="font-black text-xl text-primary">{shiftTotals.cash.toFixed(3)} JOD</p></div>
+                <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#8B5CF6"}}><p className="text-xs text-muted-foreground mb-1">كليك + بطاقة</p><p className="font-black text-xl" style={{color:"#8B5CF6"}}>{(shiftTotals.cliq + shiftTotals.card).toFixed(3)} JOD</p></div>
               </div>
               <div className="border border-border rounded-xl overflow-hidden max-h-64 overflow-y-auto">
                 {shiftSalesList.length === 0 ? <p className="text-center py-6 text-sm text-muted-foreground">لا توجد مبيعات في هذا الشفت</p> : (
@@ -1294,13 +1295,13 @@ function POSTerm({ store }: { store: StoreData }) {
         <Modal title="إغلاق الجلسة النقدية" sub={`فُتحت: ${new Date(session?.openedAt || Date.now()).toLocaleString("ar-JO")}`} onClose={() => setShowCloseSession(false)} size="sm">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-muted/50 rounded-xl p-3 text-center">
+              <div className="bg-card border border-border rounded-xl p-3 text-center">
                 <p className="text-xs text-muted-foreground mb-1">الرصيد الافتتاحي</p>
-                <p className="font-black text-lg">{session?.openingBalance?.toFixed(3)} JOD</p>
+                <p className="font-black text-lg text-foreground">{session?.openingBalance?.toFixed(3)} JOD</p>
               </div>
-              <div className="bg-emerald-50 rounded-xl p-3 text-center">
+              <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#22C55E"}}>
                 <p className="text-xs text-muted-foreground mb-1">إجمالي المبيعات</p>
-                <p className="font-black text-lg text-emerald-700">{total.toFixed(3)} JOD</p>
+                <p className="font-black text-lg text-emerald-600">{total.toFixed(3)} JOD</p>
               </div>
             </div>
             <F label="الرصيد الختامي الفعلي في الدرج (JOD)">
