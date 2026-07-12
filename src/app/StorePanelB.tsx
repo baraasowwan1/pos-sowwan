@@ -16,7 +16,7 @@ import {
   Banknote, Landmark, Handshake, Globe, MapPin, Key, User,
   ArrowUpRight, ArrowDownRight, Clipboard, Copy, Power, Monitor,
   Info, ChevronLeft, Grid3X3, List, Hash, Tag, Ruler, Calculator, FlipHorizontal,
-  Flower2, Gift, Bike,
+  Flower2, Gift, Bike, FileSpreadsheet,
 } from "lucide-react";
 import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules } from "./lib";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
@@ -249,6 +249,96 @@ function ProductsMgr() {
   const [ofoLoading, setOfoLoading] = useState(false);
   const [ofoResult, setOfoResult] = useState<OFFProduct | null>(null);
   const [ofoError, setOfoError] = useState("");
+
+  // ── Excel Import state ────────────────────────────────────────────────────
+  const [showImport, setShowImport] = useState(false);
+  const [importPhase, setImportPhase] = useState<"idle"|"parsing"|"importing"|"done">("idle");
+  const [importError, setImportError] = useState("");
+  const [importResult, setImportResult] = useState<{ added: number; updated: number; skipped: number; errors: string[] } | null>(null);
+  const [updateExisting, setUpdateExisting] = useState(true);
+
+  const IMPORT_COL = {
+    nameAr:    ["product name (arabic)", "arabic name", "الاسم العربي", "اسم المنتج بالعربي", "product name ar"],
+    nameEn:    ["product name", "name", "item name", "اسم المنتج", "product name (english)"],
+    barcode:   ["barcode", "bar code", "upc", "ean", "باركود"],
+    sku:       ["product code", "sku", "code", "item code", "كود المنتج"],
+    category:  ["category", "categories", "group", "الفئة", "التصنيف"],
+    costPrice: ["purchase cost", "cost", "buy price", "purchase price", "سعر الشراء"],
+    sellPrice: ["sales cost", "sell price", "price", "retail price", "selling price", "sales price", "سعر البيع"],
+    stock:     ["qty", "qty.", "quantity", "stock", "الكمية", "المخزون"],
+    minStock:  ["reorder point", "min stock", "reorder", "نقطة إعادة الطلب"],
+    unit:      ["sales unit", "unit", "وحدة البيع", "الوحدة", "purchase unit"],
+  };
+
+  const findImportCol = (headers: string[], aliases: string[]) => {
+    const lower = headers.map(h => String(h || "").toLowerCase().trim());
+    for (const alias of aliases) { const i = lower.indexOf(alias.toLowerCase()); if (i !== -1) return i; }
+    return -1;
+  };
+
+  const loadXLSXLib = async (): Promise<{ read: (buf: ArrayBuffer, opts: { type: string }) => { Sheets: Record<string, unknown>; SheetNames: string[] }; utils: { sheet_to_json: (ws: unknown, opts: { header: number; defval: string }) => unknown[][] } }> => {
+    if ((window as Record<string, unknown>)["XLSX"]) return (window as Record<string, unknown>)["XLSX"] as ReturnType<typeof loadXLSXLib> extends Promise<infer T> ? T : never;
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+      script.onload = () => resolve((window as Record<string, unknown>)["XLSX"] as ReturnType<typeof loadXLSXLib> extends Promise<infer T> ? T : never);
+      script.onerror = () => reject(new Error("فشل تحميل مكتبة XLSX"));
+      document.head.appendChild(script);
+    });
+  };
+
+  const handleImportFile = async (file: File) => {
+    setImportPhase("parsing"); setImportError(""); setImportResult(null);
+    try {
+      const { read, utils } = await loadXLSXLib();
+      const buffer = await file.arrayBuffer();
+      const wb = read(buffer, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rawData = utils.sheet_to_json(ws, { header: 1, defval: "" }) as unknown[][];
+      if (rawData.length < 2) { setImportError("الملف فارغ أو لا يحتوي على بيانات كافية"); setImportPhase("idle"); return; }
+
+      const headers = (rawData[0] as string[]).map(h => String(h || "").trim());
+      const rows = rawData.slice(1).filter(r => r.some(c => c !== "" && c !== null));
+
+      const g = (row: unknown[], aliases: string[]) => {
+        const idx = findImportCol(headers, aliases);
+        return idx !== -1 ? String(row[idx] ?? "").trim() : "";
+      };
+
+      const products = rows.map(row => {
+        const nameAr = g(row, IMPORT_COL.nameAr);
+        const nameEn = g(row, IMPORT_COL.nameEn);
+        const name = nameAr || nameEn;
+        if (!name) return null;
+        const barcodeRaw = g(row, IMPORT_COL.barcode).replace(/[^0-9a-zA-Z]/g, "");
+        return {
+          nameAr: nameAr || nameEn,
+          nameEn: nameEn || nameAr,
+          barcode: barcodeRaw,
+          sku: g(row, IMPORT_COL.sku),
+          category: g(row, IMPORT_COL.category) || "عام",
+          costPrice: parseFloat(g(row, IMPORT_COL.costPrice)) || 0,
+          sellPrice: parseFloat(g(row, IMPORT_COL.sellPrice)) || 0,
+          stock: parseInt(g(row, IMPORT_COL.stock)) || 0,
+          minStock: parseInt(g(row, IMPORT_COL.minStock)) || 5,
+          unit: g(row, IMPORT_COL.unit) || "قطعة",
+        };
+      }).filter(Boolean);
+
+      if (products.length === 0) { setImportError("لم يتم التعرف على أي صف منتج — تحقق من عناوين الأعمدة"); setImportPhase("idle"); return; }
+
+      setImportPhase("importing");
+      const res = await storeApi.post("/products/bulk-import", { products, updateExisting });
+      const result = res as { added: number; updated: number; skipped: number; errors: string[] };
+      setImportResult(result);
+      setImportPhase("done");
+      await refreshProds();
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "خطأ في الاستيراد");
+      setImportPhase("idle");
+    }
+  };
+
   const emptyF = { nameAr: "", nameEn: "", barcode: "", sku: "", category: "", costPrice: "", sellPrice: "", stock: "", minStock: "", unit: "قطعة", image: "" };
   const [f, setF] = useState(emptyF);
 
@@ -315,7 +405,7 @@ function ProductsMgr() {
     <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
       <Hdr title="إدارة المنتجات" sub={`${prods.length} منتج • ${categories.length - 1} فئة`}
         action={<>
-          <Btn v="secondary" s="sm" icon={<Upload size={13} />} onClick={() => showToast("ميزة استيراد CSV تتطلب الـ Backend — راجع دليل الإعداد", "info")}>استيراد CSV</Btn>
+          <Btn v="secondary" s="sm" icon={<Upload size={13} />} onClick={() => { setShowImport(true); setImportPhase("idle"); setImportError(""); setImportResult(null); }}>استيراد Excel</Btn>
           <Btn v="secondary" s="sm" icon={<Download size={13} />} onClick={exportCSV}>تصدير CSV</Btn>
           <Btn s="sm" icon={<Plus size={13} />} onClick={() => { setShowAdd(true); setF(emptyF); setOfoResult(null); setOfoError(""); }}>منتج جديد</Btn>
         </>} />
@@ -426,6 +516,75 @@ function ProductsMgr() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* ── Excel Import Modal ── */}
+      {showImport && (
+        <Modal title="استيراد منتجات من Excel" sub="يدعم ملفات .xlsx و .xls و .csv" onClose={() => { setShowImport(false); setImportPhase("idle"); }} size="md">
+          {importPhase === "idle" && (
+            <div className="space-y-4">
+              <div
+                className="border-2 border-dashed border-border rounded-2xl p-8 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
+                onClick={() => document.getElementById("excel-import-input")?.click()}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleImportFile(f); }}
+              >
+                <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-3">
+                  <FileSpreadsheet size={26} className="text-emerald-500" />
+                </div>
+                <p className="font-bold text-foreground mb-1">اسحب الملف هنا أو اضغط للاختيار</p>
+                <p className="text-xs text-muted-foreground">.xlsx · .xls · .csv — حتى 10,000 منتج</p>
+                <input id="excel-import-input" type="file" accept=".xlsx,.xls,.csv" className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ""; }} />
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+                <input type="checkbox" id="upd-existing" checked={updateExisting} onChange={e => setUpdateExisting(e.target.checked)} className="rounded" />
+                <label htmlFor="upd-existing" className="text-sm font-semibold cursor-pointer">تحديث المنتجات الموجودة (بنفس الباركود أو الاسم)</label>
+              </div>
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700 space-y-1">
+                <p className="font-bold mb-1">الأعمدة المدعومة (بالعربية أو الإنجليزية):</p>
+                <p>Product Name (Arabic) · Product Name · Product Code · Barcode</p>
+                <p>Category · Purchase Cost · Sales Cost · Qty. · Reorder Point · Sales Unit</p>
+              </div>
+              {importError && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-semibold">{importError}</div>}
+            </div>
+          )}
+          {(importPhase === "parsing" || importPhase === "importing") && (
+            <div className="py-10 text-center space-y-3">
+              <div className="w-14 h-14 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto" />
+              <p className="font-bold text-foreground">{importPhase === "parsing" ? "جاري قراءة الملف..." : "جاري الاستيراد إلى قاعدة البيانات..."}</p>
+              <p className="text-xs text-muted-foreground">قد يستغرق بضع ثوانٍ للملفات الكبيرة</p>
+            </div>
+          )}
+          {importPhase === "done" && importResult && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                  <p className="text-2xl font-black text-emerald-700">{importResult.added}</p>
+                  <p className="text-xs text-emerald-600 font-semibold">منتج جديد</p>
+                </div>
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+                  <p className="text-2xl font-black text-blue-700">{importResult.updated}</p>
+                  <p className="text-xs text-blue-600 font-semibold">تم تحديثه</p>
+                </div>
+                <div className="p-4 bg-muted/50 border border-border rounded-2xl">
+                  <p className="text-2xl font-black text-muted-foreground">{importResult.skipped}</p>
+                  <p className="text-xs text-muted-foreground font-semibold">تم تجاهله</p>
+                </div>
+              </div>
+              {importResult.errors.length > 0 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 space-y-1 max-h-32 overflow-y-auto">
+                  <p className="font-bold">تحذيرات ({importResult.errors.length}):</p>
+                  {importResult.errors.map((e, i) => <p key={i}>{e}</p>)}
+                </div>
+              )}
+              <div className="flex gap-3 justify-end">
+                <Btn v="secondary" onClick={() => { setShowImport(false); setImportPhase("idle"); }}>إغلاق</Btn>
+                <Btn icon={<Upload size={14} />} onClick={() => { setImportPhase("idle"); setImportError(""); setImportResult(null); }}>استيراد ملف آخر</Btn>
+              </div>
+            </div>
+          )}
+        </Modal>
       )}
 
       {/* ── Add Product Modal ── */}
