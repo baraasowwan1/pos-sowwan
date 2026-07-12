@@ -1048,13 +1048,13 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
                 {/* Email */}
                 <div className="lf2">
                   <label style={{ display:"block", fontSize:12, fontWeight:700, color:"#64748b", marginBottom:8 }}>
-                    {mode==="admin" ? "اسم المستخدم" : "البريد الإلكتروني"} <span style={{ color:"#EF4444" }}>*</span>
+                    {mode==="admin" ? "اسم المستخدم" : "البريد الإلكتروني أو رقم الهاتف"} <span style={{ color:"#EF4444" }}>*</span>
                   </label>
                   <div style={{ position:"relative" }}>
                     <span style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", color:"rgba(255,255,255,0.22)", pointerEvents:"none", display:"flex" }}>
                       {mode==="admin" ? <Shield size={15}/> : <Mail size={15}/>}
                     </span>
-                    <input dir="rtl" className="lgn-input" type={mode==="admin"?"text":"email"} value={email} onChange={e=>setEmail(e.target.value)} placeholder={mode==="admin"?"admin":"store@sowwanjo.online"} autoComplete={mode==="admin"?"username":"email"} style={{ paddingRight:44 }}/>
+                    <input dir="rtl" className="lgn-input" type="text" value={email} onChange={e=>setEmail(e.target.value)} placeholder={mode==="admin"?"admin":"example@store.jo أو 0799999999"} autoComplete={mode==="admin"?"username":"email"} style={{ paddingRight:44 }}/>
                   </div>
                 </div>
 
