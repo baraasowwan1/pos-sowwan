@@ -2394,6 +2394,7 @@ function SAMasterCatalog() {
   const [applyResult, setApplyResult] = useState<string>("");
   const [stores, setStores]           = useState<{ id: string; nameAr: string }[]>([]);
   const [selectedStore, setSelectedStore] = useState("");
+  const [initialStock, setInitialStock]   = useState<string>("0");
 
   const LIMIT = 50;
 
@@ -2504,9 +2505,10 @@ function SAMasterCatalog() {
     if (!selectedStore) return;
     setApplying(true); setApplyResult("");
     try {
-      const r = await af("/master-catalog/apply-to-store", { method: "POST", body: JSON.stringify({ storeId: selectedStore }) });
+      const stock = Math.max(0, parseInt(initialStock) || 0);
+      const r = await af("/master-catalog/apply-to-store", { method: "POST", body: JSON.stringify({ storeId: selectedStore, initialStock: stock }) });
       const d = await r.json();
-      if (r.ok) setApplyResult(`✓ تمت إضافة ${d.added} منتج للمتجر`);
+      if (r.ok) setApplyResult(`✓ تمت إضافة ${d.added} منتج للمتجر${stock > 0 ? ` بكمية ابتدائية ${stock} لكل منتج` : ""}`);
       else setApplyResult(d.error || "فشل التطبيق");
     } catch { setApplyResult("خطأ في الاتصال"); }
     finally { setApplying(false); }
@@ -2515,9 +2517,10 @@ function SAMasterCatalog() {
   const doApplyToAll = async () => {
     setApplying(true); setApplyResult("");
     try {
-      const r = await af("/master-catalog/apply-to-all", { method: "POST" });
+      const stock = Math.max(0, parseInt(initialStock) || 0);
+      const r = await af("/master-catalog/apply-to-all", { method: "POST", body: JSON.stringify({ initialStock: stock }) });
       const d = await r.json();
-      if (r.ok) setApplyResult(`✓ تمت إضافة المنتجات لـ ${d.stores} متجر`);
+      if (r.ok) setApplyResult(`✓ تمت إضافة المنتجات لـ ${d.stores} متجر${stock > 0 ? ` بكمية ابتدائية ${stock}` : ""}`);
       else setApplyResult(d.error || "فشل التطبيق");
     } catch { setApplyResult("خطأ في الاتصال"); }
     finally { setApplying(false); }
@@ -2724,6 +2727,26 @@ function SAMasterCatalog() {
           </div>
           <p className="text-xs text-muted-foreground">إضافة المنتجات الجديدة فقط — لا يتم الكتابة فوق المخزون أو الأسعار المخصصة</p>
 
+          {/* Initial stock input — shared between both apply options */}
+          <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+              <Package size={15} className="text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-bold text-amber-800 dark:text-amber-300">الكمية الابتدائية لكل منتج</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400">0 = بدون مخزون (تعبئة لاحقاً) · أي رقم = يُضبط لكل منتج</p>
+            </div>
+            <input
+              type="number"
+              min="0"
+              max="99999"
+              value={initialStock}
+              onChange={e => setInitialStock(e.target.value)}
+              className="w-24 h-9 px-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-amber-950/30 text-sm font-bold text-center text-amber-900 dark:text-amber-100 focus:outline-none focus:border-amber-500"
+              dir="ltr"
+            />
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-4">
             {/* Apply to specific store */}
             <div className="rounded-xl border border-border p-4 space-y-3">
@@ -2738,7 +2761,7 @@ function SAMasterCatalog() {
                 {stores.map(s => <option key={s.id} value={s.id}>{s.nameAr}</option>)}
               </select>
               <Btn full s="sm" disabled={!selectedStore || applying} onClick={doApplyToStore} icon={<Store size={13} />}>
-                تطبيق على المتجر
+                {applying ? "جاري التطبيق..." : `تطبيق على المتجر${parseInt(initialStock) > 0 ? ` (كمية: ${initialStock})` : ""}`}
               </Btn>
             </div>
 
@@ -2747,7 +2770,7 @@ function SAMasterCatalog() {
               <p className="text-xs font-semibold">جميع متاجر السوبرماركت ({stores.length})</p>
               <p className="text-xs text-muted-foreground">يضيف المنتجات الجديدة لكل متجر سوبرماركت مسجّل في النظام</p>
               <Btn full s="sm" v="secondary" disabled={applying || stores.length === 0} onClick={doApplyToAll} icon={<Boxes size={13} />}>
-                تطبيق على الجميع
+                {applying ? "جاري التطبيق..." : `تطبيق على الجميع${parseInt(initialStock) > 0 ? ` (كمية: ${initialStock})` : ""}`}
               </Btn>
             </div>
           </div>
