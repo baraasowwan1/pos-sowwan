@@ -17,7 +17,7 @@ import {
   ArrowUpRight, ArrowDownRight, Clipboard, Copy, Power, Monitor,
   Info, ChevronLeft, Grid3X3, List, Hash, Tag, Palette, Image, Link, Moon, Sun,
 } from "lucide-react";
-import { apiFetch, getToken, useLS, norm, jod, dateAr, showToast, apiCreateStore, apiGetStores, apiUpdateStore, apiDeleteStore, apiResetPass, SBadge, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, PLANS, CAT, ST, weekData, monthData, hourData, STORES, useDarkMode } from "./lib";
+import { apiFetch, getToken, useLS, norm, jod, dateAr, showToast, apiCreateStore, apiGetStores, apiUpdateStore, apiDeleteStore, apiResetPass, apiResetEmployeePass, SBadge, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, PLANS, CAT, ST, weekData, monthData, hourData, STORES, useDarkMode } from "./lib";
 import type { StoreData, Plan, StoreCategory } from "./lib";
 
 const SA_NAV = [
@@ -142,8 +142,8 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
         className={`hidden md:flex shrink-0 flex-col transition-all duration-300 md:w-[52px] ${col ? "lg:w-[52px]" : "lg:w-60"}`}
         style={{ background: "linear-gradient(180deg,#0F172A 0%,#1A2744 100%)" }}>
         <div className="h-14 flex items-center border-b border-white/7 px-2 lg:px-3 gap-3 shrink-0">
-          <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shrink-0">
-            <Store size={15} className="text-blue-400" />
+          <div className="w-8 h-8 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
+            <Store size={15} className="text-primary" />
           </div>
           <div className={`min-w-0 hidden ${col ? "lg:hidden" : "lg:block"}`}>
             <p className="text-white font-black text-sm truncate">Sowwanjo POS</p>
@@ -152,7 +152,7 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
         </div>
         <div className={`mx-3 mt-3 mb-2 p-3 rounded-xl bg-white/5 border border-white/7 hidden ${col ? "lg:hidden" : "lg:block"}`}>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-blue-500/30 flex items-center justify-center shrink-0"><Shield size={12} className="text-blue-400" /></div>
+            <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0"><Shield size={12} className="text-primary" /></div>
             <div className="min-w-0"><p className="text-white text-xs font-bold">المدير العام</p><p className="text-white/30 text-xs">Super Admin</p></div>
           </div>
         </div>
@@ -163,7 +163,7 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
               title={n.label}>
               <span className="shrink-0">{n.icon}</span>
               <span className={`hidden ${col ? "lg:hidden" : "lg:inline"} truncate`}>{n.label}</span>
-              <span className={`mr-auto w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 hidden ${col ? "lg:hidden" : screen === n.id ? "lg:inline-block" : "lg:hidden"}`} />
+              <span className={`mr-auto w-1.5 h-1.5 rounded-full bg-primary/60 shrink-0 hidden ${col ? "lg:hidden" : screen === n.id ? "lg:inline-block" : "lg:hidden"}`} />
             </button>
           ))}
         </nav>
@@ -197,7 +197,7 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
                   className={`w-full flex items-center gap-3 h-11 rounded-xl px-4 text-sm font-semibold transition-all ${screen === n.id ? "bg-white/10 text-white border border-white/10" : "text-white/60 hover:bg-white/5 hover:text-white/90"}`}>
                   <span className="shrink-0">{n.icon}</span>
                   <span>{n.label}</span>
-                  {screen === n.id && <span className="mr-auto w-2 h-2 rounded-full bg-blue-400 shrink-0" />}
+                  {screen === n.id && <span className="mr-auto w-2 h-2 rounded-full bg-primary/60 shrink-0" />}
                 </button>
               ))}
             </nav>
@@ -300,9 +300,9 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
                   </div>
                 )}
               </div>
-              <div className="hidden sm:flex h-8 px-2.5 bg-emerald-50 border border-emerald-200 rounded-xl items-center gap-1.5">
+              <div className="hidden sm:flex h-8 px-2.5 bg-card border border-border rounded-xl items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-bold text-emerald-700 whitespace-nowrap">النظام يعمل</span>
+                <span className="text-xs font-semibold text-foreground whitespace-nowrap">النظام يعمل</span>
               </div>
             </div>
           </div>
@@ -405,7 +405,7 @@ function SADash({ onNav }: { onNav: (s: string) => void }) {
         <KPI icon={<Store size={20} />} label="إجمالي المتاجر"
           value={String(dashStores.length)}
           sub={`${dashStores.filter(s => s.status === "active").length} نشط`}
-          color="#1D4ED8" />
+          color="#4F46E5" />
         <KPI icon={<DollarSign size={20} />} label="إجمالي الإيرادات"
           value={jod(totalRevenue)} sub="منذ الإطلاق" color="#059669" />
         <KPI icon={<Users size={20} />} label="إجمالي المستخدمين"
@@ -439,8 +439,8 @@ function SADash({ onNav }: { onNav: (s: string) => void }) {
             <AreaChart data={monthData}>
               <defs>
                 <linearGradient id="sa-dash-rev" x1="0" y1="0" x2="0" y2="1">
-                  <stop key="sa-dash-rev-top" offset="5%" stopColor="#1D4ED8" stopOpacity={0.15} />
-                  <stop key="sa-dash-rev-bot" offset="95%" stopColor="#1D4ED8" stopOpacity={0} />
+                  <stop key="sa-dash-rev-top" offset="5%" stopColor="#4F46E5" stopOpacity={0.15} />
+                  <stop key="sa-dash-rev-bot" offset="95%" stopColor="#4F46E5" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="sa-dash-prof" x1="0" y1="0" x2="0" y2="1">
                   <stop key="sa-dash-prof-top" offset="5%" stopColor="#059669" stopOpacity={0.12} />
@@ -451,7 +451,7 @@ function SADash({ onNav }: { onNav: (s: string) => void }) {
               <XAxis dataKey="month" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `${v / 1000}k`} />
               <Tooltip formatter={(v: number) => [`${v.toLocaleString()} JOD`]} />
-              <Area key="area-rev"  type="monotone" dataKey="إيرادات" stroke="#1D4ED8" strokeWidth={2.5} fill="url(#sa-dash-rev)" />
+              <Area key="area-rev"  type="monotone" dataKey="إيرادات" stroke="#4F46E5" strokeWidth={2.5} fill="url(#sa-dash-rev)" />
               <Area key="area-prof" type="monotone" dataKey="أرباح"   stroke="#059669" strokeWidth={2.5} fill="url(#sa-dash-prof)" />
             </AreaChart>
           </ResponsiveContainer>
@@ -553,6 +553,15 @@ function SAStores() {
   const [editStore, setEditStore] = useState<StoreData | null>(null);
   const [creds, setCreds] = useState<{ email: string; pass: string } | null>(null);
   const [newPass, setNewPass] = useState<{ store: string; pass: string } | null>(null);
+  // Reset password modals
+  const [resetStoreModal, setResetStoreModal] = useState<StoreData | null>(null);
+  const [resetStorePass, setResetStorePass] = useState("");
+  const [resetStoreLoading, setResetStoreLoading] = useState(false);
+  const [resetEmpModal, setResetEmpModal] = useState<{ storeId: string; storeName: string; empId: string; empName: string } | null>(null);
+  const [resetEmpPass, setResetEmpPass] = useState("");
+  const [resetEmpLoading, setResetEmpLoading] = useState(false);
+  const [storeEmps, setStoreEmps] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
+  const [empsLoading, setEmpsLoading] = useState(false);
   const [renewStore, setRenewStore] = useState<StoreData | null>(null);
   const [renewMonths, setRenewMonths] = useState("1");
   const [deleteConfirm, setDeleteConfirm] = useState<StoreData | null>(null);
@@ -663,18 +672,55 @@ function SAStores() {
     setEditStore(null);
   };
 
-  const doResetPass = async (store: StoreData) => {
-    try {
-      // إعادة تعيين من Backend — يحدّث في MongoDB
-      const res = await apiResetPass(store.id);
-      setNewPass({ store: store.nameAr, pass: res.newPassword });
-    } catch {
-      // Fallback محلي
-      const pw = `Store@${Math.floor(Math.random() * 90000) + 10000}!`;
-      try { localStorage.setItem(`sowwanjo_pass_${store.id}`, pw); } catch {}
-      setNewPass({ store: store.nameAr, pass: pw });
-    }
+  const openResetStorePass = (store: StoreData) => {
+    setResetStoreModal(store);
+    setResetStorePass("");
     setDetail(null);
+  };
+
+  const doResetStorePass = async () => {
+    if (!resetStoreModal) return;
+    if (resetStorePass.length < 6) { showToast("كلمة المرور يجب أن تكون 6 أحرف على الأقل", "error"); return; }
+    setResetStoreLoading(true);
+    try {
+      await apiResetPass(resetStoreModal.id, resetStorePass);
+      showToast(`تم تغيير كلمة مرور "${resetStoreModal.nameAr}" بنجاح ✓`, "success");
+      setResetStoreModal(null);
+      setResetStorePass("");
+    } catch (e) {
+      showToast((e as { error?: string }).error || "فشل تغيير كلمة المرور", "error");
+    } finally { setResetStoreLoading(false); }
+  };
+
+  const openResetEmpPass = async (store: StoreData) => {
+    setEmpsLoading(true);
+    setStoreEmps([]);
+    setResetEmpModal(null);
+    setResetEmpPass("");
+    setDetail(null);
+    try {
+      // جلب موظفي المتجر — نستخدم endpoint المتاجر مع SA token
+      const data = await apiFetch(`/stores/${store.id}/users`, {}, getToken()) as { id: string; name: string; email: string; role: string }[];
+      setStoreEmps(Array.isArray(data) ? data : []);
+    } catch {
+      setStoreEmps([]);
+    } finally { setEmpsLoading(false); }
+    // نفتح modal اختيار الموظف
+    setResetEmpModal({ storeId: store.id, storeName: store.nameAr, empId: "", empName: "" });
+  };
+
+  const doResetEmpPass = async () => {
+    if (!resetEmpModal || !resetEmpModal.empId) { showToast("اختر موظفاً أولاً", "error"); return; }
+    if (resetEmpPass.length < 6) { showToast("كلمة المرور يجب أن تكون 6 أحرف على الأقل", "error"); return; }
+    setResetEmpLoading(true);
+    try {
+      await apiResetEmployeePass(resetEmpModal.storeId, resetEmpModal.empId, resetEmpPass);
+      showToast(`تم تغيير كلمة مرور "${resetEmpModal.empName}" بنجاح ✓`, "success");
+      setResetEmpModal(null);
+      setResetEmpPass("");
+    } catch (e) {
+      showToast((e as { error?: string }).error || "فشل تغيير كلمة المرور", "error");
+    } finally { setResetEmpLoading(false); }
   };
 
   const doRenew = async () => {
@@ -761,8 +807,8 @@ function SAStores() {
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <button onClick={() => setDetail(s)} className="flex-1 h-9 min-w-[72px] flex items-center justify-center gap-1.5 rounded-xl bg-primary/10 text-primary text-xs font-bold"><Eye size={13} />تفاصيل</button>
-                  <button onClick={() => setEditStore({ ...s })} className="flex-1 h-9 min-w-[72px] flex items-center justify-center gap-1.5 rounded-xl bg-blue-50 text-blue-600 text-xs font-bold"><Edit2 size={13} />تعديل</button>
-                  <button onClick={() => toggle(s.id)} className={`flex-1 h-9 min-w-[72px] flex items-center justify-center gap-1.5 rounded-xl text-xs font-bold ${s.status === "active" ? "bg-orange-50 text-orange-600" : "bg-emerald-50 text-emerald-600"}`}>
+                  <button onClick={() => setEditStore({ ...s })} className="flex-1 h-9 min-w-[72px] flex items-center justify-center gap-1.5 rounded-xl bg-muted text-foreground text-xs font-bold hover:bg-muted/70"><Edit2 size={13} />تعديل</button>
+                  <button onClick={() => toggle(s.id)} className={`flex-1 h-9 min-w-[72px] flex items-center justify-center gap-1.5 rounded-xl text-xs font-bold ${s.status === "active" ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"}`}>
                     {s.status === "active" ? <><Lock size={13} />إيقاف</> : <><Unlock size={13} />تفعيل</>}
                   </button>
                   <button onClick={() => setDeleteConfirm(s)} className="h-9 w-9 flex items-center justify-center rounded-xl bg-red-50 text-red-500"><Trash2 size={14} /></button>
@@ -805,7 +851,7 @@ function SAStores() {
                     <td className="p-4">
                       <div className="flex gap-0.5">
                         <button onClick={() => setDetail(s)} title="تفاصيل المتجر" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-primary/10 text-primary transition-colors"><Eye size={12} /></button>
-                        <button onClick={() => setEditStore({ ...s })} title="تعديل البيانات" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-100 text-blue-500 transition-colors"><Edit2 size={12} /></button>
+                        <button onClick={() => setEditStore({ ...s })} title="تعديل البيانات" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><Edit2 size={12} /></button>
                         <button onClick={() => toggle(s.id)} title={s.status === "active" ? "إيقاف المتجر" : "تفعيل المتجر"} className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${s.status === "active" ? "hover:bg-orange-100 text-orange-500" : "hover:bg-emerald-100 text-emerald-600"}`}>{s.status === "active" ? <Lock size={12} /> : <Unlock size={12} />}</button>
                         <button onClick={() => setRenewStore(s)} title="تجديد الاشتراك" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-purple-100 text-purple-500 transition-colors"><CreditCard size={12} /></button>
                         <button onClick={() => setDeleteConfirm(s)} title="حذف المتجر" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500 transition-colors"><Trash2 size={12} /></button>
@@ -834,7 +880,7 @@ function SAStores() {
             <F label="خطة الاشتراك"><SInput value={nf.plan} onChange={v => setNf({ ...nf, plan: v })} options={apiPlans.map(p => ({ value: p.nameAr, label: `${p.nameAr} — ${p.price} JOD/شهر` }))} /></F>
             <F label="الرقم الضريبي (اختياري)"><TInput value={nf.taxNo} onChange={v => setNf({ ...nf, taxNo: v })} placeholder="JO-XXXXXXXX" icon={<Hash size={13} />} /></F>
           </div>
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800 space-y-1">
+          <div className="mt-4 p-4 bg-primary/5 border border-primary/20 rounded-xl text-xs text-foreground space-y-1">
             <p className="font-bold">✅ سيتم تلقائياً عند الإنشاء:</p>
             <p>• توليد كلمة مرور عشوائية آمنة للمتجر</p>
             <p>• إنشاء حساب معزول بـ store_id خاص</p>
@@ -852,13 +898,13 @@ function SAStores() {
       {creds && (
         <Modal title="✅ تم إنشاء المتجر بنجاح" sub="احتفظ بهذه البيانات وأرسلها لصاحب المتجر فقط" onClose={() => setCreds(null)} size="sm">
           <div className="text-center space-y-4">
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto"><CheckCircle size={30} className="text-emerald-600" /></div>
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto"><CheckCircle size={30} className="text-primary" /></div>
             <div className="bg-muted rounded-xl p-4 space-y-2.5 font-mono text-sm border border-border text-right">
               <div className="flex justify-between items-center"><span className="text-muted-foreground">رابط الدخول</span><span className="font-bold text-xs text-primary">pos.sowwanjo.online</span></div>
               <div className="flex justify-between items-center"><span className="text-muted-foreground">البريد</span><span className="font-bold text-xs">{creds.email}</span></div>
               <div className="flex justify-between items-center"><span className="text-muted-foreground">كلمة المرور</span><span className="font-bold text-primary">{creds.pass}</span></div>
             </div>
-            <div className="text-xs text-amber-700 p-3 bg-amber-50 border border-amber-200 rounded-xl">⚠️ لن تظهر كلمة المرور مجدداً — احفظها الآن</div>
+            <div className="text-xs text-muted-foreground p-3 bg-muted/60 border border-border rounded-xl">⚠️ لن تظهر كلمة المرور مجدداً — احفظها الآن</div>
             <div className="flex gap-2">
               <Btn v="secondary" full icon={<Copy size={13} />} onClick={() => { navigator.clipboard?.writeText(`رابط الدخول: https://pos.sowwanjo.online\nالبريد: ${creds.email}\nكلمة المرور: ${creds.pass}`); showToast("تم نسخ بيانات الدخول"); }}>نسخ البيانات</Btn>
               <Btn full onClick={() => setCreds(null)}>إغلاق</Btn>
@@ -900,7 +946,7 @@ function SAStores() {
         >
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[{ l: "مستخدمون", v: detail.users, color: "#1D4ED8" }, { l: "منتجات", v: detail.products, color: "#059669" }, { l: "فواتير", v: detail.sales, color: "#D97706" }, { l: "فروع", v: detail.branches, color: "#7C3AED" }].map(x => (
+              {[{ l: "مستخدمون", v: detail.users, color: "#4F46E5" }, { l: "منتجات", v: detail.products, color: "#059669" }, { l: "فواتير", v: detail.sales, color: "#D97706" }, { l: "فروع", v: detail.branches, color: "#7C3AED" }].map(x => (
                 <div key={x.l} className="rounded-xl p-3 text-center border border-border" style={{ backgroundColor: `${x.color}08` }}>
                   <p className="text-2xl font-black" style={{ color: x.color }}>{x.v}</p>
                   <p className="text-xs text-muted-foreground">{x.l}</p>
@@ -938,7 +984,8 @@ function SAStores() {
             <div className="flex flex-wrap gap-2 pt-1">
               <Btn v="secondary" s="sm" icon={<Edit2 size={12} />} onClick={() => { setEditStore({ ...detail }); setDetail(null); }}>تعديل البيانات</Btn>
               <Btn v="secondary" s="sm" icon={<CreditCard size={12} />} onClick={() => { setRenewStore(detail); setDetail(null); }}>تجديد الاشتراك</Btn>
-              <Btn v="secondary" s="sm" icon={<Key size={12} />} onClick={() => doResetPass(detail)}>إعادة تعيين كلمة المرور</Btn>
+              <Btn v="secondary" s="sm" icon={<Key size={12} />} onClick={() => openResetStorePass(detail)}>تغيير كلمة مرور المتجر</Btn>
+              <Btn v="secondary" s="sm" icon={<Users size={12} />} onClick={() => openResetEmpPass(detail)}>تغيير كلمة مرور موظف</Btn>
               <Btn v="secondary" s="sm" icon={<Download size={12} />} onClick={() => doExport(detail)}>تصدير بيانات المتجر</Btn>
               <Btn v={detail.status === "active" ? "warning" : "success"} s="sm"
                 icon={detail.status === "active" ? <Lock size={12} /> : <Unlock size={12} />}
@@ -959,8 +1006,8 @@ function SAStores() {
             <F label="مدة التجديد">
               <SInput value={renewMonths} onChange={setRenewMonths} options={[{ value: "1", label: "شهر واحد" }, { value: "3", label: "3 أشهر (وفر 5%)" }, { value: "6", label: "6 أشهر (وفر 10%)" }, { value: "12", label: "سنة كاملة (وفر 32%)" }]} />
             </F>
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-              <div className="flex justify-between text-sm mb-1"><span className="text-muted-foreground">انتهاء الاشتراك الجديد:</span><span className="font-black text-emerald-700">{new Date(Date.now() + parseInt(renewMonths) * 30 * 86400000).toISOString().split("T")[0]}</span></div>
+            <div className="p-4 bg-card border border-border rounded-xl">
+              <div className="flex justify-between text-sm mb-1"><span className="text-muted-foreground">انتهاء الاشتراك الجديد:</span><span className="font-black text-primary">{new Date(Date.now() + parseInt(renewMonths) * 30 * 86400000).toISOString().split("T")[0]}</span></div>
               <div className="flex justify-between text-sm"><span className="text-muted-foreground">المبلغ المستحق:</span>
                 <span className="font-black text-foreground">{(PLANS.find(p => p.nameAr === renewStore.plan)?.price || 0) * parseInt(renewMonths)} JOD</span>
               </div>
@@ -974,19 +1021,65 @@ function SAStores() {
       )}
 
       {/* ── New Password Modal ── */}
-      {newPass && (
-        <Modal title="كلمة المرور الجديدة" sub={`لمتجر: ${newPass.store}`} onClose={() => setNewPass(null)} size="sm">
-          <div className="space-y-4 text-center">
-            <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto"><Key size={26} className="text-blue-600" /></div>
-            <div className="bg-muted rounded-xl p-4 border border-border">
-              <p className="text-xs text-muted-foreground mb-1">كلمة المرور الجديدة</p>
-              <p className="text-2xl font-black font-mono text-primary">{newPass.pass}</p>
+      {/* ── Reset Store Owner Password Modal ── */}
+      {resetStoreModal && (
+        <Modal title="تغيير كلمة مرور المتجر" sub={`صاحب المتجر: ${resetStoreModal.nameAr}`} onClose={() => { setResetStoreModal(null); setResetStorePass(""); }} size="sm">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl">
+              <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+              <p className="text-xs text-amber-800 dark:text-amber-300">ستُطبَّق كلمة المرور الجديدة فوراً على حساب صاحب المتجر</p>
             </div>
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">⚠️ أرسل كلمة المرور لصاحب المتجر فوراً عبر قناة آمنة</p>
+            <F label="كلمة المرور الجديدة">
+              <TInput value={resetStorePass} onChange={setResetStorePass} type="password" placeholder="6 أحرف على الأقل" />
+            </F>
             <div className="flex gap-2">
-              <Btn v="secondary" full icon={<Copy size={13} />} onClick={() => { navigator.clipboard?.writeText(newPass.pass); showToast("تم نسخ كلمة المرور"); }}>نسخ</Btn>
-              <Btn full onClick={() => setNewPass(null)}>إغلاق</Btn>
+              <Btn v="secondary" full onClick={() => { setResetStoreModal(null); setResetStorePass(""); }}>إلغاء</Btn>
+              <Btn full icon={resetStoreLoading ? <RefreshCw size={13} className="animate-spin" /> : <Key size={13} />} onClick={doResetStorePass} disabled={resetStoreLoading || resetStorePass.length < 6}>
+                {resetStoreLoading ? "جاري الحفظ..." : "حفظ كلمة المرور"}
+              </Btn>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Reset Employee Password Modal ── */}
+      {resetEmpModal && (
+        <Modal title="تغيير كلمة مرور موظف" sub={`متجر: ${resetEmpModal.storeName}`} onClose={() => { setResetEmpModal(null); setResetEmpPass(""); }} size="sm">
+          <div className="space-y-4">
+            {empsLoading ? (
+              <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-10 bg-muted animate-pulse rounded-xl" />)}</div>
+            ) : storeEmps.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground text-sm">لا يوجد موظفون في هذا المتجر</div>
+            ) : (
+              <>
+                <F label="اختر الموظف">
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {storeEmps.map(emp => (
+                      <button key={emp.id} onClick={() => setResetEmpModal(m => m ? { ...m, empId: emp.id, empName: emp.name } : m)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-right transition-all ${resetEmpModal.empId === emp.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}>
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-bold">{emp.name[0]}</div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold truncate">{emp.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{emp.email} · {emp.role}</p>
+                        </div>
+                        {resetEmpModal.empId === emp.id && <Check size={14} className="text-primary shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                </F>
+                {resetEmpModal.empId && (
+                  <F label="كلمة المرور الجديدة">
+                    <TInput value={resetEmpPass} onChange={setResetEmpPass} type="password" placeholder="6 أحرف على الأقل" />
+                  </F>
+                )}
+                <div className="flex gap-2">
+                  <Btn v="secondary" full onClick={() => { setResetEmpModal(null); setResetEmpPass(""); }}>إلغاء</Btn>
+                  <Btn full icon={resetEmpLoading ? <RefreshCw size={13} className="animate-spin" /> : <Key size={13} />} onClick={doResetEmpPass} disabled={resetEmpLoading || !resetEmpModal.empId || resetEmpPass.length < 6}>
+                    {resetEmpLoading ? "جاري الحفظ..." : "حفظ كلمة المرور"}
+                  </Btn>
+                </div>
+              </>
+            )}
           </div>
         </Modal>
       )}
@@ -1024,7 +1117,7 @@ function SAPlans() {
   const [showForm, setShowForm] = useState(false);
   const [editPlan, setEditPlan] = useState<Plan | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ nameAr: "", price: "", yearlyPrice: "", maxBranches: "1", maxUsers: "3", maxProducts: "500", maxInvoices: "1000", maxTerminals: "1", storage: "1 غيغابايت", apiAccess: false, badge: "", color: "#1D4ED8", features: "" });
+  const [form, setForm] = useState({ nameAr: "", price: "", yearlyPrice: "", maxBranches: "1", maxUsers: "3", maxProducts: "500", maxInvoices: "1000", maxTerminals: "1", storage: "1 غيغابايت", apiAccess: false, badge: "", color: "#4F46E5", features: "" });
 
   // Real subscriptions from API
   const [subs, setSubs] = useState<StoreData[]>([]);
@@ -1054,7 +1147,7 @@ function SAPlans() {
   };
   const openNew = () => {
     setEditPlan(null);
-    setForm({ nameAr: "", price: "", yearlyPrice: "", maxBranches: "1", maxUsers: "3", maxProducts: "500", maxInvoices: "1000", maxTerminals: "1", storage: "1 غيغابايت", apiAccess: false, badge: "", color: "#1D4ED8", features: "" });
+    setForm({ nameAr: "", price: "", yearlyPrice: "", maxBranches: "1", maxUsers: "3", maxProducts: "500", maxInvoices: "1000", maxTerminals: "1", storage: "1 غيغابايت", apiAccess: false, badge: "", color: "#4F46E5", features: "" });
     setShowForm(true);
   };
   const savePlan = async () => {
@@ -1187,7 +1280,7 @@ function SAPlans() {
               <F label="اسم الخطة" req><TInput value={form.nameAr} onChange={v => setForm(f => ({ ...f, nameAr: v }))} placeholder="مثال: الاحترافي" /></F>
               <F label="السعر الشهري (JOD)" req><TInput value={form.price} onChange={v => setForm(f => ({ ...f, price: v }))} type="number" /></F>
               <F label="السعر السنوي (JOD)"><TInput value={form.yearlyPrice} onChange={v => setForm(f => ({ ...f, yearlyPrice: v }))} type="number" /></F>
-              <F label="اللون (Hex)"><TInput value={form.color} onChange={v => setForm(f => ({ ...f, color: v }))} placeholder="#1D4ED8" /></F>
+              <F label="اللون (Hex)"><TInput value={form.color} onChange={v => setForm(f => ({ ...f, color: v }))} placeholder="#4F46E5" /></F>
               <F label="الحد الأقصى للفروع"><TInput value={form.maxBranches} onChange={v => setForm(f => ({ ...f, maxBranches: v }))} type="number" /></F>
               <F label="الحد الأقصى للمستخدمين"><TInput value={form.maxUsers} onChange={v => setForm(f => ({ ...f, maxUsers: v }))} type="number" /></F>
               <F label="الحد الأقصى للمنتجات"><TInput value={form.maxProducts} onChange={v => setForm(f => ({ ...f, maxProducts: v }))} type="number" /></F>
@@ -1248,7 +1341,7 @@ function SAReports() {
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-5">
       <Hdr title="التقارير العامة" sub="نظرة شاملة على أداء المنصة — بيانات حقيقية من قاعدة البيانات" action={<><Btn v="secondary" s="sm" icon={<Download size={14} />} onClick={() => showToast("جاري إعداد تقرير PDF الشامل...", "info")}>PDF</Btn><Btn v="secondary" s="sm" icon={<Download size={14} />} onClick={() => showToast("جاري تصدير ملف Excel...", "info")}>Excel</Btn></>} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KPI icon={<DollarSign size={20} />} label="إجمالي الإيرادات" value={jod(totalRevenue)} sub={`من ${stores.length} متجر`} color="#1D4ED8" />
+        <KPI icon={<DollarSign size={20} />} label="إجمالي الإيرادات" value={jod(totalRevenue)} sub={`من ${stores.length} متجر`} color="#4F46E5" />
         <KPI icon={<FileText size={20} />} label="إجمالي الفواتير" value={totalSales.toLocaleString("ar-JO")} sub="فاتورة مسجلة" color="#059669" />
         <KPI icon={<TrendingUp size={20} />} label="متوسط الفاتورة" value={jod(avgInvoice)} color="#D97706" />
         <KPI icon={<Store size={20} />} label="معدل النشاط" value={`${retentionRate}%`} sub={`${activeCount} متجر نشط`} color="#7C3AED" />
@@ -1256,7 +1349,7 @@ function SAReports() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI icon={<Package size={20} />} label="إجمالي المنتجات" value={totalProducts.toLocaleString("ar-JO")} color="#0891B2" />
         <KPI icon={<Users size={20} />} label="إجمالي المستخدمين" value={totalUsers.toLocaleString("ar-JO")} color="#059669" />
-        <KPI icon={<Store size={20} />} label="المتاجر النشطة" value={String(activeCount)} sub={`من ${stores.length} إجمالي`} color="#1D4ED8" />
+        <KPI icon={<Store size={20} />} label="المتاجر النشطة" value={String(activeCount)} sub={`من ${stores.length} إجمالي`} color="#4F46E5" />
         <KPI icon={<AlertCircle size={20} />} label="متاجر منتهية/موقوفة" value={String(stores.filter(s => s.status === "suspended" || s.status === "expired").length)} color="#EF4444" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -1269,7 +1362,7 @@ function SAReports() {
               <XAxis dataKey="plan" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={v => jod(v)} />
               <Tooltip formatter={(v: number) => [jod(v)]} />
-              <Bar key="bar-rev" dataKey="إيرادات" fill="#1D4ED8" radius={[5, 5, 0, 0]} />
+              <Bar key="bar-rev" dataKey="إيرادات" fill="#4F46E5" radius={[5, 5, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
