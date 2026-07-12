@@ -480,6 +480,50 @@ function StoreDash({ store }: { store: StoreData }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ─── Cash Drawer Success Overlay ─────────────────────────────────────────────
+function SuccessOverlay({ invNo, total, pay, change, drawerAuto, setDrawerAuto, onPrint, onDrawer, drawerOpening, onClose }: {
+  invNo: string; total: number; pay: string; change: number;
+  drawerAuto: boolean; setDrawerAuto: (v: boolean) => void;
+  onPrint: () => void; onDrawer: () => void; drawerOpening: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(5,150,105,.12)", backdropFilter: "blur(8px)" }}>
+      <div className="bg-card rounded-3xl shadow-2xl p-8 text-center max-w-sm w-full border border-emerald-200 space-y-3">
+        <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto"><CheckCircle size={44} className="text-emerald-500" /></div>
+        <h3 className="text-2xl font-black">تمت العملية بنجاح!</h3>
+        <p className="text-muted-foreground font-mono text-sm">{invNo}</p>
+        <p className="text-4xl font-black text-primary">{total.toFixed(3)} JOD</p>
+        {pay === "cash" && change > 0 && (
+          <div className="rounded-2xl bg-emerald-50 border border-emerald-200 py-3">
+            <p className="text-emerald-700 font-black text-xl">الباقي للعميل: {change.toFixed(3)} JOD</p>
+          </div>
+        )}
+        {/* Cash drawer section */}
+        <div className="rounded-2xl border border-border bg-muted/40 p-3 text-right space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold text-muted-foreground">الدرج النقدي (كاش بوكس)</p>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <span className="text-xs text-muted-foreground">فتح تلقائي</span>
+              <div onClick={() => setDrawerAuto(!drawerAuto)} className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 cursor-pointer ${drawerAuto ? "bg-emerald-500" : "bg-muted-foreground/30"}`}>
+                <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${drawerAuto ? "translate-x-4" : "translate-x-0"}`} />
+              </div>
+            </label>
+          </div>
+          <button onClick={onDrawer} disabled={drawerOpening} className="w-full h-9 flex items-center justify-center gap-2 rounded-xl border-2 border-emerald-300 bg-emerald-50 text-emerald-700 font-bold text-sm hover:bg-emerald-100 transition-all disabled:opacity-50">
+            <Wallet size={15} /> {drawerOpening ? "جاري الفتح..." : "فتح الدرج الآن"}
+          </button>
+        </div>
+        <div className="flex gap-2">
+          <Btn v="secondary" full icon={<Printer size={14} />} onClick={onPrint}>طباعة الإيصال</Btn>
+          <Btn v="ghost" full icon={<Download size={14} />} onClick={onPrint}>PDF</Btn>
+        </div>
+        <Btn v="success" full onClick={onClose} icon={<Plus size={14} />}>فاتورة جديدة</Btn>
+      </div>
+    </div>
+  );
+}
+
 // POS TERMINAL (Full interactive)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -555,6 +599,8 @@ function POSTerm({ store }: { store: StoreData }) {
   const [holds, setHolds] = useLS<CartItem[][]>(sk(sid,"pos_holds"), []); // الطلبات المعلقة
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("الكل");
+  const [drawerAuto, setDrawerAuto] = useLS<boolean>(sk(sid,"pos_drawer_auto"), false);
+  const [drawerOpening, setDrawerOpening] = useState(false);
   const [disc, setDisc] = useState(0);
   const [pay, setPay] = useState<"cash" | "cliq" | "card">("cash");
   const [cash, setCash] = useState("");
@@ -672,6 +718,7 @@ function POSTerm({ store }: { store: StoreData }) {
 
     setOk(true);
     invNoRef.current = `INV-${new Date().getFullYear()}${String(Date.now()).slice(-6)}`;
+    if (drawerAuto && pay === "cash") openDrawer();
   };
 
   const saveOfflineSale = async (saleItems: { productId: string; nameAr: string; qty: number; unitPrice: number; discount: number; total: number }[]) => {
@@ -716,6 +763,19 @@ function POSTerm({ store }: { store: StoreData }) {
       console.error("[POSTerm] saveOfflineSale failed:", e);
       showToast("تعذّر حفظ الفاتورة محلياً — تحقق من التخزين", "error");
     }
+  };
+
+  const openDrawer = async () => {
+    setDrawerOpening(true);
+    try {
+      const { openCashDrawer } = await import("./cashDrawer");
+      const result = await openCashDrawer();
+      if (result === "opened") showToast("تم فتح الدرج النقدي ✅");
+      else if (result === "no_serial") showToast("المتصفح لا يدعم Web Serial — جرّب Chrome أو Edge", "warning");
+      else if (result === "cancelled") showToast("تم إلغاء اختيار المنفذ", "warning");
+      else showToast("تعذّر فتح الدرج — تحقق من التوصيل", "error");
+    } catch { showToast("خطأ في فتح الدرج", "error"); }
+    finally { setDrawerOpening(false); }
   };
 
   const handleClose = () => {
@@ -858,6 +918,7 @@ function POSTerm({ store }: { store: StoreData }) {
             <div className="flex items-center gap-1">
               <button onClick={() => { setShowCalc(true); }} title="الآلة الحاسبة" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground transition-colors"><Calculator size={13} /></button>
               <button onClick={() => { refreshShift(); setShowShift(true); }} title="مبيعات الشفت" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground transition-colors"><BarChart2 size={13} /></button>
+              <button onClick={openDrawer} disabled={drawerOpening} title="فتح الدرج النقدي" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-emerald-100 text-emerald-600 transition-colors disabled:opacity-50"><Wallet size={13} /></button>
               <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-lg">{invNo}</span>
               <button onClick={() => { setClosingBal(""); setShowCloseSession(true); }} title="إغلاق الجلسة" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500 transition-colors">
                 <Power size={13} />
@@ -1038,20 +1099,12 @@ function POSTerm({ store }: { store: StoreData }) {
         </Modal>
       )}
       {ok && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(5,150,105,.12)", backdropFilter: "blur(8px)" }}>
-          <div className="bg-card rounded-3xl shadow-2xl p-10 text-center max-w-sm w-full border border-emerald-200">
-            <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5"><CheckCircle size={48} className="text-emerald-500" /></div>
-            <h3 className="text-2xl font-black mb-2">تمت العملية بنجاح!</h3>
-            <p className="text-muted-foreground font-mono text-sm mb-2">{invNo}</p>
-            <p className="text-4xl font-black text-primary mb-3">{total.toFixed(3)} JOD</p>
-            {pay === "cash" && change > 0 && <p className="text-emerald-600 font-bold text-lg mb-4">الباقي: {change.toFixed(3)} JOD</p>}
-            <div className="flex gap-2 mb-3">
-              <Btn v="secondary" full icon={<Printer size={14} />} onClick={doPrint}>طباعة الإيصال</Btn>
-              <Btn v="ghost" full icon={<Download size={14} />} onClick={() => { doPrint(); }}>PDF</Btn>
-            </div>
-            <Btn v="success" full onClick={handleClose} icon={<Plus size={14} />}>فاتورة جديدة</Btn>
-          </div>
-        </div>
+        <SuccessOverlay
+          invNo={invNo} total={total} pay={pay} change={change}
+          drawerAuto={drawerAuto} setDrawerAuto={setDrawerAuto}
+          onPrint={doPrint} onDrawer={openDrawer} drawerOpening={drawerOpening}
+          onClose={handleClose}
+        />
       )}
 
       {/* Calculator Modal */}
