@@ -791,6 +791,7 @@ function POSIllustration() {
 }
 
 export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store", id?: string) => void }) {
+  // ── STATE ─────────────────────────────────────────────────────────────────────
   const [mode, setMode] = useState<"store" | "admin">("store");
   const [email, setEmail] = useState(() => {
     try { return localStorage.getItem("sowwanjo_remember_email") || ""; } catch { return ""; }
@@ -867,6 +868,8 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
     return "حدث خطأ غير متوقع — حاول مرة أخرى";
   };
 
+  const [entering, setEntering] = useState(false);
+
   const doLogin = async () => {
     if (loading) return;
     if (!email || !pass) { setErr("الرجاء إدخال البريد الإلكتروني وكلمة المرور"); return; }
@@ -881,12 +884,10 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
         const res = await apiLoginAdmin(email, pass);
         if (!res?.token) throw { error: "لم يُستلم توكن من الخادم" };
         setToken(res.token);
-        if (rememberMe) {
-          try { localStorage.setItem("sowwanjo_remember_email", email); } catch {}
-        } else {
-          try { localStorage.removeItem("sowwanjo_remember_email"); } catch {}
-        }
-        onLogin("superadmin");
+        if (rememberMe) { try { localStorage.setItem("sowwanjo_remember_email", email); } catch {} }
+        else { try { localStorage.removeItem("sowwanjo_remember_email"); } catch {} }
+        setEntering(true);
+        setTimeout(() => onLogin("superadmin"), 660);
       } else {
         const res = await apiLoginStore(email, pass);
         if (!res?.token) throw { error: "لم يُستلم توكن من الخادم" };
@@ -912,20 +913,13 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
         };
         try {
           localStorage.setItem(`sowwanjo_storeinfo_${normalizedStore.id}`, JSON.stringify(normalizedStore));
-          // Save user role for permission enforcement in StoreLayout
-          if (res.user?.role) {
-            localStorage.setItem(`sowwanjo_user_role_${normalizedStore.id}`, res.user.role);
-          }
-          if (res.user?.name) {
-            localStorage.setItem(`sowwanjo_user_name_${normalizedStore.id}`, res.user.name);
-          }
+          if (res.user?.role) localStorage.setItem(`sowwanjo_user_role_${normalizedStore.id}`, res.user.role);
+          if (res.user?.name) localStorage.setItem(`sowwanjo_user_name_${normalizedStore.id}`, res.user.name);
         } catch {}
-        if (rememberMe) {
-          try { localStorage.setItem("sowwanjo_remember_email", email); } catch {}
-        } else {
-          try { localStorage.removeItem("sowwanjo_remember_email"); } catch {}
-        }
-        onLogin("store", normalizedStore.id);
+        if (rememberMe) { try { localStorage.setItem("sowwanjo_remember_email", email); } catch {} }
+        else { try { localStorage.removeItem("sowwanjo_remember_email"); } catch {} }
+        setEntering(true);
+        setTimeout(() => onLogin("store", normalizedStore.id), 660);
       }
     } catch (err: unknown) {
       const e = err as {error?:string; message?:string; code?: string; status?: number; name?: string};
@@ -976,329 +970,377 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
   const brandPrimary = cssVar("--primary", "#4F46E5");
   const brandAccent  = cssVar("--accent",  "#10B981");
 
-  /* shared palette tokens for login */
-  const P = {
-    bg:   "linear-gradient(145deg,#0d0b1e 0%,#1a1333 40%,#0d2417 100%)",
-    card: "rgba(255,255,255,0.045)",
-    border:"rgba(255,255,255,0.10)",
-    fieldBg:"rgba(255,255,255,0.07)",
-    fieldFocus:"rgba(134,239,172,0.55)",
-    accent:"#6EE7B7",
-    accentGlow:"rgba(110,231,183,0.18)",
-    indigo:"rgba(99,102,241,0.45)",
-    em:"rgba(16,185,129,0.38)",
-  };
-  void P; /* suppress unused warning — kept for future use */
+  const BP = brandPrimary;
+  const BA = brandAccent;
+
+  const BADGES = ["سحابي 100%","متعدد المتاجر","متعدد الفروع","يعمل أوفلاين","مخزون فوري","تقارير متقدمة","باركود وQR","موبايل وتابلت","منصة آمنة","الأردن أولاً"];
+
+  const LX_CSS = `
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap');
+    @keyframes lx-up    { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes lx-spin  { to{transform:rotate(360deg)} }
+    @keyframes lx-cur   { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+    @keyframes lx-blob1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(28px,-22px) scale(1.07)} 66%{transform:translate(-18px,26px) scale(0.94)} }
+    @keyframes lx-blob2 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-24px,18px) scale(1.06)} 66%{transform:translate(22px,-28px) scale(0.95)} }
+    @keyframes lx-blob3 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(14px,22px) scale(1.10)} }
+    @keyframes lx-float1 { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-11px)} }
+    @keyframes lx-float2 { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-8px)} }
+    @keyframes lx-float3 { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-14px)} }
+    @keyframes lx-shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
+    @keyframes lx-glow-ping { 0%{transform:scale(1);opacity:0.55} 100%{transform:scale(2.0);opacity:0} }
+    @keyframes lx-enter { from{opacity:0} to{opacity:1} }
+    .lx0{animation:lx-up .55s cubic-bezier(.22,1,.36,1) both}
+    .lx1{animation:lx-up .55s cubic-bezier(.22,1,.36,1) both .09s}
+    .lx2{animation:lx-up .55s cubic-bezier(.22,1,.36,1) both .17s}
+    .lx3{animation:lx-up .55s cubic-bezier(.22,1,.36,1) both .25s}
+    .lx4{animation:lx-up .55s cubic-bezier(.22,1,.36,1) both .33s}
+    .lx5{animation:lx-up .55s cubic-bezier(.22,1,.36,1) both .41s}
+    .lx6{animation:lx-up .55s cubic-bezier(.22,1,.36,1) both .49s}
+    .lx-dev1{animation:lx-float1 5.5s ease-in-out infinite}
+    .lx-dev2{animation:lx-float2 6.5s ease-in-out infinite .8s}
+    .lx-dev3{animation:lx-float3 7s ease-in-out infinite 1.5s}
+    .lx-dev4{animation:lx-float1 6.2s ease-in-out infinite 0.4s}
+    .lx-dev5{animation:lx-float2 5.2s ease-in-out infinite 2s}
+    .lx-dev6{animation:lx-float3 7.8s ease-in-out infinite 1s}
+    .lx-field{
+      width:100%; height:52px; border-radius:14px;
+      border:1.5px solid rgba(255,255,255,0.09);
+      background:rgba(255,255,255,0.05);
+      color:#F1F5F9; font-size:14px; font-weight:500;
+      padding:0 48px 0 16px; outline:none;
+      transition:border-color .22s,box-shadow .22s,background .22s;
+      font-family:"Cairo",sans-serif; -webkit-appearance:none;
+      backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    }
+    .lx-field:focus{ border-color:${BP}70; box-shadow:0 0 0 4px ${BP}14,0 2px 12px rgba(0,0,0,0.3); background:rgba(255,255,255,0.08); }
+    .lx-field::placeholder{color:rgba(255,255,255,0.20)}
+    .lx-field.has-err{border-color:rgba(248,113,113,0.5);box-shadow:0 0 0 3px rgba(239,68,68,0.08);}
+    .lx-btn{
+      width:100%; height:54px; border-radius:14px; border:none; cursor:pointer;
+      font-size:15px; font-weight:800; font-family:"Cairo",sans-serif;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      position:relative; overflow:hidden;
+      background:linear-gradient(135deg,${BP} 0%,${BP}CC 100%);
+      color:#fff; letter-spacing:-0.01em;
+      box-shadow:0 6px 30px ${BP}48,0 2px 8px rgba(0,0,0,0.3);
+      transition:transform .12s,box-shadow .22s,opacity .18s;
+    }
+    .lx-btn::after{
+      content:""; position:absolute; inset:0;
+      background:linear-gradient(135deg,transparent 0%,rgba(255,255,255,0.11) 50%,transparent 100%);
+      background-size:200% auto; animation:lx-shimmer 3s linear infinite;
+    }
+    .lx-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 10px 40px ${BP}60,0 4px 12px rgba(0,0,0,0.4);}
+    .lx-btn:active:not(:disabled){transform:scale(0.985);}
+    .lx-btn:disabled{opacity:0.35;cursor:not-allowed;box-shadow:none;}
+    .lx-tab{flex:1;height:36px;border-radius:10px;border:none;cursor:pointer;font-size:12.5px;font-weight:700;transition:all .18s;font-family:"Cairo",sans-serif;}
+    .lx-cur{display:inline-block;width:2px;height:0.88em;background:${BP};margin-right:2px;vertical-align:middle;border-radius:2px;animation:lx-cur .7s step-end infinite;}
+    @media(prefers-reduced-motion:reduce){.lx0,.lx1,.lx2,.lx3,.lx4,.lx5,.lx6,.lx-dev1,.lx-dev2,.lx-dev3,.lx-dev4,.lx-dev5,.lx-dev6{animation:none!important;opacity:1!important;transform:none!important}}
+  `;
 
   return (
-    <div dir="rtl" style={{ fontFamily:"'Cairo',sans-serif", minHeight:"100dvh", display:"flex", background:"linear-gradient(145deg,#0d0b1e 0%,#1a1040 45%,#0f1d30 100%)" }}>
-      <style>{`
-        @keyframes lgn-up    { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes lgn-down  { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes lgn-spin  { to{transform:rotate(360deg)} }
-        @keyframes lgn-blob1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(28px,-22px) scale(1.09)} 66%{transform:translate(-18px,26px) scale(0.93)} }
-        @keyframes lgn-blob2 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-22px,18px) scale(1.07)} 66%{transform:translate(24px,-28px) scale(0.95)} }
-        @keyframes lgn-blob3 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(12px,22px) scale(1.12)} }
-        @keyframes lgn-grad  { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
-        @keyframes lgn-cur   { 0%,49%{opacity:1} 50%,100%{opacity:0} }
-        @keyframes lgn-chip  { from{opacity:0;transform:translateX(14px)} to{opacity:1;transform:translateX(0)} }
-        @keyframes lgn-pulse { 0%,100%{box-shadow:0 0 0 0 ${brandAccent}55} 50%{box-shadow:0 0 0 8px ${brandAccent}00} }
-        /* ── Animation classes ── */
-        .lf0{animation:lgn-up .55s cubic-bezier(.22,1,.36,1) both}
-        .lf1{animation:lgn-up .55s cubic-bezier(.22,1,.36,1) both .09s}
-        .lf2{animation:lgn-up .55s cubic-bezier(.22,1,.36,1) both .17s}
-        .lf3{animation:lgn-up .55s cubic-bezier(.22,1,.36,1) both .25s}
-        .lf4{animation:lgn-up .55s cubic-bezier(.22,1,.36,1) both .33s}
-        .lf5{animation:lgn-up .55s cubic-bezier(.22,1,.36,1) both .41s}
-        .lf6{animation:lgn-up .55s cubic-bezier(.22,1,.36,1) both .49s}
-        .lgn-spin{animation:lgn-spin .8s linear infinite}
-        /* Typewriter cursor */
-        .lgn-cursor{
-          display:inline-block; width:2.5px; height:1em;
-          background:${brandAccent}; margin-right:3px; vertical-align:middle;
-          border-radius:2px; animation:lgn-cur .7s step-end infinite;
-        }
-        /* Form fields — glass on dark */
-        .lgn-field{
-          width:100%; height:50px; border-radius:13px;
-          border:1.5px solid rgba(255,255,255,0.11);
-          background:rgba(255,255,255,0.06);
-          color:#F1F5F9; font-size:14px;
-          padding:0 46px 0 14px;
-          outline:none;
-          transition:border-color .2s, box-shadow .2s, background .2s;
-          font-family:"Cairo",sans-serif;
-          -webkit-appearance:none;
-          backdrop-filter:blur(6px);
-          -webkit-backdrop-filter:blur(6px);
-        }
-        .lgn-field:focus{
-          border-color:${brandAccent}88;
-          box-shadow:0 0 0 3px ${brandAccent}18;
-          background:rgba(255,255,255,0.09);
-        }
-        .lgn-field::placeholder{color:rgba(255,255,255,0.22)}
-        .lgn-field[dir="rtl"]{text-align:right}
-        .lgn-field.err{border-color:rgba(252,165,165,0.6); box-shadow:0 0 0 3px rgba(239,68,68,0.10);}
-        .lgn-label{display:block; font-size:11.5px; font-weight:700; color:rgba(255,255,255,0.5); margin-bottom:8px; letter-spacing:0.02em;}
-        /* Submit button */
-        .lgn-submit{
-          width:100%; height:50px; border-radius:13px;
-          background:linear-gradient(130deg,${brandAccent} 0%,${brandPrimary} 100%);
-          color:#fff; font-size:15px; font-weight:800;
-          border:none; cursor:pointer;
-          display:flex; align-items:center; justify-content:center; gap:9px;
-          transition:opacity .18s, transform .12s, box-shadow .18s;
-          font-family:"Cairo",sans-serif;
-          letter-spacing:-0.01em;
-          box-shadow:0 4px 22px ${brandPrimary}60;
-          animation:lgn-pulse 2.4s ease-in-out 1.2s infinite;
-        }
-        .lgn-submit:hover:not(:disabled){opacity:0.9; box-shadow:0 6px 28px ${brandPrimary}80; animation:none;}
-        .lgn-submit:active:not(:disabled){transform:scale(0.982); animation:none;}
-        .lgn-submit:disabled{opacity:0.4; cursor:not-allowed; box-shadow:none; animation:none;}
-        .lgn-tab{
-          flex:1; height:33px; border-radius:8px; border:none; cursor:pointer;
-          font-size:12px; font-weight:700; transition:all .18s; font-family:"Cairo",sans-serif;
-        }
-        /* Mobile feature chips */
-        .lgn-chip{animation:lgn-chip .45s cubic-bezier(.22,1,.36,1) both}
-        /* Desktop feature rows */
-        .lgn-feat{animation:lgn-up .5s cubic-bezier(.22,1,.36,1) both}
-        /* Divider line */
-        .lgn-divider{height:1px; background:rgba(255,255,255,0.07); margin:0 0 24px;}
-      `}</style>
+    <div dir="rtl" style={{ fontFamily:"'Cairo',sans-serif", minHeight:"100dvh", background:"#06080F", position:"relative", overflow:"hidden" }}>
+      <style>{LX_CSS}</style>
 
-      {/* ══════════════════════════════════════════════════════════
-          BRAND PANEL — desktop right (hidden on mobile)
-      ══════════════════════════════════════════════════════════ */}
-      <div className="hidden lg:flex" style={{
-        width:"50%", flexShrink:0, flexDirection:"column",
-        position:"relative", overflow:"hidden",
-        borderLeft:"1px solid rgba(255,255,255,0.06)",
-      }}>
-        {/* Blobs */}
-        <div style={{ position:"absolute", top:"-8%", right:"8%",   width:440, height:440, borderRadius:"50%", background:"rgba(79,70,229,0.32)",  filter:"blur(85px)",  animation:"lgn-blob1 10s ease-in-out infinite", pointerEvents:"none" }}/>
-        <div style={{ position:"absolute", bottom:"-12%", left:"3%", width:400, height:400, borderRadius:"50%", background:"rgba(16,185,129,0.28)", filter:"blur(90px)",  animation:"lgn-blob2 12s ease-in-out infinite", pointerEvents:"none" }}/>
-        <div style={{ position:"absolute", top:"42%", right:"38%",  width:280, height:280, borderRadius:"50%", background:"rgba(99,102,241,0.18)", filter:"blur(55px)",  animation:"lgn-blob3 8s ease-in-out infinite", pointerEvents:"none" }}/>
-        {/* Subtle dot grid */}
-        <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient(rgba(255,255,255,0.035) 1px,transparent 1px)", backgroundSize:"24px 24px", pointerEvents:"none" }}/>
-        {/* Bottom fade */}
-        <div style={{ position:"absolute", bottom:0, left:0, right:0, height:120, background:"linear-gradient(to top,rgba(13,11,30,0.8),transparent)", pointerEvents:"none" }}/>
-
-        <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", height:"100%", padding:"48px 52px" }}>
-
-          {/* Logo */}
-          <button onClick={handleLogoClick} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:12, width:"fit-content", padding:0 }}>
-            <div style={{ width:42, height:42, borderRadius:12, background:`${brandAccent}1e`, border:`1.5px solid ${brandAccent}40`, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)", flexShrink:0 }}>
-              <Store size={20} color={brandAccent}/>
-            </div>
-            <div style={{ textAlign:"right" }}>
-              <p style={{ color:"#fff", fontWeight:800, fontSize:16, letterSpacing:"-0.025em", lineHeight:1.2 }}>Sowwanjo POS</p>
-              <p style={{ color:"rgba(255,255,255,0.38)", fontSize:11, marginTop:1 }}>نظام نقاط البيع السحابي</p>
-            </div>
-          </button>
-
-          {/* Hero block */}
-          <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center" }}>
-
-            <div style={{ animation:"lgn-up .6s cubic-bezier(.22,1,.36,1) both .08s" }}>
-              <div style={{ display:"inline-flex", alignItems:"center", gap:7, padding:"4px 11px", borderRadius:100, background:`${brandAccent}1a`, border:`1px solid ${brandAccent}38`, marginBottom:20 }}>
-                <span style={{ width:5, height:5, borderRadius:"50%", background:brandAccent, display:"block" }}/>
-                <span style={{ fontSize:10.5, fontWeight:700, color:brandAccent, letterSpacing:"0.08em" }}>منصة الأعمال الأردنية</span>
-              </div>
-
-              {/* Typewriter */}
-              <h1 style={{ color:"#fff", fontWeight:900, fontSize:"clamp(26px,2.6vw,40px)", lineHeight:1.18, letterSpacing:"-0.04em", minHeight:"2.5em", marginBottom:14 }}>
-                <span>{twText}</span><span className="lgn-cursor"/>
-              </h1>
-              <p style={{ color:"rgba(255,255,255,0.40)", fontSize:13.5, lineHeight:1.85, maxWidth:340 }}>
-                إدارة المبيعات والمخزون والعملاء في مكان واحد — سحابي وسريع وآمن.
-              </p>
-            </div>
-
-            {/* Feature rows */}
-            <div style={{ marginTop:32, display:"flex", flexDirection:"column", gap:9 }}>
-              {([
-                { icon:<BarChart2 size={13}/>, text:"تقارير وإحصائيات فورية", d:"0.20s" },
-                { icon:<Users size={13}/>,    text:"صلاحيات ومستويات وصول متعددة", d:"0.30s" },
-                { icon:<Package size={13}/>,  text:"إدارة المخزون والمنتجات", d:"0.40s" },
-                { icon:<Shield size={13}/>,   text:"سحابي · مشفّر · محمي 100%", d:"0.50s" },
-              ]).map(({icon,text,d}) => (
-                <div key={text} className="lgn-feat" style={{ animationDelay:d, display:"flex", alignItems:"center", gap:11 }}>
-                  <div style={{ width:29, height:29, borderRadius:8, background:`${brandAccent}1a`, border:`1px solid ${brandAccent}2e`, display:"flex", alignItems:"center", justifyContent:"center", color:brandAccent, flexShrink:0 }}>{icon}</div>
-                  <span style={{ fontSize:12.5, color:"rgba(255,255,255,0.55)", fontWeight:500 }}>{text}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Stats strip */}
-            <div style={{ display:"flex", marginTop:38, paddingTop:24, borderTop:"1px solid rgba(255,255,255,0.07)", animation:"lgn-up .6s cubic-bezier(.22,1,.36,1) both .58s" }}>
-              {(([["١٢٠+","متجر نشط"],["٩٩.٩٪","وقت التشغيل"],["٥٠٠+","فاتورة/يوم"]] as [string,string][])).map(([n,l],i) => (
-                <div key={l} style={{ flex:1, paddingRight:i<2?18:0, borderRight:i<2?"1px solid rgba(255,255,255,0.07)":"none", marginRight:i<2?18:0 }}>
-                  <p style={{ color:brandAccent, fontWeight:900, fontSize:19, letterSpacing:"-0.04em", lineHeight:1 }}>{n}</p>
-                  <p style={{ color:"rgba(255,255,255,0.32)", fontSize:10.5, marginTop:4 }}>{l}</p>
-                </div>
-              ))}
-            </div>
+      {/* ── ENTERING TRANSITION OVERLAY ── */}
+      {entering && (
+        <div style={{ position:"fixed", inset:0, zIndex:1000, background:"#06080F", display:"flex", alignItems:"center", justifyContent:"center", animation:"lx-enter .45s ease both" }}>
+          <div style={{ position:"relative", width:52, height:52 }}>
+            <div style={{ position:"absolute", inset:0, borderRadius:"50%", border:`3px solid ${BP}25`, borderTopColor:BP, animation:"lx-spin .75s linear infinite" }}/>
+            <div style={{ position:"absolute", inset:8, borderRadius:"50%", border:`2px solid ${BA}20`, borderRightColor:BA, animation:"lx-spin 1.3s linear infinite reverse" }}/>
+            <div style={{ position:"absolute", inset:"50%", width:8, height:8, marginLeft:-4, marginTop:-4, borderRadius:"50%", background:BP, boxShadow:`0 0 12px ${BP}` }}/>
           </div>
-
-          <p style={{ color:"rgba(255,255,255,0.16)", fontSize:10.5 }}>© 2026 Sowwanjo · pos.sowwanjo.online</p>
         </div>
-      </div>
+      )}
 
-      {/* ══════════════════════════════════════════════════════════
-          FORM PANEL — right side on mobile (full screen), left on desktop
-      ══════════════════════════════════════════════════════════ */}
-      <div style={{
-        flex:1, display:"flex", flexDirection:"column",
-        overflowY:"auto",
-        position:"relative",
-        paddingTop: !online ? 40 : 0,
-      }}>
+      {/* ── OFFLINE BANNER ── */}
+      {!online && (
+        <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 16px", fontSize:12, fontWeight:700, color:"#fff", background:"#DC2626", borderBottom:"1px solid #B91C1C" }}>
+          <WifiOff size={13}/> لا يوجد اتصال بالإنترنت — تحقق من الشبكة
+        </div>
+      )}
 
-        {/* Subtle form-side blob */}
-        <div className="lg:hidden" style={{ position:"fixed", top:"-20%", left:"-15%", width:"80vw", height:"80vw", borderRadius:"50%", background:"rgba(79,70,229,0.20)", filter:"blur(80px)", pointerEvents:"none", zIndex:0 }}/>
-        <div className="lg:hidden" style={{ position:"fixed", bottom:"-25%", right:"-10%", width:"70vw", height:"70vw", borderRadius:"50%", background:"rgba(16,185,129,0.18)", filter:"blur(80px)", pointerEvents:"none", zIndex:0 }}/>
+      {/* ═══════════════════════════════════════════════════════════════
+          DESKTOP LAYOUT  65% HERO  |  35% CARD
+      ═══════════════════════════════════════════════════════════════ */}
+      <div className="hidden lg:flex" style={{ height:"100dvh" }}>
 
-        {/* Offline banner */}
-        {!online && (
-          <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 16px", fontSize:12, fontWeight:700, color:"#fff", background:"#DC2626" }}>
-            <WifiOff size={13}/> لا يوجد اتصال بالإنترنت — تحقق من الشبكة
-          </div>
-        )}
+        {/* ── HERO 65% ── */}
+        <div style={{
+          width:"65%", flexShrink:0, position:"relative", overflow:"hidden",
+          display:"flex", flexDirection:"column",
+          borderLeft:"1px solid rgba(255,255,255,0.05)",
+          transition:"transform .65s cubic-bezier(.4,0,.2,1)",
+          transform: entering ? "scale(1.04)" : "scale(1)",
+        }}>
+          {/* Dot grid */}
+          <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient(rgba(255,255,255,0.027) 1px,transparent 1px)", backgroundSize:"28px 28px", pointerEvents:"none" }}/>
+          {/* BG orbs */}
+          <div style={{ position:"absolute", top:"-10%", right:"12%", width:540, height:540, borderRadius:"50%", background:`${BP}1E`, filter:"blur(115px)", animation:"lx-blob1 13s ease-in-out infinite", pointerEvents:"none" }}/>
+          <div style={{ position:"absolute", bottom:"-14%", left:"3%", width:480, height:480, borderRadius:"50%", background:`${BA}17`, filter:"blur(105px)", animation:"lx-blob2 15s ease-in-out infinite", pointerEvents:"none" }}/>
+          <div style={{ position:"absolute", top:"44%", left:"36%", width:320, height:320, borderRadius:"50%", background:`${BP}10`, filter:"blur(72px)", animation:"lx-blob3 9s ease-in-out infinite", pointerEvents:"none" }}/>
 
-        {/* ── MOBILE HERO — shown only on small screens ─────────── */}
-        <div className="lg:hidden" style={{ position:"relative", zIndex:1, overflow:"hidden", paddingTop:"calc(env(safe-area-inset-top,0px) + 44px)", paddingBottom:28, paddingLeft:24, paddingRight:24 }}>
-
-          {/* Logo + name */}
-          <button onClick={handleLogoClick} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:11, padding:0, marginBottom:24, animation:"lgn-down .5s cubic-bezier(.22,1,.36,1) both" }}>
-            <div style={{ width:44, height:44, borderRadius:13, background:`${brandAccent}1e`, border:`1.5px solid ${brandAccent}47`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <Store size={20} color={brandAccent}/>
-            </div>
-            <div style={{ textAlign:"right" }}>
-              <p style={{ color:"#fff", fontWeight:800, fontSize:16, letterSpacing:"-0.025em", lineHeight:1.2 }}>Sowwanjo POS</p>
-              <p style={{ color:"rgba(255,255,255,0.38)", fontSize:10.5 }}>نظام نقاط البيع السحابي</p>
-            </div>
-          </button>
-
-          {/* Typewriter headline on mobile */}
-          <h2 style={{ color:"#fff", fontWeight:900, fontSize:26, letterSpacing:"-0.04em", lineHeight:1.2, minHeight:"1.5em", marginBottom:10, animation:"lgn-up .6s cubic-bezier(.22,1,.36,1) both .08s" }}>
-            <span>{twText}</span><span className="lgn-cursor"/>
-          </h2>
-          <p style={{ color:"rgba(255,255,255,0.38)", fontSize:12.5, lineHeight:1.7, marginBottom:18, animation:"lgn-up .6s cubic-bezier(.22,1,.36,1) both .15s" }}>
-            إدارة المبيعات والمخزون والعملاء في مكان واحد.
-          </p>
-
-          {/* Chip row */}
-          <div style={{ display:"flex", flexWrap:"wrap", gap:8, animation:"lgn-up .6s cubic-bezier(.22,1,.36,1) both .22s" }}>
-            {(["تقارير فورية","إدارة المخزون","صلاحيات متعددة","سحابي وآمن"] as string[]).map((c,i) => (
-              <div key={c} className="lgn-chip" style={{ animationDelay:`${0.26+i*0.07}s`, display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:100, background:`${brandAccent}17`, border:`1px solid ${brandAccent}38` }}>
-                <span style={{ width:4, height:4, borderRadius:"50%", background:brandAccent, display:"block" }}/>
-                <span style={{ fontSize:11, fontWeight:600, color:"rgba(110,231,183,0.85)" }}>{c}</span>
-              </div>
+          {/* ── Connection lines SVG overlay ── */}
+          <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%", pointerEvents:"none" }} viewBox="0 0 800 900" preserveAspectRatio="xMidYMid slice">
+            <defs>
+              <linearGradient id="lxlg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor={BP} stopOpacity="0.7"/><stop offset="100%" stopColor={BA} stopOpacity="0.15"/></linearGradient>
+            </defs>
+            {([
+              "M400,138 C 328,192 255,228 178,268",
+              "M400,138 C 472,192 545,228 622,265",
+              "M400,138 C 362,270 298,352 218,438",
+              "M400,138 C 438,270 502,352 582,436",
+              "M178,268 C 183,338 195,388 218,438",
+              "M622,265 C 617,338 600,390 582,436",
+              "M218,438 C 288,492 358,505 400,507",
+              "M582,436 C 512,492 442,505 400,507",
+            ] as string[]).map((d,i) => (
+              <g key={i}>
+                <path d={d} stroke="url(#lxlg1)" strokeWidth="1.2" fill="none" strokeOpacity="0.35" strokeDasharray="5 12"/>
+                <circle r="3" fill={i%2===0?BP:BA} opacity="0.85">
+                  <animateMotion dur={`${3.4+i*0.55}s`} repeatCount="indefinite" begin={`${i*0.75}s`} path={d}/>
+                </circle>
+              </g>
             ))}
+          </svg>
+
+          {/* ── Logo (5-click admin unlock) ── */}
+          <div style={{ position:"relative", zIndex:3, padding:"36px 52px 0", flexShrink:0 }}>
+            <button onClick={handleLogoClick} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:11, padding:0 }}>
+              <div style={{ width:42, height:42, borderRadius:12, background:`${BP}20`, border:`1.5px solid ${BP}48`, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)", flexShrink:0 }}>
+                <Store size={20} color={BP}/>
+              </div>
+              <div style={{ textAlign:"right" }}>
+                <p style={{ color:"#F1F5F9", fontWeight:800, fontSize:16, letterSpacing:"-0.025em", lineHeight:1.2 }}>Sowwanjo POS</p>
+                <p style={{ color:"rgba(255,255,255,0.30)", fontSize:10.5, marginTop:1 }}>نظام نقاط البيع السحابي</p>
+              </div>
+            </button>
           </div>
 
-          {/* Separator */}
-          <div style={{ height:1, background:"rgba(255,255,255,0.07)", marginTop:24, marginBottom:0 }}/>
+          {/* ── Floating device cards ── */}
+          <div style={{ position:"absolute", inset:0, zIndex:2, pointerEvents:"none" }}>
+
+            {/* Cloud hub — top center */}
+            <div className="lx-dev1" style={{ position:"absolute", top:"9%", left:"50%", transform:"translateX(-50%)", background:"rgba(8,12,32,0.80)", backdropFilter:"blur(16px)", border:`1.5px solid ${BP}42`, borderRadius:20, padding:"11px 18px", display:"flex", alignItems:"center", gap:10, boxShadow:`0 0 38px ${BP}22,0 8px 28px rgba(0,0,0,0.45)`, whiteSpace:"nowrap" }}>
+              <div style={{ width:30, height:30, borderRadius:9, background:`${BP}22`, border:`1px solid ${BP}48`, display:"flex", alignItems:"center", justifyContent:"center" }}><Globe size={15} color={BP}/></div>
+              <div><p style={{ color:"#F1F5F9", fontWeight:700, fontSize:12, lineHeight:1.2 }}>مزامنة سحابية فورية</p><p style={{ color:`${BP}CC`, fontWeight:600, fontSize:10, marginTop:1 }}>آمن · موثوق · محمي</p></div>
+              <div style={{ position:"absolute", inset:-9, borderRadius:29, border:`1px solid ${BP}22`, animation:"lx-glow-ping 2.8s ease-out infinite", pointerEvents:"none" }}/>
+            </div>
+
+            {/* Dashboard — top left */}
+            <div className="lx-dev2" style={{ position:"absolute", top:"20%", left:"5%", background:"rgba(7,11,28,0.83)", backdropFilter:"blur(16px)", border:"1px solid rgba(255,255,255,0.09)", borderRadius:16, padding:"13px 15px", boxShadow:"0 12px 36px rgba(0,0,0,0.5)", minWidth:152 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+                <div style={{ width:25, height:25, borderRadius:7, background:`${BP}1e`, border:`1px solid ${BP}3c`, display:"flex", alignItems:"center", justifyContent:"center" }}><Monitor size={13} color={BP}/></div>
+                <span style={{ color:"rgba(255,255,255,0.50)", fontSize:11, fontWeight:700 }}>لوحة التحكم</span>
+              </div>
+              <div style={{ display:"flex", gap:4, alignItems:"flex-end", height:34 }}>
+                {[52,78,44,94,62,72,88].map((h,i) => (
+                  <div key={i} style={{ flex:1, height:`${h}%`, borderRadius:3, background:i===3?BP:`${BP}50`, opacity:i===3?1:0.65 }}/>
+                ))}
+              </div>
+              <div style={{ marginTop:6, display:"flex", justifyContent:"space-between" }}>
+                <span style={{ color:`${BP}CC`, fontSize:10, fontWeight:700 }}>↑ 23.4%</span>
+                <span style={{ color:"rgba(255,255,255,0.26)", fontSize:10 }}>هذا الأسبوع</span>
+              </div>
+            </div>
+
+            {/* Analytics — top right */}
+            <div className="lx-dev3" style={{ position:"absolute", top:"19%", right:"4%", background:"rgba(7,11,28,0.83)", backdropFilter:"blur(16px)", border:"1px solid rgba(255,255,255,0.09)", borderRadius:16, padding:"13px 15px", boxShadow:"0 12px 36px rgba(0,0,0,0.5)", minWidth:148 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+                <div style={{ width:25, height:25, borderRadius:7, background:`${BA}1e`, border:`1px solid ${BA}3c`, display:"flex", alignItems:"center", justifyContent:"center" }}><BarChart2 size={13} color={BA}/></div>
+                <span style={{ color:"rgba(255,255,255,0.50)", fontSize:11, fontWeight:700 }}>التقارير</span>
+              </div>
+              <svg viewBox="0 0 118 34" style={{ width:"100%", height:34 }}>
+                <defs><linearGradient id="lxag" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor={BA} stopOpacity="0.35"/><stop offset="100%" stopColor={BA} stopOpacity="0"/></linearGradient></defs>
+                <path d="M0,28 L14,22 L28,26 L42,14 L56,18 L70,8 L84,12 L98,4 L118,7" stroke={BA} strokeWidth="2" fill="none" strokeLinecap="round"/>
+                <path d="M0,28 L14,22 L28,26 L42,14 L56,18 L70,8 L84,12 L98,4 L118,7 L118,34 L0,34Z" fill="url(#lxag)"/>
+              </svg>
+              <div style={{ marginTop:4, display:"flex", justifyContent:"space-between" }}>
+                <span style={{ color:`${BA}CC`, fontSize:10, fontWeight:800 }}>2,840 JOD</span>
+                <span style={{ color:"rgba(255,255,255,0.26)", fontSize:10 }}>اليوم</span>
+              </div>
+            </div>
+
+            {/* POS Terminal — middle left */}
+            <div className="lx-dev4" style={{ position:"absolute", top:"48%", left:"4%", background:"rgba(7,11,28,0.83)", backdropFilter:"blur(16px)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:16, padding:"13px 15px", boxShadow:"0 12px 36px rgba(0,0,0,0.5)", minWidth:148 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:9 }}>
+                <div style={{ width:25, height:25, borderRadius:7, background:"rgba(16,185,129,0.18)", border:"1px solid rgba(16,185,129,0.38)", display:"flex", alignItems:"center", justifyContent:"center" }}><ShoppingCart size={13} color="#10B981"/></div>
+                <span style={{ color:"rgba(255,255,255,0.50)", fontSize:11, fontWeight:700 }}>نقطة البيع</span>
+              </div>
+              <div style={{ padding:"7px 10px", borderRadius:10, background:"rgba(16,185,129,0.09)", border:"1px solid rgba(16,185,129,0.18)" }}>
+                <p style={{ color:"rgba(255,255,255,0.38)", fontSize:9, fontWeight:600, marginBottom:2 }}>الإجمالي</p>
+                <p style={{ color:"#10B981", fontWeight:900, fontSize:19, letterSpacing:"-0.04em", lineHeight:1 }}>12.750 JOD</p>
+              </div>
+              <div style={{ marginTop:8, display:"flex", gap:4 }}>
+                {["كاش","كليك","بطاقة"].map(m => (
+                  <div key={m} style={{ flex:1, padding:"3px 0", borderRadius:6, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.06)", textAlign:"center" }}>
+                    <span style={{ fontSize:9, color:"rgba(255,255,255,0.32)", fontWeight:600 }}>{m}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Inventory — middle right */}
+            <div className="lx-dev5" style={{ position:"absolute", top:"46%", right:"3%", background:"rgba(7,11,28,0.83)", backdropFilter:"blur(16px)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:16, padding:"13px 15px", boxShadow:"0 12px 36px rgba(0,0,0,0.5)", minWidth:144 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:9 }}>
+                <div style={{ width:25, height:25, borderRadius:7, background:"rgba(168,85,247,0.18)", border:"1px solid rgba(168,85,247,0.38)", display:"flex", alignItems:"center", justifyContent:"center" }}><Boxes size={13} color="#A855F7"/></div>
+                <span style={{ color:"rgba(255,255,255,0.50)", fontSize:11, fontWeight:700 }}>المخزون</span>
+              </div>
+              {[["منتجات","3,724","#A855F7"],["تنبيهات منخفضة","12","#F59E0B"]].map(([l,v,c]) => (
+                <div key={l} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"5px 0", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                  <span style={{ fontSize:10, color:"rgba(255,255,255,0.35)" }}>{l}</span>
+                  <span style={{ fontSize:12, fontWeight:800, color:c as string }}>{v}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Scanner badge — lower center */}
+            <div className="lx-dev6" style={{ position:"absolute", top:"70%", left:"50%", transform:"translateX(-50%)", background:"rgba(7,11,28,0.83)", backdropFilter:"blur(16px)", border:`1px solid ${BP}2e`, borderRadius:14, padding:"9px 15px", display:"flex", alignItems:"center", gap:9, boxShadow:`0 8px 24px rgba(0,0,0,0.45)`, whiteSpace:"nowrap" }}>
+              <div style={{ width:27, height:27, borderRadius:8, background:`${BP}1e`, border:`1px solid ${BP}3c`, display:"flex", alignItems:"center", justifyContent:"center" }}><Scan size={13} color={BP}/></div>
+              <div><p style={{ color:"#F1F5F9", fontWeight:700, fontSize:11 }}>باركود · QR · سكانر</p><p style={{ color:"rgba(255,255,255,0.32)", fontSize:9.5 }}>دعم احترافي كامل</p></div>
+              <div style={{ width:7, height:7, borderRadius:"50%", background:"#10B981", boxShadow:"0 0 7px #10B981", flexShrink:0 }}/>
+            </div>
+          </div>
+
+          {/* ── Hero text content ── */}
+          <div style={{ position:"absolute", bottom:0, left:0, right:0, zIndex:3, padding:"0 52px 42px", background:"linear-gradient(to top,rgba(6,8,15,0.96) 0%,rgba(6,8,15,0.5) 55%,transparent 100%)", paddingTop:90 }}>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:7, padding:"4px 12px", borderRadius:100, background:`${BP}18`, border:`1px solid ${BP}35`, marginBottom:14, animation:"lx-up .6s cubic-bezier(.22,1,.36,1) both .10s" }}>
+              <span style={{ width:5, height:5, borderRadius:"50%", background:"#10B981", display:"block", boxShadow:"0 0 6px #10B981" }}/>
+              <span style={{ fontSize:10.5, fontWeight:700, color:"rgba(255,255,255,0.55)", letterSpacing:"0.06em" }}>منصة الأعمال السحابية · الأردن</span>
+            </div>
+            <h1 style={{ color:"#F1F5F9", fontWeight:900, fontSize:"clamp(26px,2.7vw,42px)", lineHeight:1.17, letterSpacing:"-0.04em", minHeight:"2.4em", marginBottom:12, animation:"lx-up .6s cubic-bezier(.22,1,.36,1) both .18s" }}>
+              أدِر أعمالك بذكاء<br/>
+              <span style={{ color:BP }}>{twText}</span><span className="lx-cur"/>
+            </h1>
+            <p style={{ color:"rgba(255,255,255,0.36)", fontSize:13, lineHeight:1.85, maxWidth:380, marginBottom:20, animation:"lx-up .6s cubic-bezier(.22,1,.36,1) both .26s" }}>
+              منصة سحابية متكاملة لإدارة المبيعات والمخزون والعملاء — تعمل لجميع أنواع المتاجر
+            </p>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:26, animation:"lx-up .6s cubic-bezier(.22,1,.36,1) both .34s" }}>
+              {BADGES.map((b,i) => (
+                <div key={b} style={{ display:"flex", alignItems:"center", gap:5, padding:"4px 10px", borderRadius:100, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)" }}>
+                  <span style={{ width:4, height:4, borderRadius:"50%", background:i%2===0?BP:BA, display:"block" }}/>
+                  <span style={{ fontSize:10.5, fontWeight:600, color:"rgba(255,255,255,0.46)" }}>{b}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display:"flex", paddingTop:18, borderTop:"1px solid rgba(255,255,255,0.06)", animation:"lx-up .6s cubic-bezier(.22,1,.36,1) both .48s" }}>
+              {([["١٢٠+","متجر نشط"],["٩٩.٩٪","وقت التشغيل"],["٥٠٠+","فاتورة/يوم"]] as [string,string][]).map(([n,l],i) => (
+                <div key={l} style={{ flex:1, paddingRight:i<2?20:0, borderRight:i<2?"1px solid rgba(255,255,255,0.06)":"none", marginRight:i<2?20:0 }}>
+                  <p style={{ color:BP, fontWeight:900, fontSize:21, letterSpacing:"-0.04em", lineHeight:1 }}>{n}</p>
+                  <p style={{ color:"rgba(255,255,255,0.28)", fontSize:10.5, marginTop:3 }}>{l}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* ── FORM ─────────────────────────────────────────────── */}
-        <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:"28px 20px", paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 28px)", position:"relative", zIndex:1 }}>
-          <div style={{ width:"100%", maxWidth:390 }}>
+        {/* ── LOGIN CARD 35% ── */}
+        <div style={{
+          flex:1, display:"flex", alignItems:"center", justifyContent:"center",
+          padding:"24px 28px", position:"relative", zIndex:10,
+          background:"rgba(3,5,12,0.55)",
+          transition:"opacity .40s ease",
+          opacity: entering ? 0 : 1,
+        }}>
+          <div style={{ position:"absolute", top:"18%", right:"-8%", width:300, height:300, borderRadius:"50%", background:`${BP}12`, filter:"blur(85px)", pointerEvents:"none" }}/>
+          <div style={{
+            width:"100%", maxWidth:400,
+            background:"rgba(8,12,30,0.90)", backdropFilter:"blur(30px) saturate(140%)",
+            border:"1px solid rgba(255,255,255,0.08)", borderRadius:24,
+            padding:"36px 30px 28px",
+            boxShadow:"0 40px 100px rgba(0,0,0,0.58),0 0 0 1px rgba(255,255,255,0.03) inset",
+            position:"relative",
+          }}>
+            <div style={{ position:"absolute", top:0, left:"22%", right:"22%", height:"1px", background:`linear-gradient(90deg,transparent,${BP}58,transparent)`, borderRadius:1 }}/>
 
-            {/* Desktop heading (hidden on mobile — mobile has the hero above) */}
-            <div className="hidden lg:block lf0" style={{ marginBottom:28 }}>
-              <h2 style={{ fontWeight:900, color:"#fff", fontSize:22, letterSpacing:"-0.035em", marginBottom:6 }}>
-                {mode==="admin"&&adminUnlocked ? "بوابة الإدارة العليا" : "تسجيل الدخول"}
+            {/* Logo */}
+            <div className="lx0" style={{ display:"flex", alignItems:"center", gap:12, marginBottom:26 }}>
+              <button onClick={handleLogoClick} style={{ background:"none", border:"none", cursor:"pointer", padding:0, display:"flex", flexShrink:0 }}>
+                <div style={{ width:44, height:44, borderRadius:13, background:`${BP}20`, border:`2px solid ${BP}48`, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 0 18px ${BP}28`, position:"relative" }}>
+                  <Store size={22} color={BP}/>
+                </div>
+              </button>
+              <div>
+                <p style={{ color:"#F1F5F9", fontWeight:800, fontSize:16, letterSpacing:"-0.025em", lineHeight:1.2 }}>Sowwanjo POS</p>
+                <p style={{ color:"rgba(255,255,255,0.28)", fontSize:10.5 }}>الإصدار 1.0 · نقاط البيع السحابي</p>
+              </div>
+            </div>
+
+            {/* Welcome */}
+            <div className="lx1" style={{ marginBottom:22 }}>
+              <h2 style={{ color:"#F1F5F9", fontWeight:900, fontSize:20, letterSpacing:"-0.035em", marginBottom:4 }}>
+                {mode==="admin"&&adminUnlocked ? "بوابة الإدارة العليا" : "مرحباً بعودتك"}
               </h2>
-              <p style={{ color:"rgba(255,255,255,0.38)", fontSize:13 }}>
-                {mode==="admin"&&adminUnlocked ? "الوصول مقيد — بيانات المدير فقط" : "أدخل بيانات حسابك للمتابعة"}
+              <p style={{ color:"rgba(255,255,255,0.33)", fontSize:13 }}>
+                {mode==="admin"&&adminUnlocked ? "الوصول مقيد — بيانات المدير العام فقط" : "أدخل بياناتك للدخول إلى منصتك"}
               </p>
             </div>
 
-            {/* Mobile sub-heading */}
-            <div className="lg:hidden lf0" style={{ marginBottom:20 }}>
-              <h3 style={{ fontWeight:800, color:"#fff", fontSize:18, letterSpacing:"-0.03em", marginBottom:4 }}>
-                {mode==="admin"&&adminUnlocked ? "بوابة الإدارة العليا" : "تسجيل الدخول"}
-              </h3>
-              <p style={{ color:"rgba(255,255,255,0.38)", fontSize:12.5 }}>أدخل بيانات حسابك للمتابعة</p>
-            </div>
-
-            {/* Admin badge */}
             {adminUnlocked && (
-              <div className="lf0" style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 14px", borderRadius:11, marginBottom:18, background:"rgba(251,191,36,0.10)", border:"1px solid rgba(251,191,36,0.22)" }}>
-                <Shield size={13} color="#FCD34D"/>
-                <p style={{ fontSize:12, fontWeight:700, color:"#FCD34D" }}>تم تفعيل وضع الإدارة العليا</p>
+              <div className="lx1" style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 13px", borderRadius:12, marginBottom:14, background:"rgba(251,191,36,0.08)", border:"1px solid rgba(251,191,36,0.22)" }}>
+                <Shield size={12} color="#FCD34D"/>
+                <p style={{ fontSize:11.5, fontWeight:700, color:"#FCD34D" }}>تم تفعيل وضع الإدارة العليا</p>
               </div>
             )}
 
-            {/* Mode tabs */}
             {adminUnlocked && (
-              <div className="lf1" style={{ display:"flex", padding:3, borderRadius:11, marginBottom:20, background:"rgba(255,255,255,0.05)", gap:3, border:"1px solid rgba(255,255,255,0.08)" }}>
+              <div className="lx2" style={{ display:"flex", padding:3, borderRadius:12, marginBottom:16, background:"rgba(255,255,255,0.04)", gap:3, border:"1px solid rgba(255,255,255,0.07)" }}>
                 {(["store","admin"] as const).map(m => (
-                  <button key={m} className="lgn-tab" onClick={()=>{setMode(m);setErr("");}}
-                    style={{ background:mode===m?`${brandAccent}1e`:"transparent", color:mode===m?brandAccent:"rgba(255,255,255,0.38)", boxShadow:mode===m?"0 1px 4px rgba(0,0,0,0.3)":"none", border:mode===m?`1px solid ${brandAccent}38`:"1px solid transparent" }}>
+                  <button key={m} className="lx-tab" onClick={()=>{setMode(m);setErr("");}}
+                    style={{ background:mode===m?`${BP}1e`:"transparent", color:mode===m?BP:"rgba(255,255,255,0.32)", border:mode===m?`1px solid ${BP}32`:"1px solid transparent" }}>
                     {m==="store" ? "دخول المتجر" : "الإدارة العليا"}
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Fields */}
-            <div style={{ display:"flex", flexDirection:"column", gap:15 }}>
-
-              <div className="lf2">
-                <label className="lgn-label">{mode==="admin" ? "اسم المستخدم" : "البريد الإلكتروني أو رقم الهاتف"}</label>
+            <div style={{ display:"flex", flexDirection:"column", gap:13 }}>
+              <div className="lx2">
+                <label style={{ display:"block", fontSize:11.5, fontWeight:700, color:"rgba(255,255,255,0.40)", marginBottom:7, letterSpacing:"0.02em" }}>
+                  {mode==="admin" ? "اسم المستخدم" : "البريد الإلكتروني أو رقم الهاتف"}
+                </label>
                 <div style={{ position:"relative" }}>
-                  <span style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", color:`${brandAccent}80`, pointerEvents:"none", display:"flex" }}>
-                    {mode==="admin" ? <Shield size={14}/> : <Mail size={14}/>}
+                  <span style={{ position:"absolute", right:15, top:"50%", transform:"translateY(-50%)", color:`${BP}75`, pointerEvents:"none", display:"flex" }}>
+                    {mode==="admin" ? <Shield size={15}/> : <Mail size={15}/>}
                   </span>
-                  <input dir="rtl" className={`lgn-field${err?" err":""}`} type="text" value={email}
+                  <input dir="rtl" className={`lx-field${err?" has-err":""}`} type="text" value={email}
                     onChange={e=>{setEmail(e.target.value);setErr("");}}
-                    placeholder={mode==="admin" ? "admin" : "email@store.jo"}
-                    autoComplete={mode==="admin"?"username":"email"} style={{ paddingRight:42 }}/>
+                    placeholder={mode==="admin" ? "superadmin" : "email@store.jo"}
+                    autoComplete={mode==="admin"?"username":"email"} style={{ paddingRight:46 }}/>
                 </div>
               </div>
 
-              <div className="lf3">
-                <label className="lgn-label">كلمة المرور</label>
+              <div className="lx3">
+                <label style={{ display:"block", fontSize:11.5, fontWeight:700, color:"rgba(255,255,255,0.40)", marginBottom:7, letterSpacing:"0.02em" }}>كلمة المرور</label>
                 <div style={{ position:"relative" }}>
-                  <span style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", color:`${brandAccent}80`, pointerEvents:"none", display:"flex" }}>
-                    <Lock size={14}/>
-                  </span>
-                  <input dir="rtl" className={`lgn-field${err?" err":""}`}
+                  <span style={{ position:"absolute", right:15, top:"50%", transform:"translateY(-50%)", color:`${BP}75`, pointerEvents:"none", display:"flex" }}><Lock size={15}/></span>
+                  <input dir="rtl" className={`lx-field${err?" has-err":""}`}
                     type={showPass?"text":"password"} value={pass}
                     onChange={e=>{setPass(e.target.value);setErr("");}}
                     placeholder="••••••••" autoComplete="current-password"
                     onKeyDown={e=>e.key==="Enter"&&doLogin()}
                     onKeyUp={e=>setCapsLock(e.getModifierState("CapsLock"))}
-                    style={{ paddingRight:42, paddingLeft:42 }}/>
+                    style={{ paddingRight:46, paddingLeft:46 }}/>
                   <button type="button" onClick={()=>setShowPass(!showPass)}
-                    style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.32)", padding:0, display:"flex" }}>
-                    {showPass ? <EyeOff size={14}/> : <Eye size={14}/>}
+                    style={{ position:"absolute", left:15, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.26)", padding:0, display:"flex", transition:"color .18s" }}>
+                    {showPass ? <EyeOff size={15}/> : <Eye size={15}/>}
                   </button>
                 </div>
-                {capsLock && (
-                  <p style={{ display:"flex", alignItems:"center", gap:5, marginTop:5, fontSize:11, fontWeight:600, color:"#FCD34D" }}>
-                    <AlertCircle size={11}/> مفتاح Caps Lock مفعّل
-                  </p>
-                )}
+                {capsLock && <p style={{ display:"flex", alignItems:"center", gap:5, marginTop:6, fontSize:11, fontWeight:600, color:"#FCD34D" }}><AlertCircle size={11}/> مفتاح Caps Lock مفعّل</p>}
               </div>
 
-              <div className="lf4">
-                <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", userSelect:"none", width:"fit-content" }}>
+              <div className="lx4">
+                <label style={{ display:"flex", alignItems:"center", gap:9, cursor:"pointer", userSelect:"none", width:"fit-content" }}>
                   <div onClick={()=>setRememberMe(!rememberMe)}
-                    style={{ width:17, height:17, borderRadius:5, border:`1.5px solid ${rememberMe?brandAccent:"rgba(255,255,255,0.2)"}`, background:rememberMe?brandAccent:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .16s", cursor:"pointer", flexShrink:0 }}>
-                    {rememberMe && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L4 7L9 1" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    style={{ width:18, height:18, borderRadius:5, border:`1.5px solid ${rememberMe?BP:"rgba(255,255,255,0.17)"}`, background:rememberMe?BP:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .16s", cursor:"pointer", flexShrink:0 }}>
+                    {rememberMe && <svg width="10" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L4 7L9 1" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                   </div>
-                  <span style={{ fontSize:12, fontWeight:600, color:"rgba(255,255,255,0.40)" }}>تذكرني</span>
+                  <span style={{ fontSize:12.5, fontWeight:600, color:"rgba(255,255,255,0.36)" }}>تذكرني</span>
                 </label>
               </div>
 
               {err && (
-                <div className="lf0" style={{ display:"flex", alignItems:"flex-start", gap:9, padding:"11px 13px", borderRadius:11, background:"rgba(239,68,68,0.11)", border:"1px solid rgba(239,68,68,0.28)" }}>
+                <div className="lx0" style={{ display:"flex", alignItems:"flex-start", gap:9, padding:"11px 13px", borderRadius:12, background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.22)" }}>
                   <AlertCircle size={13} color="#FCA5A5" style={{ flexShrink:0, marginTop:1 }}/>
                   <div>
                     <p style={{ fontSize:12, fontWeight:600, color:"#FCA5A5" }}>{err}</p>
@@ -1309,35 +1351,153 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
                 </div>
               )}
 
-              <div className="lf5">
-                <button className="lgn-submit" onClick={doLogin} disabled={loading||!online}>
+              <div className="lx5">
+                <button className="lx-btn" onClick={doLogin} disabled={loading||!online}>
                   {loading ? (
-                    <svg className="lgn-spin" width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="rgba(255,255,255,0.28)" strokeWidth="2"/><path d="M10 2A8 8 0 0 1 18 10" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
-                  ) : !online ? (
-                    <><WifiOff size={15}/> لا يوجد اتصال</>
-                  ) : (
-                    <>دخول <ArrowLeft size={15}/></>
-                  )}
+                    <svg style={{ animation:"lx-spin .8s linear infinite" }} width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="rgba(255,255,255,0.25)" strokeWidth="2"/><path d="M10 2A8 8 0 0 1 18 10" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
+                  ) : !online ? <><WifiOff size={15}/> لا يوجد اتصال</> : <>دخول <ArrowLeft size={15}/></>}
                 </button>
               </div>
             </div>
 
             {mode==="store" && !adminUnlocked && (
-              <div className="lf6" style={{ marginTop:18, padding:"11px 14px", borderRadius:11, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)" }}>
-                <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.35)", marginBottom:3, display:"flex", alignItems:"center", gap:5 }}>
-                  <Info size={10.5}/> لأصحاب المتاجر
+              <div className="lx6" style={{ marginTop:16, padding:"10px 13px", borderRadius:12, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.06)" }}>
+                <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.26)", marginBottom:2, display:"flex", alignItems:"center", gap:5 }}>
+                  <Info size={10}/> تحتاج حساباً؟
                 </p>
-                <p style={{ fontSize:11, color:"rgba(255,255,255,0.28)", lineHeight:1.7 }}>
-                  لا تمتلك حساباً؟ تواصل مع مزود الخدمة:<br/>
-                  <span style={{ color:brandAccent, fontWeight:700 }}>support@sowwanjo.online</span>
+                <p style={{ fontSize:11, color:"rgba(255,255,255,0.20)", lineHeight:1.7 }}>
+                  تواصل مع مزود الخدمة:<br/>
+                  <span style={{ color:`${BP}CC`, fontWeight:700 }}>support@sowwanjo.online</span>
                 </p>
               </div>
             )}
 
-            <p style={{ textAlign:"center", fontSize:10.5, color:"rgba(255,255,255,0.16)", marginTop:22, paddingBottom:"env(safe-area-inset-bottom,0px)" }}>
-              © 2026 Sowwanjo · دينار أردني · RTL
+            <p style={{ textAlign:"center", fontSize:10, color:"rgba(255,255,255,0.13)", marginTop:18 }}>
+              © 2026 Sowwanjo POS · v1.0 · مشفّر وآمن
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          MOBILE LAYOUT — full screen card with headline above
+      ═══════════════════════════════════════════════════════════════ */}
+      <div className="lg:hidden" style={{
+        width:"100%", minHeight:"100dvh", display:"flex", flexDirection:"column",
+        padding:"calc(env(safe-area-inset-top,0px) + 20px) 18px calc(env(safe-area-inset-bottom,0px) + 20px)",
+        position:"relative", zIndex:1,
+        opacity: entering ? 0 : 1, transition:"opacity .4s ease",
+      }}>
+        <div style={{ position:"fixed", top:"-18%", left:"-15%", width:"80vw", height:"80vw", borderRadius:"50%", background:`${BP}16`, filter:"blur(80px)", pointerEvents:"none", zIndex:0 }}/>
+        <div style={{ position:"fixed", bottom:"-22%", right:"-10%", width:"70vw", height:"70vw", borderRadius:"50%", background:`${BA}12`, filter:"blur(80px)", pointerEvents:"none", zIndex:0 }}/>
+
+        {/* Mobile logo bar */}
+        <div style={{ position:"relative", zIndex:1, display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <button onClick={handleLogoClick} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:10, padding:0 }}>
+            <div style={{ width:40, height:40, borderRadius:11, background:`${BP}1e`, border:`1.5px solid ${BP}45`, display:"flex", alignItems:"center", justifyContent:"center" }}><Store size={19} color={BP}/></div>
+            <div>
+              <p style={{ color:"#F1F5F9", fontWeight:800, fontSize:15, letterSpacing:"-0.025em" }}>Sowwanjo POS</p>
+              <p style={{ color:"rgba(255,255,255,0.28)", fontSize:10 }}>نظام نقاط البيع السحابي</p>
+            </div>
+          </button>
+          {online && <div style={{ width:8, height:8, borderRadius:"50%", background:"#10B981", boxShadow:"0 0 8px #10B981" }}/>}
+        </div>
+
+        {/* Mobile headline */}
+        <div style={{ position:"relative", zIndex:1, marginBottom:16 }}>
+          <h2 style={{ color:"#F1F5F9", fontWeight:900, fontSize:23, letterSpacing:"-0.04em", lineHeight:1.22, minHeight:"1.4em", marginBottom:6 }}>
+            أدِر أعمالك · <span style={{ color:BP }}>{twText}</span><span className="lx-cur"/>
+          </h2>
+          <p style={{ color:"rgba(255,255,255,0.36)", fontSize:12.5, lineHeight:1.7 }}>إدارة المبيعات والمخزون والعملاء في مكان واحد.</p>
+        </div>
+
+        {/* Mobile badges */}
+        <div style={{ position:"relative", zIndex:1, display:"flex", flexWrap:"wrap", gap:6, marginBottom:18 }}>
+          {BADGES.slice(0,6).map((b,i) => (
+            <div key={b} style={{ display:"flex", alignItems:"center", gap:5, padding:"4px 9px", borderRadius:100, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)" }}>
+              <span style={{ width:3.5, height:3.5, borderRadius:"50%", background:i%2===0?BP:BA, display:"block" }}/>
+              <span style={{ fontSize:10, fontWeight:600, color:"rgba(255,255,255,0.42)" }}>{b}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Mobile card */}
+        <div style={{ position:"relative", zIndex:1, background:"rgba(8,12,30,0.90)", backdropFilter:"blur(22px)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:22, padding:"22px 18px", boxShadow:"0 24px 60px rgba(0,0,0,0.52)" }}>
+          <div style={{ position:"absolute", top:0, left:"25%", right:"25%", height:"1px", background:`linear-gradient(90deg,transparent,${BP}52,transparent)` }}/>
+          <h3 style={{ color:"#F1F5F9", fontWeight:800, fontSize:17, letterSpacing:"-0.03em", marginBottom:4 }}>
+            {mode==="admin"&&adminUnlocked ? "بوابة الإدارة العليا" : "مرحباً بعودتك"}
+          </h3>
+          <p style={{ color:"rgba(255,255,255,0.30)", fontSize:12, marginBottom:18 }}>أدخل بياناتك للمتابعة</p>
+
+          {adminUnlocked && (
+            <div style={{ display:"flex", alignItems:"center", gap:7, padding:"8px 11px", borderRadius:10, marginBottom:12, background:"rgba(251,191,36,0.08)", border:"1px solid rgba(251,191,36,0.22)" }}>
+              <Shield size={12} color="#FCD34D"/><p style={{ fontSize:11, fontWeight:700, color:"#FCD34D" }}>وضع الإدارة العليا</p>
+            </div>
+          )}
+          {adminUnlocked && (
+            <div style={{ display:"flex", padding:3, borderRadius:11, marginBottom:14, background:"rgba(255,255,255,0.04)", gap:3, border:"1px solid rgba(255,255,255,0.07)" }}>
+              {(["store","admin"] as const).map(m => (
+                <button key={m} className="lx-tab" onClick={()=>{setMode(m);setErr("");}}
+                  style={{ background:mode===m?`${BP}1e`:"transparent", color:mode===m?BP:"rgba(255,255,255,0.32)", border:mode===m?`1px solid ${BP}32`:"1px solid transparent" }}>
+                  {m==="store" ? "المتجر" : "الإدارة"}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            <div>
+              <label style={{ display:"block", fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.36)", marginBottom:6 }}>
+                {mode==="admin" ? "اسم المستخدم" : "البريد الإلكتروني"}
+              </label>
+              <div style={{ position:"relative" }}>
+                <span style={{ position:"absolute", right:13, top:"50%", transform:"translateY(-50%)", color:`${BP}72`, pointerEvents:"none", display:"flex" }}>
+                  {mode==="admin" ? <Shield size={14}/> : <Mail size={14}/>}
+                </span>
+                <input dir="rtl" className={`lx-field${err?" has-err":""}`} type="text" value={email}
+                  onChange={e=>{setEmail(e.target.value);setErr("");}}
+                  placeholder={mode==="admin" ? "superadmin" : "email@store.jo"}
+                  autoComplete={mode==="admin"?"username":"email"} style={{ paddingRight:42, height:48 }}/>
+              </div>
+            </div>
+            <div>
+              <label style={{ display:"block", fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.36)", marginBottom:6 }}>كلمة المرور</label>
+              <div style={{ position:"relative" }}>
+                <span style={{ position:"absolute", right:13, top:"50%", transform:"translateY(-50%)", color:`${BP}72`, pointerEvents:"none", display:"flex" }}><Lock size={14}/></span>
+                <input dir="rtl" className={`lx-field${err?" has-err":""}`}
+                  type={showPass?"text":"password"} value={pass}
+                  onChange={e=>{setPass(e.target.value);setErr("");}}
+                  placeholder="••••••••" autoComplete="current-password"
+                  onKeyDown={e=>e.key==="Enter"&&doLogin()}
+                  onKeyUp={e=>setCapsLock(e.getModifierState("CapsLock"))}
+                  style={{ paddingRight:42, paddingLeft:42, height:48 }}/>
+                <button type="button" onClick={()=>setShowPass(!showPass)}
+                  style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.26)", padding:0, display:"flex" }}>
+                  {showPass ? <EyeOff size={14}/> : <Eye size={14}/>}
+                </button>
+              </div>
+              {capsLock && <p style={{ marginTop:5, fontSize:10.5, fontWeight:600, color:"#FCD34D", display:"flex", alignItems:"center", gap:4 }}><AlertCircle size={10}/> Caps Lock مفعّل</p>}
+            </div>
+            <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", userSelect:"none", width:"fit-content" }}>
+              <div onClick={()=>setRememberMe(!rememberMe)}
+                style={{ width:17, height:17, borderRadius:5, border:`1.5px solid ${rememberMe?BP:"rgba(255,255,255,0.17)"}`, background:rememberMe?BP:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .16s", cursor:"pointer", flexShrink:0 }}>
+                {rememberMe && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L4 7L9 1" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+              </div>
+              <span style={{ fontSize:12, fontWeight:600, color:"rgba(255,255,255,0.34)" }}>تذكرني</span>
+            </label>
+            {err && (
+              <div style={{ display:"flex", gap:8, padding:"10px 12px", borderRadius:11, background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.20)" }}>
+                <AlertCircle size={13} color="#FCA5A5" style={{ flexShrink:0, marginTop:1 }}/>
+                <p style={{ fontSize:11.5, fontWeight:600, color:"#FCA5A5" }}>{err}</p>
+              </div>
+            )}
+            <button className="lx-btn" onClick={doLogin} disabled={loading||!online} style={{ height:50 }}>
+              {loading ? (
+                <svg style={{ animation:"lx-spin .8s linear infinite" }} width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="rgba(255,255,255,0.25)" strokeWidth="2"/><path d="M10 2A8 8 0 0 1 18 10" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
+              ) : !online ? <><WifiOff size={14}/> لا يوجد اتصال</> : <>دخول <ArrowLeft size={14}/></>}
+            </button>
+          </div>
+          <p style={{ textAlign:"center", fontSize:10, color:"rgba(255,255,255,0.13)", marginTop:16 }}>© 2026 Sowwanjo · v1.0</p>
         </div>
       </div>
     </div>
