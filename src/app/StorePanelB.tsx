@@ -320,6 +320,35 @@ function ProductsMgr() {
           <Btn s="sm" icon={<Plus size={13} />} onClick={() => { setShowAdd(true); setF(emptyF); setOfoResult(null); setOfoError(""); }}>منتج جديد</Btn>
         </>} />
 
+      {/* ── Barcode / QR quick print bar ── */}
+      {filtered.length > 0 && (
+        <div className="rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3 flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
+              <Tag size={15} className="text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-purple-900">طباعة ملصقات الباركود / QR Code</p>
+              <p className="text-xs text-purple-600">اضغط على أيقونة <Tag size={10} className="inline" /> بجانب أي منتج، أو اختر منتجاً من القائمة أدناه</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <select
+              className="h-9 rounded-xl border border-purple-300 bg-white text-sm font-semibold px-3 text-purple-800 focus:outline-none"
+              onChange={e => {
+                const p = filtered.find(x => x.id === e.target.value);
+                if (p) setLabelProd({ ...p });
+                e.target.value = "";
+              }}
+              defaultValue=""
+            >
+              <option value="" disabled>اختر منتجاً...</option>
+              {filtered.map(p => <option key={p.id} value={p.id}>{p.nameAr}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-3 flex-wrap">
         <div className="flex-1 min-w-48"><TInput value={q} onChange={setQ} placeholder="بحث بالاسم، الباركود، SKU..." icon={<Search size={14} />} /></div>
         <div className="flex gap-1.5 overflow-x-auto">
