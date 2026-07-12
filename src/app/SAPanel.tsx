@@ -2044,6 +2044,14 @@ function SASettings() {
   const [footerCopyright, setFooterCopyright] = useState("");
   const [brandSaving, setBrandSaving] = useState(false);
 
+  const applyBrandColors = (primary: string, accent?: string) => {
+    const r = document.documentElement;
+    r.style.setProperty("--primary", primary);
+    r.style.setProperty("--ring", primary);
+    r.style.setProperty("--chart-1", primary);
+    if (accent) { r.style.setProperty("--accent", accent); r.style.setProperty("--chart-2", accent); }
+  };
+
   useEffect(() => {
     apiFetch("/super-admin/settings", {}, getToken())
       .then((d: unknown) => {
@@ -2060,7 +2068,7 @@ function SASettings() {
         if (s.platformShortName) setPlatformShortName(String(s.platformShortName));
         if (s.logoUrl) setLogoUrl(String(s.logoUrl));
         if (s.iconUrl) setIconUrl(String(s.iconUrl));
-        if (s.primaryColor) setPrimaryColor(String(s.primaryColor));
+        if (s.primaryColor) { setPrimaryColor(String(s.primaryColor)); applyBrandColors(String(s.primaryColor), s.accentColor ? String(s.accentColor) : undefined); }
         if (s.secondaryColor) setSecondaryColor(String(s.secondaryColor));
         if (s.accentColor) setAccentColor(String(s.accentColor));
         if (s.sidebarStyle) setSidebarStyle(String(s.sidebarStyle));
@@ -2097,9 +2105,8 @@ function SASettings() {
         }),
       }, getToken());
       showToast("تم حفظ هوية المنصة بنجاح ✓", "success");
-      // Apply immediately to current session
-      if (primaryColor) document.documentElement.style.setProperty("--primary", primaryColor);
-      if (document.title && platformName) document.title = platformName;
+      applyBrandColors(primaryColor, accentColor);
+      if (platformName) document.title = platformName;
     } catch (e) {
       showToast((e as { error?: string }).error || "فشل الحفظ", "error");
     } finally { setBrandSaving(false); }
