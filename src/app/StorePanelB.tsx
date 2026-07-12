@@ -244,6 +244,8 @@ function ProductsMgr() {
   const [catFilter, setCatFilter] = useState("الكل");
   const [showAdd, setShowAdd] = useState(false);
   const [editProd, setEditProd] = useState<Product | null>(null);
+  const [labelProd, setLabelProd] = useState<Product | null>(null);
+  const [labelOpts, setLabelOpts] = useState({ qty: 10, size: "md" as "sm"|"md"|"lg", showQr: true, showPrice: true, showName: true, perRow: 4 });
   const [ofoLoading, setOfoLoading] = useState(false);
   const [ofoResult, setOfoResult] = useState<OFFProduct | null>(null);
   const [ofoError, setOfoError] = useState("");
@@ -346,6 +348,7 @@ function ProductsMgr() {
                       <span className="text-xs bg-muted px-2 py-0.5 rounded-full mt-1 inline-block">{p.category}</span>
                     </div>
                     <div className="flex gap-1 shrink-0">
+                      <button title="طباعة ملصق" onClick={() => setLabelProd({ ...p })} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-purple-100 text-purple-500 active:scale-90"><Tag size={14} /></button>
                       <button onClick={() => setEditProd({ ...p })} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-blue-100 text-blue-500 active:scale-90"><Edit2 size={14} /></button>
                       <button onClick={async () => { await storeApi.delete(`/products/${p.id}`); await refreshProds(); showToast(`تم حذف "${p.nameAr}"`, "warning"); }} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-red-100 text-red-500 active:scale-90"><Trash2 size={14} /></button>
                     </div>
@@ -383,6 +386,7 @@ function ProductsMgr() {
                       <td className="p-3.5"><span className={`font-bold text-xs ${mg > 30 ? "text-emerald-600" : mg > 10 ? "text-amber-600" : "text-red-500"}`}>{mg.toFixed(1)}%</span></td>
                       <td className="p-3.5">{p.stock === 0 ? <span className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">نفد</span> : low ? <span className="text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">منخفض</span> : <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">مناسب</span>}</td>
                       <td className="p-3.5"><div className="flex gap-0.5">
+                        <button title="طباعة ملصق باركود/QR" onClick={() => setLabelProd({ ...p })} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-purple-100 text-purple-500"><Tag size={11} /></button>
                         <button onClick={() => setEditProd({ ...p })} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-100 text-blue-500"><Edit2 size={11} /></button>
                         <button onClick={async () => { await storeApi.delete(`/products/${p.id}`); await refreshProds(); showToast(`تم حذف "${p.nameAr}"`, "warning"); }} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500"><Trash2 size={11} /></button>
                       </div></td>
@@ -500,6 +504,54 @@ function ProductsMgr() {
           <div className="flex gap-3 mt-5 justify-end">
             <Btn v="secondary" onClick={() => setEditProd(null)}>إلغاء</Btn>
             <Btn onClick={saveEdit} icon={<Check size={14} />}>حفظ التعديلات</Btn>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Label Print Modal ── */}
+      {labelProd && (
+        <Modal title={`طباعة ملصقات — ${labelProd.nameAr}`} onClose={() => setLabelProd(null)} size="sm">
+          <div className="space-y-4">
+            {/* Preview card */}
+            <div className="rounded-2xl border-2 border-purple-200 bg-purple-50 p-4 text-center">
+              <p className="text-xs font-bold text-purple-700 mb-1">{labelProd.nameAr}</p>
+              <p className="text-xs font-mono text-purple-500 mb-1">{labelProd.barcode || labelProd.sku}</p>
+              {labelOpts.showPrice && <p className="text-sm font-black text-purple-800">{labelProd.sellPrice.toFixed(3)} JOD</p>}
+            </div>
+            {/* Options */}
+            <div className="grid grid-cols-2 gap-4">
+              <F label="عدد الملصقات">
+                <TInput value={String(labelOpts.qty)} onChange={v => setLabelOpts({ ...labelOpts, qty: Math.max(1, Math.min(200, parseInt(v)||1)) })} type="number" />
+              </F>
+              <F label="حجم الملصق">
+                <SInput value={labelOpts.size} onChange={v => setLabelOpts({ ...labelOpts, size: v as "sm"|"md"|"lg" })} options={[
+                  { value: "sm", label: "صغير (3×1.5 سم)" },
+                  { value: "md", label: "متوسط (5×2.5 سم)" },
+                  { value: "lg", label: "كبير (6×4 سم)" },
+                ]} />
+              </F>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold">
+                <input type="checkbox" checked={labelOpts.showName} onChange={e => setLabelOpts({ ...labelOpts, showName: e.target.checked })} className="rounded" />
+                اسم المنتج
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold">
+                <input type="checkbox" checked={labelOpts.showPrice} onChange={e => setLabelOpts({ ...labelOpts, showPrice: e.target.checked })} className="rounded" />
+                السعر
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold">
+                <input type="checkbox" checked={labelOpts.showQr} onChange={e => setLabelOpts({ ...labelOpts, showQr: e.target.checked })} className="rounded" />
+                رمز QR
+              </label>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Btn v="secondary" onClick={() => setLabelProd(null)}>إلغاء</Btn>
+              <Btn icon={<Printer size={14} />} onClick={async () => {
+                const { printBarcodeLabels } = await import("./printLabel");
+                await printBarcodeLabels(labelProd, labelOpts);
+              }}>طباعة {labelOpts.qty} ملصق</Btn>
+            </div>
           </div>
         </Modal>
       )}
