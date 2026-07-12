@@ -573,6 +573,91 @@ function SAStores() {
   const [resetEmpLoading, setResetEmpLoading] = useState(false);
   const [storeEmps, setStoreEmps] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
   const [empsLoading, setEmpsLoading] = useState(false);
+  // ── Store User Management ─────────────────────────────────────────────────
+  type SAUser = { id: string; name: string; email: string; role: string; phone: string };
+  const [userMgmtStore, setUserMgmtStore] = useState<StoreData | null>(null);
+  const [userMgmtList, setUserMgmtList]   = useState<SAUser[]>([]);
+  const [userMgmtLoading, setUserMgmtLoading] = useState(false);
+  const [userMgmtError,   setUserMgmtError]   = useState("");
+  // Add user form
+  const emptyUserForm = { name: "", email: "", password: "", role: "cashier", phone: "" };
+  const [addUserForm, setAddUserForm]   = useState(emptyUserForm);
+  const [showAddUser,  setShowAddUser]  = useState(false);
+  const [addUserLoading, setAddUserLoading] = useState(false);
+  const [addUserError,   setAddUserError]   = useState("");
+  // Edit user
+  const [editUser, setEditUser]       = useState<SAUser | null>(null);
+  const [editUserForm, setEditUserForm] = useState({ name: "", email: "", role: "", phone: "" });
+  const [editUserLoading, setEditUserLoading] = useState(false);
+  // Reset password inline
+  const [passUser,    setPassUser]    = useState<SAUser | null>(null);
+  const [passValue,   setPassValue]   = useState("");
+  const [passLoading, setPassLoading] = useState(false);
+
+  const openUserMgmt = async (store: StoreData) => {
+    setUserMgmtStore(store); setUserMgmtList([]); setUserMgmtError(""); setShowAddUser(false); setEditUser(null); setPassUser(null);
+    setUserMgmtLoading(true);
+    try {
+      const data = await apiFetch(`/stores/${store.id}/users`, {}, getToken()) as SAUser[];
+      setUserMgmtList(Array.isArray(data) ? data : []);
+    } catch { setUserMgmtError("فشل تحميل المستخدمين"); }
+    finally { setUserMgmtLoading(false); }
+  };
+
+  const doAddUser = async () => {
+    if (!userMgmtStore) return;
+    setAddUserLoading(true); setAddUserError("");
+    try {
+      const res = await apiFetch(`/stores/${userMgmtStore.id}/users`, { method: "POST", body: JSON.stringify(addUserForm) }, getToken()) as SAUser & { error?: string };
+      if ((res as { error?: string }).error) { setAddUserError((res as { error?: string }).error || "خطأ"); return; }
+      setUserMgmtList(l => [...l, res]);
+      setAddUserForm(emptyUserForm); setShowAddUser(false);
+      showToast(`تم إضافة "${addUserForm.name}" بنجاح ✓`, "success");
+    } catch { setAddUserError("خطأ في الإضافة"); }
+    finally { setAddUserLoading(false); }
+  };
+
+  const doEditUser = async () => {
+    if (!userMgmtStore || !editUser) return;
+    setEditUserLoading(true);
+    try {
+      const res = await apiFetch(`/stores/${userMgmtStore.id}/users/${editUser.id}`, { method: "PUT", body: JSON.stringify(editUserForm) }, getToken()) as SAUser;
+      setUserMgmtList(l => l.map(u => u.id === editUser.id ? { ...u, ...res } : u));
+      setEditUser(null);
+      showToast("تم تحديث البيانات ✓", "success");
+    } catch { showToast("خطأ في التعديل", "error"); }
+    finally { setEditUserLoading(false); }
+  };
+
+  const doDeleteUser = async (user: SAUser) => {
+    if (!userMgmtStore) return;
+    if (!confirm(`حذف "${user.name}" (${user.email})؟`)) return;
+    try {
+      await apiFetch(`/stores/${userMgmtStore.id}/users/${user.id}`, { method: "DELETE" }, getToken());
+      setUserMgmtList(l => l.filter(u => u.id !== user.id));
+      showToast(`تم حذف "${user.name}"`, "warning");
+    } catch { showToast("خطأ في الحذف", "error"); }
+  };
+
+  const doResetUserPass = async () => {
+    if (!userMgmtStore || !passUser || passValue.length < 6) return;
+    setPassLoading(true);
+    try {
+      await apiFetch(`/stores/${userMgmtStore.id}/users/${passUser.id}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword: passValue }) }, getToken());
+      setPassUser(null); setPassValue("");
+      showToast(`تم تغيير كلمة مرور "${passUser.name}" ✓`, "success");
+    } catch { showToast("خطأ في تغيير كلمة المرور", "error"); }
+    finally { setPassLoading(false); }
+  };
+
+  const STORE_ROLES = [
+    { value: "owner",     label: "مالك" },
+    { value: "manager",   label: "مدير" },
+    { value: "cashier",   label: "كاشير" },
+    { value: "inventory", label: "مخزون" },
+    { value: "accountant",label: "محاسب" },
+  ];
+
   const [renewStore, setRenewStore] = useState<StoreData | null>(null);
   const [renewMonths, setRenewMonths] = useState("1");
   const [deleteConfirm, setDeleteConfirm] = useState<StoreData | null>(null);
@@ -1001,7 +1086,7 @@ function SAStores() {
               <Btn v="secondary" s="sm" icon={<Edit2 size={12} />} onClick={() => { setEditStore({ ...detail }); setDetail(null); }}>تعديل البيانات</Btn>
               <Btn v="secondary" s="sm" icon={<CreditCard size={12} />} onClick={() => { setRenewStore(detail); setDetail(null); }}>تجديد الاشتراك</Btn>
               <Btn v="secondary" s="sm" icon={<Key size={12} />} onClick={() => openResetStorePass(detail)}>تغيير كلمة مرور المتجر</Btn>
-              <Btn v="secondary" s="sm" icon={<Users size={12} />} onClick={() => openResetEmpPass(detail)}>تغيير كلمة مرور موظف</Btn>
+              <Btn v="secondary" s="sm" icon={<Users size={12} />} onClick={() => { setDetail(null); openUserMgmt(detail); }}>إدارة المستخدمين</Btn>
               <Btn v="secondary" s="sm" icon={<Download size={12} />} onClick={() => doExport(detail)}>تصدير بيانات المتجر</Btn>
               <Btn v={detail.status === "active" ? "warning" : "success"} s="sm"
                 icon={detail.status === "active" ? <Lock size={12} /> : <Unlock size={12} />}
@@ -1111,6 +1196,117 @@ function SAStores() {
                   </Btn>
                 </div>
               </>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Store User Management Modal ── */}
+      {userMgmtStore && (
+        <Modal title={`إدارة مستخدمي: ${userMgmtStore.nameAr}`} sub={`${userMgmtList.length} مستخدم`} onClose={() => { setUserMgmtStore(null); setShowAddUser(false); setEditUser(null); setPassUser(null); }} size="lg">
+          <div className="space-y-4">
+
+            {/* Header actions */}
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">{userMgmtLoading ? "جاري التحميل..." : userMgmtError || `${userMgmtList.length} مستخدم في المتجر`}</p>
+              <Btn s="sm" icon={<Plus size={13} />} onClick={() => { setShowAddUser(true); setAddUserForm(emptyUserForm); setAddUserError(""); setEditUser(null); setPassUser(null); }}>إضافة مستخدم</Btn>
+            </div>
+
+            {/* Add User Form */}
+            {showAddUser && (
+              <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl space-y-3">
+                <p className="text-sm font-bold text-primary">مستخدم جديد</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <F label="الاسم الكامل" req><TInput value={addUserForm.name} onChange={v => setAddUserForm(f => ({ ...f, name: v }))} placeholder="أحمد محمد" /></F>
+                  <F label="البريد الإلكتروني / اسم المستخدم" req><TInput value={addUserForm.email} onChange={v => setAddUserForm(f => ({ ...f, email: v }))} placeholder="ahmed@store.com" /></F>
+                  <F label="كلمة المرور" req><TInput value={addUserForm.password} onChange={v => setAddUserForm(f => ({ ...f, password: v }))} type="password" placeholder="6 أحرف على الأقل" /></F>
+                  <F label="رقم الجوال"><TInput value={addUserForm.phone} onChange={v => setAddUserForm(f => ({ ...f, phone: v }))} placeholder="07XXXXXXXX" /></F>
+                  <div className="sm:col-span-2">
+                    <F label="الصلاحية">
+                      <SInput value={addUserForm.role} onChange={v => setAddUserForm(f => ({ ...f, role: v }))} options={STORE_ROLES} />
+                    </F>
+                  </div>
+                </div>
+                {addUserError && <p className="text-xs text-red-600 font-semibold bg-red-50 border border-red-200 rounded-xl px-3 py-2">{addUserError}</p>}
+                <div className="flex gap-2 justify-end">
+                  <Btn v="secondary" s="sm" onClick={() => setShowAddUser(false)}>إلغاء</Btn>
+                  <Btn s="sm" icon={addUserLoading ? <RefreshCw size={12} className="animate-spin" /> : <Check size={12} />} onClick={doAddUser}
+                    disabled={addUserLoading || !addUserForm.name || !addUserForm.email || addUserForm.password.length < 6}>
+                    {addUserLoading ? "جاري الإضافة..." : "إضافة"}
+                  </Btn>
+                </div>
+              </div>
+            )}
+
+            {/* Users List */}
+            {userMgmtLoading ? (
+              <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 bg-muted animate-pulse rounded-xl" />)}</div>
+            ) : userMgmtList.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">لا يوجد مستخدمون — أضف مستخدماً للبدء</div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {userMgmtList.map(user => (
+                  <div key={user.id} className="border border-border rounded-xl overflow-hidden">
+                    {/* User row */}
+                    <div className="flex items-center gap-3 p-3">
+                      <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-sm font-black">{user.name[0]}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold truncate">{user.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{user.email}{user.phone ? ` · ${user.phone}` : ""}</p>
+                      </div>
+                      <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full border ${
+                        user.role === "owner"     ? "bg-purple-50 text-purple-700 border-purple-200" :
+                        user.role === "manager"   ? "bg-blue-50 text-blue-700 border-blue-200" :
+                        user.role === "cashier"   ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                        user.role === "inventory" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                                    "bg-muted text-muted-foreground border-border"
+                      }`}>{STORE_ROLES.find(r => r.value === user.role)?.label || user.role}</span>
+                      <div className="flex gap-1 shrink-0">
+                        <button title="تعديل" onClick={() => { setEditUser(user); setEditUserForm({ name: user.name, email: user.email, role: user.role, phone: user.phone }); setPassUser(null); setShowAddUser(false); }}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-100 text-blue-600 transition-all"><Edit2 size={12} /></button>
+                        <button title="تغيير كلمة المرور" onClick={() => { setPassUser(user); setPassValue(""); setEditUser(null); setShowAddUser(false); }}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-amber-100 text-amber-600 transition-all"><Key size={12} /></button>
+                        <button title="حذف" onClick={() => doDeleteUser(user)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500 transition-all"><Trash2 size={12} /></button>
+                      </div>
+                    </div>
+
+                    {/* Inline Edit Form */}
+                    {editUser?.id === user.id && (
+                      <div className="border-t border-border p-3 bg-blue-50/50 dark:bg-blue-950/20 space-y-3">
+                        <p className="text-xs font-bold text-blue-700 dark:text-blue-300">تعديل البيانات</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <F label="الاسم"><TInput value={editUserForm.name} onChange={v => setEditUserForm(f => ({ ...f, name: v }))} /></F>
+                          <F label="البريد"><TInput value={editUserForm.email} onChange={v => setEditUserForm(f => ({ ...f, email: v }))} /></F>
+                          <F label="الجوال"><TInput value={editUserForm.phone} onChange={v => setEditUserForm(f => ({ ...f, phone: v }))} /></F>
+                          <F label="الصلاحية"><SInput value={editUserForm.role} onChange={v => setEditUserForm(f => ({ ...f, role: v }))} options={STORE_ROLES} /></F>
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <Btn v="secondary" s="sm" onClick={() => setEditUser(null)}>إلغاء</Btn>
+                          <Btn s="sm" icon={editUserLoading ? <RefreshCw size={12} className="animate-spin" /> : <Check size={12} />} onClick={doEditUser} disabled={editUserLoading}>
+                            {editUserLoading ? "جاري الحفظ..." : "حفظ"}
+                          </Btn>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Inline Password Reset */}
+                    {passUser?.id === user.id && (
+                      <div className="border-t border-border p-3 bg-amber-50/50 dark:bg-amber-950/20 space-y-2">
+                        <p className="text-xs font-bold text-amber-700 dark:text-amber-300">كلمة مرور جديدة</p>
+                        <div className="flex gap-2">
+                          <TInput value={passValue} onChange={setPassValue} type="password" placeholder="6 أحرف على الأقل" />
+                          <Btn s="sm" v="secondary" onClick={() => setPassUser(null)}>إلغاء</Btn>
+                          <Btn s="sm" icon={passLoading ? <RefreshCw size={12} className="animate-spin" /> : <Key size={12} />}
+                            onClick={doResetUserPass} disabled={passLoading || passValue.length < 6}>
+                            {passLoading ? "..." : "حفظ"}
+                          </Btn>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </Modal>
