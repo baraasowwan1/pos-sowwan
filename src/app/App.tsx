@@ -5,6 +5,8 @@ import {
   LoginScreen,
   StoreCtx, ToastHost,
   View,
+  applyBranding,
+  getCachedBranding,
 } from "./lib";
 import { initAutoSync } from "./syncEngine";
 import { SuperAdminLayout } from "./SAPanel";
@@ -117,6 +119,18 @@ export default function App() {
   const hideSplash = useCallback(() => {
     try { sessionStorage.setItem("sowwanjo_splashed", "1"); } catch {}
     setSplash(false);
+  }, []);
+
+  // ── Platform branding (public endpoint, no auth) ──────────────
+  useEffect(() => {
+    // Apply cached branding immediately for first paint
+    const cached = getCachedBranding();
+    if (cached) applyBranding(cached);
+    // Then fetch fresh branding from backend
+    fetch("/api/branding")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) applyBranding(data); })
+      .catch(() => {});
   }, []);
 
   // ── Service Worker registration ───────────────────────────────
