@@ -111,9 +111,14 @@ export async function apiDeleteStore(id: string) {
   return apiFetch(`/stores/${id}`, { method: "DELETE" }, getToken());
 }
 
-// إعادة تعيين كلمة مرور متجر
-export async function apiResetPass(id: string) {
-  return apiFetch(`/stores/${id}/reset-password`, { method: "POST" }, getToken()) as Promise<{newPassword:string}>;
+// إعادة تعيين كلمة مرور متجر (SA يكتب كلمة المرور يدوياً)
+export async function apiResetPass(storeId: string, newPassword: string) {
+  return apiFetch(`/stores/${storeId}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) }, getToken()) as Promise<{ ok: boolean }>;
+}
+
+// إعادة تعيين كلمة مرور موظف من قبل SA
+export async function apiResetEmployeePass(storeId: string, userId: string, newPassword: string) {
+  return apiFetch(`/stores/${storeId}/users/${userId}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) }, getToken()) as Promise<{ ok: boolean }>;
 }
 
 // ── Generic CRUD API helpers (scoped to logged-in store via JWT) ─────────────
@@ -1045,7 +1050,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
             </div>
           </div>
 
-          <p style={{ fontSize:10, color:"rgba(255,255,255,0.1)", marginTop:24 }}>© 2025 Sowwanjo · JOD · RTL · pos.sowwanjo.online</p>
+          <p style={{ fontSize:10, color:"rgba(255,255,255,0.1)", marginTop:24 }}>© 2026 Sowwanjo · JOD · RTL · pos.sowwanjo.online</p>
         </div>
 
         {/* ════════════════════════════════════
@@ -1153,7 +1158,6 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
                     </div>
                     <span style={{ fontSize:12, fontWeight:600, color:"#475569" }}>تذكرني</span>
                   </label>
-                  <span style={{ fontSize:12, fontWeight:700, color:"#34D399", cursor:"pointer" }}>نسيت كلمة المرور؟</span>
                 </div>
 
                 {/* Error */}
@@ -1198,7 +1202,7 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
           </div>
 
           <p style={{ textAlign:"center", fontSize:10, color:"rgba(255,255,255,0.1)", paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 16px)" }}>
-            © 2025 Sowwanjo · دينار أردني · RTL
+            © 2026 Sowwanjo · دينار أردني · RTL
           </p>
         </div>
 
