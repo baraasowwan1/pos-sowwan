@@ -23,6 +23,7 @@ import type { StoreData, Plan, StoreCategory } from "./lib";
 const SA_NAV = [
   { id: "dashboard",    label: "لوحة التحكم",    icon: <LayoutDashboard size={17} /> },
   { id: "stores",       label: "المتاجر",          icon: <Store size={17} /> },
+  { id: "master-catalog", label: "كتالوج رئيسي",  icon: <Boxes size={17} /> },
   { id: "plans",        label: "خطط الاشتراك",    icon: <CreditCard size={17} /> },
   { id: "reports",      label: "التقارير العامة",  icon: <BarChart2 size={17} /> },
   { id: "audit",        label: "سجلات التدقيق",   icon: <ClipboardList size={17} /> },
@@ -312,6 +313,7 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
         <main className="flex-1 overflow-y-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)" }}>
           {screen === "dashboard"    && <SADash onNav={navTo} />}
           {screen === "stores"       && <SAStores />}
+          {screen === "master-catalog" && <SAMasterCatalog />}
           {screen === "plans"        && <SAPlans />}
           {screen === "reports"      && <SAReports />}
           {screen === "audit"        && <SAAudit />}
@@ -2337,6 +2339,497 @@ function SASettings() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MASTER CATALOG SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
+
+type MasterProduct = {
+  _id: string; pid: string; sku: string; barcode: string;
+  product_name: string; product_name_ar: string; description: string;
+  category: string; purchase_price_default: number; selling_price_default: number;
+  purchase_unit: string; sales_unit: string; tax_rate: number;
+  reorder_point_default: number; storage_type: string; image_url: string;
+  active: boolean; row_order: number;
+};
+
+type PreviewResult = {
+  total: number; new: number; updated: number; errors: number;
+  errorList: { row: number; reason: string }[];
+  categories: string[];
+  preview: MasterProduct[];
+};
+
+function SAMasterCatalog() {
+  const API = (import.meta as Record<string, Record<string, string>>).env?.VITE_API_URL || "http://localhost:5000/api";
+  const tok = () => { try { return localStorage.getItem("sowwanjo_jwt") || ""; } catch { return ""; } };
+  const af  = (path: string, opts: RequestInit = {}) => fetch(`${API}${path}`, {
+    ...opts, headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok()}`, ...(opts.headers || {}) },
+  });
+
+  const [stats, setStats]             = useState<{ total: number; active: number; categories: number; lastUpdated: string | null } | null>(null);
+  const [products, setProducts]       = useState<MasterProduct[]>([]);
+  const [total, setTotal]             = useState(0);
+  const [page, setPage]               = useState(1);
+  const [search, setSearch]           = useState("");
+  const [catFilter, setCatFilter]     = useState("");
+  const [categories, setCategories]   = useState<string[]>([]);
+  const [loading, setLoading]         = useState(false);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  // Import flow
+  const [importPhase, setImportPhase] = useState<"idle" | "parsing" | "previewing" | "importing" | "done">("idle");
+  const [preview, setPreview]         = useState<PreviewResult | null>(null);
+  const [importResult, setImportResult] = useState<{ inserted: number; updated: number; errors: number } | null>(null);
+  const [importError, setImportError] = useState("");
+  const [parsedHeaders, setParsedHeaders] = useState<string[]>([]);
+  const [parsedRows, setParsedRows]   = useState<unknown[][]>([]);
+  const [opts, setOpts] = useState({ updateNames: false, updatePrices: false, updateCategories: false, updateDescriptions: false, skipExisting: false });
+
+  // Apply to stores
+  const [applying, setApplying]       = useState(false);
+  const [applyResult, setApplyResult] = useState<string>("");
+  const [stores, setStores]           = useState<{ id: string; nameAr: string }[]>([]);
+  const [selectedStore, setSelectedStore] = useState("");
+
+  const LIMIT = 50;
+
+  const loadStats = async () => {
+    setLoadingStats(true);
+    try {
+      const r = await af("/master-catalog/stats");
+      if (r.ok) setStats(await r.json());
+    } catch { /* ignore */ } finally { setLoadingStats(false); }
+  };
+
+  const loadProducts = async (p = page, s = search, cat = catFilter) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(p), limit: String(LIMIT) });
+      if (s) params.set("search", s);
+      if (cat) params.set("category", cat);
+      const r = await af(`/master-catalog?${params}`);
+      if (r.ok) {
+        const d = await r.json();
+        setProducts(d.products || []);
+        setTotal(d.total || 0);
+        setCategories(d.categories || []);
+      }
+    } catch { /* ignore */ } finally { setLoading(false); }
+  };
+
+  const loadStores = async () => {
+    try {
+      const r = await af("/stores");
+      if (r.ok) {
+        const d = await r.json();
+        setStores((d || []).filter((s: { category?: string }) => s.category === "supermarket").map((s: { _id?: string; id: string; nameAr: string }) => ({ id: s._id || s.id, nameAr: s.nameAr })));
+      }
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => { loadStats(); loadProducts(1); loadStores(); }, []);
+
+  // Parse Excel file in browser using xlsx
+  const handleFile = async (file: File) => {
+    if (!file) return;
+    setImportPhase("parsing");
+    setImportError("");
+    setPreview(null);
+    try {
+      const { read, utils } = await import("xlsx");
+      const buffer = await file.arrayBuffer();
+      const wb = read(buffer, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rawData = utils.sheet_to_json(ws, { header: 1, defval: "" }) as unknown[][];
+      if (rawData.length < 2) { setImportError("الملف فارغ أو لا يحتوي على بيانات كافية"); setImportPhase("idle"); return; }
+
+      const headers = (rawData[0] as string[]).map(h => String(h || "").trim());
+      const rows    = rawData.slice(1).filter(row => row.some(cell => cell !== "" && cell !== null && cell !== undefined));
+      setParsedHeaders(headers);
+      setParsedRows(rows);
+
+      // Send to backend for preview analysis
+      setImportPhase("previewing");
+      const r = await af("/master-catalog/preview", {
+        method: "POST",
+        body: JSON.stringify({ headers, rows: rows.slice(0, 5000) }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setImportError(d.error || "فشل تحليل الملف"); setImportPhase("idle"); return; }
+      setPreview(d);
+    } catch (e) {
+      setImportError("فشل قراءة الملف — تأكد أنه Excel (.xlsx/.xls) أو CSV");
+      setImportPhase("idle");
+    }
+  };
+
+  const doImport = async () => {
+    if (!parsedHeaders.length || !parsedRows.length) return;
+    setImportPhase("importing");
+    setImportError("");
+    try {
+      const r = await af("/master-catalog/import", {
+        method: "POST",
+        body: JSON.stringify({ headers: parsedHeaders, rows: parsedRows, options: opts }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setImportError(d.error || "فشل الاستيراد"); setImportPhase("previewing"); return; }
+      setImportResult({ inserted: d.inserted, updated: d.updated, errors: d.errors });
+      setImportPhase("done");
+      loadStats();
+      loadProducts(1, "", "");
+    } catch (e) {
+      setImportError("خطأ في الاتصال بالخادم");
+      setImportPhase("previewing");
+    }
+  };
+
+  const doApplyToStore = async () => {
+    if (!selectedStore) return;
+    setApplying(true); setApplyResult("");
+    try {
+      const r = await af("/master-catalog/apply-to-store", { method: "POST", body: JSON.stringify({ storeId: selectedStore }) });
+      const d = await r.json();
+      if (r.ok) setApplyResult(`✓ تمت إضافة ${d.added} منتج للمتجر`);
+      else setApplyResult(d.error || "فشل التطبيق");
+    } catch { setApplyResult("خطأ في الاتصال"); }
+    finally { setApplying(false); }
+  };
+
+  const doApplyToAll = async () => {
+    setApplying(true); setApplyResult("");
+    try {
+      const r = await af("/master-catalog/apply-to-all", { method: "POST" });
+      const d = await r.json();
+      if (r.ok) setApplyResult(`✓ تمت إضافة المنتجات لـ ${d.stores} متجر`);
+      else setApplyResult(d.error || "فشل التطبيق");
+    } catch { setApplyResult("خطأ في الاتصال"); }
+    finally { setApplying(false); }
+  };
+
+  const resetImport = () => { setImportPhase("idle"); setPreview(null); setImportResult(null); setImportError(""); setParsedHeaders([]); setParsedRows([]); };
+
+  return (
+    <div className="p-4 lg:p-6 space-y-6 max-w-7xl mx-auto">
+      <Hdr
+        title="كتالوج السوبرماركت الرئيسي"
+        sub="قاعدة المنتجات المركزية — كل متجر سوبرماركت جديد يرث هذا الكتالوج تلقائياً"
+      />
+
+      {/* ── Stats Row ── */}
+      {loadingStats ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[1,2,3,4].map(i => <div key={i} className="h-20 bg-muted animate-pulse rounded-2xl" />)}
+        </div>
+      ) : stats ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KPI label="إجمالي المنتجات" value={stats.total.toLocaleString()} icon={<Boxes size={16} />} color="#4F46E5" />
+          <KPI label="منتجات نشطة" value={stats.active.toLocaleString()} icon={<CheckCircle size={16} />} color="#10B981" />
+          <KPI label="التصنيفات" value={stats.categories.toLocaleString()} icon={<Tag size={16} />} color="#F59E0B" />
+          <KPI label="آخر تحديث" value={stats.lastUpdated ? new Date(stats.lastUpdated).toLocaleDateString("ar-JO") : "—"} icon={<RefreshCw size={16} />} color="#8B5CF6" />
+        </div>
+      ) : (
+        <div className="p-4 bg-muted/50 rounded-2xl text-center text-sm text-muted-foreground">
+          الكتالوج فارغ — قم بالاستيراد الأول من ملف Excel
+        </div>
+      )}
+
+      {/* ── Import Section ── */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Upload size={16} className="text-primary" />
+            <span className="font-bold text-sm">استيراد / تحديث الكتالوج</span>
+          </div>
+          {importPhase !== "idle" && (
+            <button onClick={resetImport} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+              <RefreshCw size={12} /> بدء من جديد
+            </button>
+          )}
+        </div>
+
+        <div className="p-5 space-y-5">
+          {/* Phase: idle — file drop zone */}
+          {importPhase === "idle" && (
+            <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-border rounded-2xl p-8 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <FileText size={24} className="text-primary" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold text-sm">ارفع ملف Excel أو CSV</p>
+                <p className="text-xs text-muted-foreground mt-1">يدعم: .xlsx, .xls, .csv — حتى 10,000 منتج</p>
+              </div>
+              <input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
+              <span className="text-xs px-4 py-2 rounded-xl bg-primary text-white font-semibold">اختر الملف</span>
+            </label>
+          )}
+
+          {/* Phase: parsing */}
+          {importPhase === "parsing" && (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <RefreshCw size={24} className="text-primary animate-spin" />
+              <p className="text-sm font-medium">جاري قراءة الملف وتحليله...</p>
+            </div>
+          )}
+
+          {/* Phase: previewing — show analysis + options */}
+          {importPhase === "previewing" && preview && (
+            <div className="space-y-4">
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-xl border border-border p-3 text-center">
+                  <p className="text-2xl font-bold text-foreground">{preview.total.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">إجمالي الصفوف</p>
+                </div>
+                <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-3 text-center">
+                  <p className="text-2xl font-bold text-emerald-600">{preview.new.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">منتجات جديدة</p>
+                </div>
+                <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-600">{preview.updated.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">موجودة مسبقاً</p>
+                </div>
+                <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 p-3 text-center">
+                  <p className="text-2xl font-bold text-red-600">{preview.errors}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">صفوف خاطئة</p>
+                </div>
+              </div>
+
+              {/* Error list */}
+              {preview.errorList.length > 0 && (
+                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl p-3 max-h-28 overflow-y-auto">
+                  <p className="text-xs font-bold text-red-700 dark:text-red-400 mb-2">تحذيرات ({preview.errorList.length})</p>
+                  {preview.errorList.slice(0, 10).map((e, i) => (
+                    <p key={i} className="text-xs text-red-600 dark:text-red-300">صف {e.row}: {e.reason}</p>
+                  ))}
+                </div>
+              )}
+
+              {/* Import options */}
+              <div className="bg-muted/50 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-bold text-foreground">خيارات الاستيراد للمنتجات الموجودة مسبقاً:</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { key: "updateNames",        label: "تحديث الأسماء" },
+                    { key: "updatePrices",       label: "تحديث الأسعار الافتراضية" },
+                    { key: "updateCategories",   label: "تحديث التصنيفات" },
+                    { key: "updateDescriptions", label: "تحديث الأوصاف" },
+                    { key: "skipExisting",       label: "تجاهل الموجودة (إضافة الجديدة فقط)" },
+                  ] as { key: keyof typeof opts; label: string }[]).map(o => (
+                    <label key={o.key} className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={opts[o.key]} onChange={e => setOpts(p => ({ ...p, [o.key]: e.target.checked }))}
+                        className="w-3.5 h-3.5 accent-primary" />
+                      <span className="text-xs">{o.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Preview table */}
+              <div>
+                <p className="text-xs font-bold text-muted-foreground mb-2">معاينة أول {preview.preview.length} منتج:</p>
+                <div className="overflow-x-auto rounded-xl border border-border">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/70">
+                      <tr>
+                        {["#", "الاسم العربي", "الاسم الإنجليزي", "الباركود", "الكود", "التصنيف", "سعر البيع"].map(h => (
+                          <th key={h} className="px-3 py-2 text-right font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preview.preview.map((p, i) => (
+                        <tr key={i} className="border-t border-border hover:bg-muted/30">
+                          <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
+                          <td className="px-3 py-2 font-medium max-w-[150px] truncate">{p.product_name_ar}</td>
+                          <td className="px-3 py-2 text-muted-foreground max-w-[120px] truncate">{p.product_name}</td>
+                          <td className="px-3 py-2 font-mono">{p.barcode}</td>
+                          <td className="px-3 py-2 font-mono">{p.sku}</td>
+                          <td className="px-3 py-2">{p.category}</td>
+                          <td className="px-3 py-2 font-semibold">{p.selling_price_default > 0 ? `${p.selling_price_default} JOD` : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {importError && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-xl">
+                  <AlertTriangle size={14} className="text-red-500 shrink-0" />
+                  <p className="text-xs text-red-700 dark:text-red-300">{importError}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <Btn v="secondary" full onClick={resetImport}>إلغاء</Btn>
+                <Btn full icon={<Upload size={13} />} onClick={doImport}>
+                  استيراد {preview.new.toLocaleString()} منتج جديد
+                </Btn>
+              </div>
+            </div>
+          )}
+
+          {/* Phase: importing */}
+          {importPhase === "importing" && (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <RefreshCw size={24} className="text-primary animate-spin" />
+              <p className="text-sm font-medium">جاري حفظ المنتجات في قاعدة البيانات...</p>
+              <p className="text-xs text-muted-foreground">قد يستغرق هذا دقيقة للكتالوجات الكبيرة</p>
+            </div>
+          )}
+
+          {/* Phase: done */}
+          {importPhase === "done" && importResult && (
+            <div className="space-y-4">
+              <div className="flex flex-col items-center gap-3 py-6">
+                <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                  <CheckCircle size={28} className="text-emerald-600" />
+                </div>
+                <p className="text-sm font-bold">اكتمل الاستيراد بنجاح!</p>
+                <div className="flex gap-4 text-center">
+                  <div><p className="text-xl font-bold text-emerald-600">{importResult.inserted.toLocaleString()}</p><p className="text-xs text-muted-foreground">أُضيف</p></div>
+                  <div><p className="text-xl font-bold text-blue-600">{importResult.updated.toLocaleString()}</p><p className="text-xs text-muted-foreground">حُدِّث</p></div>
+                  <div><p className="text-xl font-bold text-red-600">{importResult.errors}</p><p className="text-xs text-muted-foreground">خطأ</p></div>
+                </div>
+              </div>
+              <Btn full onClick={resetImport} v="secondary">استيراد ملف آخر</Btn>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Apply to Stores ── */}
+      {stats && stats.total > 0 && (
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <Store size={16} className="text-primary" />
+            <span className="font-bold text-sm">تطبيق الكتالوج على المتاجر</span>
+          </div>
+          <p className="text-xs text-muted-foreground">إضافة المنتجات الجديدة فقط — لا يتم الكتابة فوق المخزون أو الأسعار المخصصة</p>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            {/* Apply to specific store */}
+            <div className="rounded-xl border border-border p-4 space-y-3">
+              <p className="text-xs font-semibold">متجر محدد</p>
+              <select
+                value={selectedStore}
+                onChange={e => setSelectedStore(e.target.value)}
+                className="w-full h-9 px-3 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:border-primary"
+                dir="rtl"
+              >
+                <option value="">اختر متجر سوبرماركت...</option>
+                {stores.map(s => <option key={s.id} value={s.id}>{s.nameAr}</option>)}
+              </select>
+              <Btn full s="sm" disabled={!selectedStore || applying} onClick={doApplyToStore} icon={<Store size={13} />}>
+                تطبيق على المتجر
+              </Btn>
+            </div>
+
+            {/* Apply to all */}
+            <div className="rounded-xl border border-border p-4 space-y-3">
+              <p className="text-xs font-semibold">جميع متاجر السوبرماركت ({stores.length})</p>
+              <p className="text-xs text-muted-foreground">يضيف المنتجات الجديدة لكل متجر سوبرماركت مسجّل في النظام</p>
+              <Btn full s="sm" v="secondary" disabled={applying || stores.length === 0} onClick={doApplyToAll} icon={<Boxes size={13} />}>
+                تطبيق على الجميع
+              </Btn>
+            </div>
+          </div>
+
+          {applyResult && (
+            <div className={`flex items-center gap-2 p-3 rounded-xl border text-xs ${applyResult.startsWith("✓") ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 text-emerald-700 dark:text-emerald-300" : "bg-red-50 dark:bg-red-950/30 border-red-200 text-red-700 dark:text-red-300"}`}>
+              {applyResult.startsWith("✓") ? <CheckCircle size={14} className="shrink-0" /> : <AlertTriangle size={14} className="shrink-0" />}
+              {applyResult}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Product List ── */}
+      {stats && stats.total > 0 && (
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 px-5 py-4 border-b border-border">
+            <div className="flex items-center gap-2 flex-1">
+              <Hash size={15} className="text-muted-foreground" />
+              <span className="font-bold text-sm">المنتجات ({total.toLocaleString()})</span>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <input
+                value={search} onChange={e => { setSearch(e.target.value); setPage(1); loadProducts(1, e.target.value, catFilter); }}
+                placeholder="بحث بالاسم / باركود / كود..."
+                className="flex-1 sm:w-48 h-8 px-3 rounded-xl border border-border bg-background text-xs focus:outline-none focus:border-primary"
+                dir="rtl"
+              />
+              <select value={catFilter} onChange={e => { setCatFilter(e.target.value); setPage(1); loadProducts(1, search, e.target.value); }}
+                className="h-8 px-2 rounded-xl border border-border bg-background text-xs focus:outline-none" dir="rtl">
+                <option value="">كل التصنيفات</option>
+                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="p-8 flex justify-center"><RefreshCw size={20} className="animate-spin text-muted-foreground" /></div>
+          ) : products.length === 0 ? (
+            <Empty icon={<Boxes size={28} />} title="لا توجد منتجات" desc="قم بالاستيراد أولاً" />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50">
+                  <tr>
+                    {["#", "الاسم العربي", "الاسم الإنجليزي", "الباركود", "الكود", "التصنيف", "سعر الشراء", "سعر البيع", "الوحدة", "الحالة"].map(h => (
+                      <th key={h} className="px-3 py-2.5 text-right text-muted-foreground font-semibold whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map((p, i) => (
+                    <tr key={p._id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                      <td className="px-3 py-2.5 text-muted-foreground">{(page - 1) * LIMIT + i + 1}</td>
+                      <td className="px-3 py-2.5 font-medium max-w-[160px]">
+                        <p className="truncate">{p.product_name_ar}</p>
+                      </td>
+                      <td className="px-3 py-2.5 text-muted-foreground max-w-[120px]">
+                        <p className="truncate">{p.product_name}</p>
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-muted-foreground">{p.barcode || "—"}</td>
+                      <td className="px-3 py-2.5 font-mono text-muted-foreground">{p.sku || "—"}</td>
+                      <td className="px-3 py-2.5">
+                        <span className="px-1.5 py-0.5 rounded-lg bg-primary/10 text-primary text-[11px] font-medium">{p.category}</span>
+                      </td>
+                      <td className="px-3 py-2.5">{p.purchase_price_default > 0 ? `${p.purchase_price_default.toFixed(3)}` : "—"}</td>
+                      <td className="px-3 py-2.5 font-semibold">{p.selling_price_default > 0 ? `${p.selling_price_default.toFixed(3)}` : "—"}</td>
+                      <td className="px-3 py-2.5 text-muted-foreground">{p.sales_unit}</td>
+                      <td className="px-3 py-2.5">
+                        <span className={`px-1.5 py-0.5 rounded-lg text-[11px] font-medium ${p.active ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}>
+                          {p.active ? "نشط" : "معطّل"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Pagination */}
+              {total > LIMIT && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                  <p className="text-xs text-muted-foreground">{total.toLocaleString()} منتج — صفحة {page} من {Math.ceil(total / LIMIT)}</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => { const p = Math.max(1, page - 1); setPage(p); loadProducts(p); }}
+                      disabled={page === 1} className="px-3 py-1.5 rounded-lg border border-border text-xs disabled:opacity-40 hover:bg-muted">السابق</button>
+                    <button onClick={() => { const p = page + 1; setPage(p); loadProducts(p); }}
+                      disabled={page >= Math.ceil(total / LIMIT)} className="px-3 py-1.5 rounded-lg border border-border text-xs disabled:opacity-40 hover:bg-muted">التالي</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
