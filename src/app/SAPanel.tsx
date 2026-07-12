@@ -15,9 +15,9 @@ import {
   Building2, Boxes, Truck, LayoutDashboard, UserCheck, ClipboardList,
   Banknote, Landmark, Handshake, Globe, MapPin, Key, User,
   ArrowUpRight, ArrowDownRight, Clipboard, Copy, Power, Monitor,
-  Info, ChevronLeft, Grid3X3, List, Hash, Tag,
+  Info, ChevronLeft, Grid3X3, List, Hash, Tag, Palette, Image, Link, Moon, Sun,
 } from "lucide-react";
-import { apiFetch, getToken, useLS, norm, jod, dateAr, showToast, apiCreateStore, apiGetStores, apiUpdateStore, apiDeleteStore, apiResetPass, SBadge, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, PLANS, CAT, ST, weekData, monthData, hourData, STORES } from "./lib";
+import { apiFetch, getToken, useLS, norm, jod, dateAr, showToast, apiCreateStore, apiGetStores, apiUpdateStore, apiDeleteStore, apiResetPass, SBadge, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, PLANS, CAT, ST, weekData, monthData, hourData, STORES, useDarkMode } from "./lib";
 import type { StoreData, Plan, StoreCategory } from "./lib";
 
 const SA_NAV = [
@@ -40,6 +40,7 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
   const [col, setCol] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notif, setNotif] = useState(false);
+  const [dark, toggleDark] = useDarkMode();
 
   // ── Real notifications from backend ──────────────────────────────────────
   type SANotif = { id: string; text: string; sub: string; color: string; screen?: string };
@@ -230,6 +231,11 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
+              {/* Dark mode toggle */}
+              <button onClick={toggleDark} title={dark ? "الوضع المضيء" : "الوضع المظلم"}
+                className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-90">
+                {dark ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
               {/* Refresh page button */}
               <button onClick={() => window.location.reload()} title="تحديث الصفحة"
                 className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-90">
@@ -1930,6 +1936,21 @@ function SASettings() {
   const [loadingSett, setLoadingSett] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Branding fields
+  const [platformShortName, setPlatformShortName] = useState("Sowwanjo");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [iconUrl, setIconUrl] = useState("");
+  const [primaryColor, setPrimaryColor] = useState("#4F46E5");
+  const [secondaryColor, setSecondaryColor] = useState("#10B981");
+  const [accentColor, setAccentColor] = useState("#F59E0B");
+  const [sidebarStyle, setSidebarStyle] = useState("dark");
+  const [loginTitle, setLoginTitle] = useState("");
+  const [loginSubtitle, setLoginSubtitle] = useState("");
+  const [supportPhone, setSupportPhone] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [footerCopyright, setFooterCopyright] = useState("");
+  const [brandSaving, setBrandSaving] = useState(false);
+
   useEffect(() => {
     apiFetch("/super-admin/settings", {}, getToken())
       .then((d: unknown) => {
@@ -1942,6 +1963,19 @@ function SASettings() {
         if (typeof s.backupOn === "boolean") setBackupOn(s.backupOn);
         if (typeof s.syncOn === "boolean") setSyncOn(s.syncOn);
         if (typeof s.auditOn === "boolean") setAuditOn(s.auditOn);
+        // Branding
+        if (s.platformShortName) setPlatformShortName(String(s.platformShortName));
+        if (s.logoUrl) setLogoUrl(String(s.logoUrl));
+        if (s.iconUrl) setIconUrl(String(s.iconUrl));
+        if (s.primaryColor) setPrimaryColor(String(s.primaryColor));
+        if (s.secondaryColor) setSecondaryColor(String(s.secondaryColor));
+        if (s.accentColor) setAccentColor(String(s.accentColor));
+        if (s.sidebarStyle) setSidebarStyle(String(s.sidebarStyle));
+        if (s.loginTitle) setLoginTitle(String(s.loginTitle));
+        if (s.loginSubtitle) setLoginSubtitle(String(s.loginSubtitle));
+        if (s.supportPhone) setSupportPhone(String(s.supportPhone));
+        if (s.websiteUrl) setWebsiteUrl(String(s.websiteUrl));
+        if (s.footerCopyright) setFooterCopyright(String(s.footerCopyright));
       })
       .catch(() => {})
       .finally(() => setLoadingSett(false));
@@ -1955,6 +1989,27 @@ function SASettings() {
     } catch (e) {
       showToast((e as { error?: string }).error || "فشل الحفظ", "error");
     } finally { setSaving(false); }
+  };
+
+  const doSaveBranding = async () => {
+    setBrandSaving(true);
+    try {
+      await apiFetch("/super-admin/settings", {
+        method: "PUT",
+        body: JSON.stringify({
+          platformName, platformShortName, logoUrl, iconUrl,
+          primaryColor, secondaryColor, accentColor, sidebarStyle,
+          loginTitle, loginSubtitle, supportEmail, supportPhone,
+          websiteUrl, footerCopyright,
+        }),
+      }, getToken());
+      showToast("تم حفظ هوية المنصة بنجاح ✓", "success");
+      // Apply immediately to current session
+      if (primaryColor) document.documentElement.style.setProperty("--primary", primaryColor);
+      if (document.title && platformName) document.title = platformName;
+    } catch (e) {
+      showToast((e as { error?: string }).error || "فشل الحفظ", "error");
+    } finally { setBrandSaving(false); }
   };
 
   const doBackup = () => {
@@ -2004,6 +2059,136 @@ function SASettings() {
           <Btn v="ghost" full icon={<Download size={14} />} onClick={() => showToast("جاري تحضير ملف التصدير...", "info")}>
             تصدير قاعدة البيانات الكاملة
           </Btn>
+        </div>
+      </div>
+
+      {/* ── Platform Branding ─────────────────────────────────────────── */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-l from-indigo-50/60 to-transparent dark:from-indigo-950/30">
+          <p className="font-bold flex items-center gap-2 text-base">
+            <Palette size={16} className="text-primary" /> هوية المنصة والعلامة التجارية
+          </p>
+          <Btn v="primary" s="sm" icon={<Check size={14} />} onClick={doSaveBranding} disabled={brandSaving}>
+            {brandSaving ? "جاري الحفظ..." : "حفظ الهوية"}
+          </Btn>
+        </div>
+
+        <div className="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {/* Identity */}
+          <div className="space-y-4">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border pb-2">اسم المنصة</p>
+            <F label="الاسم الكامل للمنصة"><TInput value={platformName} onChange={setPlatformName} icon={<Globe size={13} />} /></F>
+            <F label="الاسم المختصر"><TInput value={platformShortName} onChange={setPlatformShortName} /></F>
+            <F label="عنوان شاشة الدخول"><TInput value={loginTitle} onChange={setLoginTitle} placeholder="مرحباً بك في Sowwanjo" /></F>
+            <F label="وصف شاشة الدخول"><TInput value={loginSubtitle} onChange={setLoginSubtitle} placeholder="نظام نقاط البيع الأكثر ذكاءً" /></F>
+          </div>
+
+          {/* Logo & Icon */}
+          <div className="space-y-4">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border pb-2">الشعار والأيقونة</p>
+            <F label="رابط الشعار (Logo URL)">
+              <div className="space-y-2">
+                <TInput value={logoUrl} onChange={setLogoUrl} icon={<Link size={13} />} placeholder="https://..." />
+                {logoUrl && (
+                  <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                    <img src={logoUrl} alt="logo" className="h-8 max-w-[120px] object-contain rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    <span className="text-xs text-muted-foreground">معاينة الشعار</span>
+                  </div>
+                )}
+              </div>
+            </F>
+            <F label="رابط الأيقونة (Favicon)">
+              <div className="space-y-2">
+                <TInput value={iconUrl} onChange={setIconUrl} icon={<Image size={13} />} placeholder="https://..." />
+                {iconUrl && (
+                  <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                    <img src={iconUrl} alt="icon" className="h-8 w-8 object-contain rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    <span className="text-xs text-muted-foreground">معاينة الأيقونة</span>
+                  </div>
+                )}
+              </div>
+            </F>
+            <F label="نمط الشريط الجانبي">
+              <SInput value={sidebarStyle} onChange={setSidebarStyle} options={[
+                { value: "dark", label: "داكن (Dark)" },
+                { value: "light", label: "فاتح (Light)" },
+                { value: "brand", label: "لون الماركة (Brand)" },
+              ]} />
+            </F>
+          </div>
+
+          {/* Colors */}
+          <div className="space-y-4">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border pb-2">الألوان</p>
+            {[
+              { label: "اللون الأساسي (Primary)", value: primaryColor, onChange: setPrimaryColor },
+              { label: "اللون الثانوي (Secondary)", value: secondaryColor, onChange: setSecondaryColor },
+              { label: "لون التمييز (Accent)", value: accentColor, onChange: setAccentColor },
+            ].map(({ label, value, onChange }) => (
+              <F key={label} label={label}>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <input
+                      type="color"
+                      value={value}
+                      onChange={e => onChange(e.target.value)}
+                      className="w-10 h-10 rounded-lg border border-border cursor-pointer p-0.5 bg-transparent"
+                    />
+                  </div>
+                  <TInput value={value} onChange={onChange} placeholder="#4F46E5" />
+                  <div className="w-8 h-8 rounded-lg border border-border flex-shrink-0" style={{ backgroundColor: value }} />
+                </div>
+              </F>
+            ))}
+          </div>
+
+          {/* Contact */}
+          <div className="space-y-4">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border pb-2">معلومات التواصل</p>
+            <F label="بريد الدعم الفني"><TInput value={supportEmail} onChange={setSupportEmail} icon={<Mail size={13} />} /></F>
+            <F label="رقم هاتف الدعم"><TInput value={supportPhone} onChange={setSupportPhone} icon={<Phone size={13} />} placeholder="+962..." /></F>
+            <F label="الموقع الإلكتروني"><TInput value={websiteUrl} onChange={setWebsiteUrl} icon={<Globe size={13} />} placeholder="https://..." /></F>
+            <F label="نص حقوق النشر (Footer)"><TInput value={footerCopyright} onChange={setFooterCopyright} placeholder={`© ${new Date().getFullYear()} Sowwanjo`} /></F>
+          </div>
+
+          {/* Live Preview */}
+          <div className="md:col-span-2 xl:col-span-2 space-y-4">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border pb-2">معاينة مباشرة</p>
+            <div className="rounded-xl border border-border overflow-hidden flex" style={{ height: 180 }}>
+              {/* Mini sidebar */}
+              <div className="w-14 flex flex-col items-center pt-4 gap-3 flex-shrink-0" style={{ backgroundColor: sidebarStyle === "light" ? "#F8FAFC" : sidebarStyle === "brand" ? primaryColor : "#111827" }}>
+                {iconUrl ? (
+                  <img src={iconUrl} alt="" className="w-7 h-7 rounded-md object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                ) : (
+                  <div className="w-7 h-7 rounded-md" style={{ backgroundColor: primaryColor }} />
+                )}
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="w-6 h-1.5 rounded" style={{ backgroundColor: i === 0 ? primaryColor : "rgba(255,255,255,0.15)" }} />
+                ))}
+              </div>
+              {/* Mini content */}
+              <div className="flex-1 bg-[#F8FAFC] dark:bg-[#0D1117] p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="" className="h-5 max-w-[80px] object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  ) : (
+                    <span className="text-xs font-bold" style={{ color: primaryColor }}>{platformShortName || "POS"}</span>
+                  )}
+                  <span className="text-[10px] text-muted-foreground mr-auto">{loginTitle || "مرحباً بك"}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 mt-2">
+                  {[primaryColor, secondaryColor, accentColor].map((c, i) => (
+                    <div key={i} className="rounded-lg p-2 text-white text-[9px] font-bold" style={{ backgroundColor: c }}>
+                      {["مبيعات", "مخزون", "تقارير"][i]}
+                    </div>
+                  ))}
+                </div>
+                <div className="text-[9px] text-muted-foreground text-center pt-1">
+                  {footerCopyright || `© ${new Date().getFullYear()} ${platformShortName || "Sowwanjo"}`}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
