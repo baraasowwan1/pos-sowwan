@@ -117,7 +117,7 @@ function SalesScreen({ store }: { store: StoreData }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="relative lg:col-span-1">
             <Search size={13} className="absolute top-1/2 -translate-y-1/2 right-3 text-muted-foreground" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث برقم الفاتورة..." className="w-full h-10 rounded-xl border border-border bg-input-background text-sm pr-8 pl-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+            <input name="search-invoices" aria-label="بحث برقم الفاتورة" value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث برقم الفاتورة..." className="w-full h-10 rounded-xl border border-border bg-input-background text-sm pr-8 pl-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
           </div>
           <TInput value={fromDate} onChange={setFromDate} type="date" placeholder="من تاريخ" />
           <TInput value={toDate} onChange={setToDate} type="date" placeholder="إلى تاريخ" />
@@ -1317,7 +1317,7 @@ function PurchScreen() {
 
               {showLineSearch && (
                 <div className="border border-border rounded-xl p-3 mb-3 space-y-2 bg-muted/20">
-                  <input autoFocus value={lineQ} onChange={e => setLineQ(e.target.value)} placeholder="ابحث بالاسم أو الباركود أو SKU..." className="w-full border border-border rounded-lg px-3 py-2 bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                  <input name="search-product-line" aria-label="بحث بالاسم أو الباركود" autoFocus value={lineQ} onChange={e => setLineQ(e.target.value)} placeholder="ابحث بالاسم أو الباركود أو SKU..." className="w-full border border-border rounded-lg px-3 py-2 bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
                   <div className="max-h-40 overflow-y-auto space-y-1">
                     {filteredProds.slice(0, 8).map(p => (
                       <button key={p.id} onClick={() => pickProduct(p)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted text-right">
