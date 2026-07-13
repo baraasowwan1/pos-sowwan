@@ -134,7 +134,7 @@ function FlowerOrdersScreen({ store }: { store: StoreData }) {
     if (!p) return;
     setForm(f => {
       const items = [...(f.items || [])];
-      items[i] = { ...items[i], name: p.name, price: p.price, productId: p.id };
+      items[i] = { ...items[i], name: p.nameAr, price: p.sellPrice, productId: p.id };
       return { ...f, items };
     });
   };
@@ -204,7 +204,7 @@ function FlowerOrdersScreen({ store }: { store: StoreData }) {
 
       {/* Order Form Modal */}
       {showForm && (
-        <Modal title={editOrder ? `تعديل ${editOrder.orderNo}` : "طلب زهور جديد"} onClose={() => setShowForm(false)} wide>
+        <Modal title={editOrder ? `تعديل ${editOrder.orderNo}` : "طلب زهور جديد"} onClose={() => setShowForm(false)} size="xl">
           <div className="space-y-4 text-sm">
             {/* Customer */}
             <div className="grid grid-cols-2 gap-3">
@@ -290,7 +290,7 @@ function FlowerOrdersScreen({ store }: { store: StoreData }) {
                   <div key={i} className="flex gap-2 items-center">
                     <select value={item.productId || ""} onChange={e => { if (e.target.value) pickProduct(i, e.target.value); }} className="border border-border rounded-lg px-2 py-1.5 bg-background text-xs w-32">
                       <option value="">من المنتجات...</option>
-                      {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      {products.map(p => <option key={p.id} value={p.id}>{p.nameAr}</option>)}
                     </select>
                     <input placeholder="اسم العنصر" value={item.name} onChange={e => setItem(i, "name", e.target.value)} className="flex-1 border border-border rounded-lg px-2 py-1.5 bg-background text-xs" />
                     <input type="number" placeholder="الكمية" value={item.qty} onChange={e => setItem(i, "qty", parseInt(e.target.value) || 1)} className="w-16 border border-border rounded-lg px-2 py-1.5 bg-background text-xs" />
@@ -351,7 +351,7 @@ function BouquetBuilderScreen({ store }: { store: StoreData }) {
   const add = (p: Product) => setBouquet(b => {
     const idx = b.findIndex(i => i.productId === p.id);
     if (idx >= 0) { const n = [...b]; n[idx] = { ...n[idx], qty: n[idx].qty + 1 }; return n; }
-    return [...b, { productId: p.id, name: p.name, qty: 1, price: p.price }];
+    return [...b, { productId: p.id, name: p.nameAr, qty: 1, price: p.sellPrice }];
   });
   const setQty = (pid: string, q: number) => setBouquet(b => q <= 0 ? b.filter(i => i.productId !== pid) : b.map(i => i.productId === pid ? { ...i, qty: q } : i));
   const total = bouquet.reduce((a, i) => a + i.qty * i.price, 0);
@@ -381,8 +381,8 @@ function BouquetBuilderScreen({ store }: { store: StoreData }) {
           <div className="grid grid-cols-2 gap-2">
             {flowers.map(p => (
               <button key={p.id} onClick={() => add(p)} className="border border-border rounded-xl p-3 text-right hover:bg-muted/50 active:scale-95 transition-transform">
-                <p className="font-semibold text-sm">{p.name}</p>
-                <p className="text-xs text-muted-foreground">{p.price.toLocaleString("ar-SA")} ر.س</p>
+                <p className="font-semibold text-sm">{p.nameAr}</p>
+                <p className="text-xs text-muted-foreground">{p.sellPrice.toLocaleString("ar-SA")} ر.س</p>
               </button>
             ))}
           </div>
