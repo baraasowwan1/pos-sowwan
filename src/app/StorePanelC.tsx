@@ -16,7 +16,7 @@ import {
   Banknote, Landmark, Handshake, Globe, MapPin, Key, User,
   ArrowUpRight, ArrowDownRight, Clipboard, Copy, Power, Monitor,
   Info, ChevronLeft, Grid3X3, List, Hash, Tag, Ruler, Calculator, FlipHorizontal,
-  Flower2, Gift, Bike,
+  Flower2, Gift, Bike, FileSpreadsheet,
 } from "lucide-react";
 import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules } from "./lib";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
@@ -38,12 +38,14 @@ const REPORT_ROLES = ["مالك", "مدير", "محاسب", "مسؤول مخزو
 
 function StoreReports() {
   const sid = useStoreId();
+  const [activeTab, setActiveTab] = useState<"sales"|"profit">("sales");
   const [period, setPeriod] = useState("month");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [exporting, setExporting] = useState(false);
   const { data: salesRaw, loading: sLoading } = useApi<unknown[]>("/sales", []);
   const { data: retsRaw } = useApi<unknown[]>("/returns", []);
+  const { data: prodsRaw } = useApi<unknown[]>("/products", []);
 
   // Permission check
   const userRole = decodeJwtRole();
@@ -91,6 +93,48 @@ function StoreReports() {
   const netSales      = totalSales - totalDiscount;
   const totalRets     = rets.filter(r => r.status === "معتمد").reduce((a, r) => a + (r.amount || 0), 0);
   const avgInvoice    = filtered.length ? totalSales / filtered.length : 0;
+
+  // ── Profit Report data ────────────────────────────────────────────────────
+  type ProdRow = { id: string; nameAr: string; costPrice: number; sellPrice: number };
+  const prods = normList<ProdRow>(prodsRaw);
+  const costMap: Record<string, number> = {};
+  prods.forEach(p => { costMap[p.nameAr] = p.costPrice || 0; });
+
+  // Per-day profit breakdown
+  type ProfitDay = { day: string; revenue: number; cost: number; profit: number; tax: number };
+  const profitDayMap: Record<string, ProfitDay> = {};
+  filtered.forEach(s => {
+    const key = new Date(s.createdAt).toLocaleDateString("ar-JO", { month: "2-digit", day: "2-digit" });
+    if (!profitDayMap[key]) profitDayMap[key] = { day: key, revenue: 0, cost: 0, profit: 0, tax: 0 };
+    profitDayMap[key].revenue += s.total || 0;
+    profitDayMap[key].tax     += s.tax || 0;
+    s.items?.forEach((it: { name: string; qty: number; price: number }) => {
+      const cost = costMap[it.name] || 0;
+      profitDayMap[key].cost += cost * it.qty;
+    });
+    profitDayMap[key].profit = profitDayMap[key].revenue - profitDayMap[key].cost - profitDayMap[key].tax;
+  });
+  const profitDays = Object.values(profitDayMap);
+  const totalCost   = profitDays.reduce((a, d) => a + d.cost,   0);
+  const totalProfit = profitDays.reduce((a, d) => a + d.profit, 0);
+  const profitMargin = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0;
+
+  const exportProfitExcel = () => {
+    const rows = [["اليوم","الإيراد (JOD)","التكلفة (JOD)","الضريبة (JOD)","الربح (JOD)","هامش الربح %"],
+      ...profitDays.map(d => [d.day, d.revenue.toFixed(3), d.cost.toFixed(3), d.tax.toFixed(3), d.profit.toFixed(3), d.revenue > 0 ? ((d.profit/d.revenue)*100).toFixed(1)+"%" : "0%"]),
+      ["الإجمالي", totalSales.toFixed(3), totalCost.toFixed(3), totalTax.toFixed(3), totalProfit.toFixed(3), profitMargin.toFixed(1)+"%"]];
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const b = new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8;"}); const a = document.createElement("a"); a.href=URL.createObjectURL(b); a.download=`تقرير-الأرباح-${periodLabel}.csv`; a.click();
+    showToast("تم تصدير تقرير الأرباح ✓", "success");
+  };
+
+  const printProfit = () => {
+    const w = window.open("","_blank","width=700,height=600");
+    if (!w) return;
+    const rows = profitDays.map(d => `<tr><td>${d.day}</td><td>${d.revenue.toFixed(3)}</td><td>${d.cost.toFixed(3)}</td><td>${d.tax.toFixed(3)}</td><td style="color:${d.profit>=0?"#059669":"#DC2626"};font-weight:900">${d.profit.toFixed(3)}</td></tr>`).join("");
+    w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><style>body{font-family:Cairo,Arial;padding:24px;font-size:12px}h2{text-align:center}p.sub{text-align:center;color:#666;margin-bottom:16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:7px;text-align:right}th{background:#f5f5f5}tfoot td{font-weight:900}</style></head><body><h2>تقرير الأرباح</h2><p class="sub">${periodLabel}</p><table><thead><tr><th>اليوم</th><th>الإيراد</th><th>التكلفة</th><th>الضريبة</th><th>الربح</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td>الإجمالي</td><td>${totalSales.toFixed(3)}</td><td>${totalCost.toFixed(3)}</td><td>${totalTax.toFixed(3)}</td><td>${totalProfit.toFixed(3)}</td></tr></tfoot></table><br><p>هامش الربح: ${profitMargin.toFixed(1)}%</p><br><button onclick="window.print()">طباعة</button></body></html>`);
+    w.document.close();
+  };
 
   const payGroups = filtered.reduce((acc: Record<string, number>, s) => {
     const m = s.payMethod || s.paymentMethod || "cash";
@@ -221,14 +265,30 @@ function StoreReports() {
       {/* Header */}
       <Hdr title="التقارير والإحصائيات" action={
         <div className="flex gap-2">
-          {canExport && (
-            <Btn s="sm" icon={exporting ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />} onClick={exportExcel} disabled={exporting}>
-              {exporting ? "جاري التصدير..." : "تصدير Excel"}
-            </Btn>
+          {activeTab === "profit" ? (
+            <>
+              {canExport && <Btn s="sm" icon={<FileSpreadsheet size={13}/>} onClick={exportProfitExcel}>Excel</Btn>}
+              <Btn v="secondary" s="sm" icon={<Printer size={13}/>} onClick={printProfit}>طباعة</Btn>
+            </>
+          ) : (
+            <>
+              {canExport && (
+                <Btn s="sm" icon={exporting ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />} onClick={exportExcel} disabled={exporting}>
+                  {exporting ? "جاري التصدير..." : "تصدير Excel"}
+                </Btn>
+              )}
+              <Btn v="secondary" s="sm" icon={<Printer size={13} />} onClick={printTax}>طباعة</Btn>
+            </>
           )}
-          <Btn v="secondary" s="sm" icon={<Printer size={13} />} onClick={printTax}>طباعة</Btn>
         </div>
       } />
+
+      {/* Tab bar */}
+      <div className="flex bg-muted rounded-2xl p-1 border border-border w-fit gap-0.5">
+        {([["sales","تقرير المبيعات"],["profit","تقرير الأرباح"]] as [string,string][]).map(([t,l]) => (
+          <button key={t} onClick={() => setActiveTab(t as "sales"|"profit")} className={`px-4 h-8 rounded-xl text-xs font-bold transition-all ${activeTab===t ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{l}</button>
+        ))}
+      </div>
 
       {/* Period filter */}
       <div className="flex flex-wrap gap-1.5 items-center">
@@ -252,6 +312,65 @@ function StoreReports() {
         )}
       </div>
 
+      {activeTab === "profit" ? (
+        /* ── Profit Report Tab ─────────────────────────────────────────── */
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <KPI icon={<TrendingUp size={18}/>} label="إجمالي الإيراد" value={`${totalSales.toFixed(3)} JOD`} color="#0C7BB3" />
+            <KPI icon={<Banknote size={18}/>} label="إجمالي التكلفة" value={`${totalCost.toFixed(3)} JOD`} color="#D97706" />
+            <KPI icon={<DollarSign size={18}/>} label="صافي الربح" value={`${totalProfit.toFixed(3)} JOD`} sub={totalProfit >= 0 ? "ربح" : "خسارة"} color={totalProfit >= 0 ? "#059669" : "#DC2626"} />
+            <KPI icon={<Percent size={18}/>} label="هامش الربح" value={`${profitMargin.toFixed(1)}%`} color="#7C3AED" />
+          </div>
+          <div className="bg-card rounded-2xl border border-border p-5">
+            <p className="font-bold mb-4">الأرباح اليومية</p>
+            {profitDays.length === 0 ? (
+              <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">لا توجد بيانات في هذه الفترة</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={profitDays}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
+                  <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(v: number) => [`${v.toFixed(3)} JOD`]} />
+                  <Bar dataKey="revenue" fill="#0C7BB3" name="الإيراد" radius={[3,3,0,0]} />
+                  <Bar dataKey="cost" fill="#D97706" name="التكلفة" radius={[3,3,0,0]} />
+                  <Bar dataKey="profit" fill="#059669" name="الربح" radius={[3,3,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            <div className="px-5 py-3 border-b border-border bg-muted/40"><p className="font-bold text-sm">تفصيل الأرباح اليومية</p></div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead><tr className="bg-muted/30">{["اليوم","الإيراد","التكلفة","الضريبة","الربح","الهامش"].map(h => <th key={h} className="px-4 py-2.5 text-right font-bold text-muted-foreground border-b border-border">{h}</th>)}</tr></thead>
+                <tbody className="divide-y divide-border/40">
+                  {profitDays.map(d => (
+                    <tr key={d.day} className="hover:bg-muted/20">
+                      <td className="px-4 py-2.5 font-medium">{d.day}</td>
+                      <td className="px-4 py-2.5">{d.revenue.toFixed(3)} JOD</td>
+                      <td className="px-4 py-2.5 text-amber-600">{d.cost.toFixed(3)} JOD</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{d.tax.toFixed(3)} JOD</td>
+                      <td className={`px-4 py-2.5 font-black ${d.profit >= 0 ? "text-emerald-600" : "text-red-500"}`}>{d.profit.toFixed(3)} JOD</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{d.revenue > 0 ? ((d.profit/d.revenue)*100).toFixed(1) : "0"}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot><tr className="bg-muted/40 font-black text-sm">
+                  <td className="px-4 py-3">الإجمالي</td>
+                  <td className="px-4 py-3">{totalSales.toFixed(3)}</td>
+                  <td className="px-4 py-3 text-amber-600">{totalCost.toFixed(3)}</td>
+                  <td className="px-4 py-3">{totalTax.toFixed(3)}</td>
+                  <td className={`px-4 py-3 ${totalProfit >= 0 ? "text-emerald-600" : "text-red-500"}`}>{totalProfit.toFixed(3)}</td>
+                  <td className="px-4 py-3">{profitMargin.toFixed(1)}%</td>
+                </tr></tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : (
+      /* ── Sales Report Tab ──────────────────────────────────────────── */
+      <>
       {/* KPIs */}
       {sLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{[0,1,2,3].map(i => <div key={i} className="bg-card rounded-2xl border border-border h-24 animate-pulse" />)}</div>
@@ -353,6 +472,8 @@ function StoreReports() {
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }
