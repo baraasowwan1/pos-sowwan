@@ -17,7 +17,8 @@ import {
   ArrowUpRight, ArrowDownRight, Clipboard, Copy, Power, Monitor,
   Info, ChevronLeft, Grid3X3, List, Hash, Tag, Palette, Image, Link, Moon, Sun,
 } from "lucide-react";
-import { apiFetch, getToken, useLS, norm, jod, dateAr, showToast, apiCreateStore, apiGetStores, apiUpdateStore, apiDeleteStore, apiResetPass, apiResetEmployeePass, SBadge, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, PLANS, CAT, ST, weekData, monthData, hourData, STORES, useDarkMode } from "./lib";
+import { apiFetch, getToken, useLS, norm, jod, dateAr, showToast, apiCreateStore, apiGetStores, apiUpdateStore, apiDeleteStore, apiResetPass, apiResetEmployeePass, SBadge, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, PLANS, CAT, ST, weekData, monthData, hourData, STORES, useDarkMode, DEFAULT_SIDEBAR } from "./lib";
+import type { SidebarFeatures } from "./lib";
 import type { StoreData, Plan, StoreCategory } from "./lib";
 
 const SA_NAV = [
@@ -664,7 +665,9 @@ function SAStores() {
   const [renewMonths, setRenewMonths] = useState("1");
   const [deleteConfirm, setDeleteConfirm] = useState<StoreData | null>(null);
   const [exportData,    setExportData]    = useState<StoreData | null>(null);  // ← كان ناقصاً
-  const [nf, setNf] = useState({ nameAr: "", nameEn: "", category: "supermarket" as StoreCategory, owner: "", email: "", phone: "", city: "", plan: "الاحترافي", taxNo: "" });
+  const [nf, setNf] = useState({ nameAr: "", nameEn: "", category: "supermarket" as StoreCategory, owner: "", email: "", phone: "", city: "", plan: "الاحترافي", taxNo: "", sidebarFeatures: { ...DEFAULT_SIDEBAR } });
+  const toggleSidebarFeature = (key: keyof typeof DEFAULT_SIDEBAR) =>
+    setNf(f => ({ ...f, sidebarFeatures: { ...f.sidebarFeatures, [key]: !f.sidebarFeatures[key] } }));
   // Dynamic plans fetched from API — overrides hardcoded PLANS constant
   const [apiPlans, setApiPlans] = useState<Plan[]>(PLANS);
   useEffect(() => {
@@ -737,7 +740,7 @@ function SAStores() {
       setStores(p => [newStore, ...p]);
       setShowNew(false);
       setCreds({ email: nf.email, pass: res.generatedPassword });
-      setNf({ nameAr: "", nameEn: "", category: "supermarket", owner: "", email: "", phone: "", city: "", plan: "الاحترافي", taxNo: "" });
+      setNf({ nameAr: "", nameEn: "", category: "supermarket", owner: "", email: "", phone: "", city: "", plan: "الاحترافي", taxNo: "", sidebarFeatures: { ...DEFAULT_SIDEBAR } });
       showToast(`تم إنشاء متجر "${nf.nameAr}" وحفظه في قاعدة البيانات ✅`);
     } catch {
       // Fallback: حفظ محلي إذا Backend غير متوفر
@@ -748,7 +751,7 @@ function SAStores() {
       setStores(p => [ns, ...p]);
       setShowNew(false);
       setCreds({ email: nf.email, pass: pw });
-      setNf({ nameAr: "", nameEn: "", category: "supermarket", owner: "", email: "", phone: "", city: "", plan: "الاحترافي", taxNo: "" });
+      setNf({ nameAr: "", nameEn: "", category: "supermarket", owner: "", email: "", phone: "", city: "", plan: "الاحترافي", taxNo: "", sidebarFeatures: { ...DEFAULT_SIDEBAR } });
       showToast("تم الحفظ محلياً (Backend غير متوفر حالياً)", "warning");
     } finally {
       setCreating(false);
@@ -762,6 +765,7 @@ function SAStores() {
         nameAr: editStore.nameAr, nameEn: editStore.nameEn, owner: editStore.owner,
         phone: editStore.phone, city: editStore.city, plan: editStore.plan,
         status: editStore.status, expiresAt: editStore.expiresAt, taxNo: editStore.taxNo,
+        sidebarFeatures: editStore.sidebarFeatures,
       });
     } catch { /* fallback */ }
     setStores(p => p.map(s => s.id === editStore.id ? editStore : s));
@@ -983,12 +987,41 @@ function SAStores() {
             <F label="خطة الاشتراك"><SInput value={nf.plan} onChange={v => setNf({ ...nf, plan: v })} options={apiPlans.map(p => ({ value: p.nameAr, label: `${p.nameAr} — ${p.price} JOD/شهر` }))} /></F>
             <F label="الرقم الضريبي (اختياري)"><TInput value={nf.taxNo} onChange={v => setNf({ ...nf, taxNo: v })} placeholder="JO-XXXXXXXX" icon={<Hash size={13} />} /></F>
           </div>
+          {/* ── Sidebar Feature Toggles ── */}
+          <div className="mt-4 border border-border rounded-xl overflow-hidden">
+            <div className="px-4 py-2.5 bg-muted/40 border-b border-border flex items-center gap-2">
+              <LayoutDashboard size={13} className="text-primary" />
+              <p className="font-bold text-sm">تحديد الأقسام المرئية في الشريط الجانبي</p>
+            </div>
+            <div className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {(Object.keys(DEFAULT_SIDEBAR) as (keyof typeof DEFAULT_SIDEBAR)[]).map(key => {
+                const LABELS: Record<keyof typeof DEFAULT_SIDEBAR, string> = {
+                  pos: "نقطة البيع", products: "المنتجات", inventory: "المخزون",
+                  sales: "المبيعات", customers: "العملاء", suppliers: "الموردون",
+                  purchases: "المشتريات", purchaseOrders: "طلبات الشراء",
+                  reports: "التقارير", expenses: "المصروفات", users: "المستخدمون",
+                  settings: "الإعدادات", branches: "الفروع", promotions: "العروض والخصومات",
+                  returns: "المرتجعات",
+                };
+                const on = nf.sidebarFeatures[key] ?? DEFAULT_SIDEBAR[key];
+                return (
+                  <button key={key} onClick={() => toggleSidebarFeature(key)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${on ? "bg-primary/10 border-primary/40 text-primary" : "bg-muted/30 border-border text-muted-foreground"}`}>
+                    <div className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center flex-shrink-0 ${on ? "bg-primary border-primary" : "border-border"}`}>
+                      {on && <Check size={9} className="text-white" />}
+                    </div>
+                    {LABELS[key]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <div className="mt-4 p-4 bg-primary/5 border border-primary/20 rounded-xl text-xs text-foreground space-y-1">
             <p className="font-bold">✅ سيتم تلقائياً عند الإنشاء:</p>
             <p>• توليد كلمة مرور عشوائية آمنة للمتجر</p>
             <p>• إنشاء حساب معزول بـ store_id خاص</p>
             <p>• فترة تجريبية مجانية 14 يوماً</p>
-            <p>• تفعيل الوحدات المناسبة لفئة المتجر</p>
+            <p>• تفعيل الأقسام المختارة أعلاه فقط</p>
           </div>
           <div className="flex gap-3 mt-5 justify-end">
             <Btn v="secondary" onClick={() => setShowNew(false)}>إلغاء</Btn>
@@ -1031,6 +1064,36 @@ function SAStores() {
             <F label="حالة المتجر"><SInput value={editStore.status} onChange={v => setEditStore({...editStore, status: v as StoreData["status"]})} options={[{ value: "active", label: "نشط" }, { value: "trial", label: "تجريبي" }, { value: "suspended", label: "موقوف" }, { value: "expired", label: "منتهي" }]} /></F>
             <F label="تاريخ انتهاء الاشتراك"><TInput value={editStore.expiresAt} onChange={v => setEditStore({...editStore, expiresAt: v})} type="date" /></F>
             <F label="الرقم الضريبي"><TInput value={editStore.taxNo || ""} onChange={v => setEditStore({...editStore, taxNo: v})} placeholder="JO-XXXXXXXX" icon={<Hash size={13}/>} /></F>
+          </div>
+          {/* ── Edit Store Sidebar Features ── */}
+          <div className="mt-4 border border-border rounded-xl overflow-hidden">
+            <div className="px-4 py-2.5 bg-muted/40 border-b border-border flex items-center gap-2">
+              <LayoutDashboard size={13} className="text-primary" />
+              <p className="font-bold text-sm">الأقسام المرئية في الشريط الجانبي</p>
+            </div>
+            <div className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {(Object.keys(DEFAULT_SIDEBAR) as (keyof typeof DEFAULT_SIDEBAR)[]).map(key => {
+                const LABELS: Record<keyof typeof DEFAULT_SIDEBAR, string> = {
+                  pos: "نقطة البيع", products: "المنتجات", inventory: "المخزون",
+                  sales: "المبيعات", customers: "العملاء", suppliers: "الموردون",
+                  purchases: "المشتريات", purchaseOrders: "طلبات الشراء",
+                  reports: "التقارير", expenses: "المصروفات", users: "المستخدمون",
+                  settings: "الإعدادات", branches: "الفروع", promotions: "العروض والخصومات",
+                  returns: "المرتجعات",
+                };
+                const on = (editStore.sidebarFeatures?.[key] ?? DEFAULT_SIDEBAR[key]);
+                return (
+                  <button key={key}
+                    onClick={() => setEditStore(es => es ? { ...es, sidebarFeatures: { ...DEFAULT_SIDEBAR, ...es.sidebarFeatures, [key]: !on } } : es)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${on ? "bg-primary/10 border-primary/40 text-primary" : "bg-muted/30 border-border text-muted-foreground"}`}>
+                    <div className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center flex-shrink-0 ${on ? "bg-primary border-primary" : "border-border"}`}>
+                      {on && <Check size={9} className="text-white" />}
+                    </div>
+                    {LABELS[key]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="flex gap-3 mt-5 justify-end">
             <Btn v="secondary" onClick={() => setEditStore(null)}>إلغاء</Btn>
