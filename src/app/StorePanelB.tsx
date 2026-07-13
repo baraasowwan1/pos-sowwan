@@ -446,7 +446,7 @@ function ProductsMgr() {
       <div className="flex gap-3 flex-wrap">
         <div className="flex-1 min-w-48"><TInput value={q} onChange={setQ} placeholder="بحث بالاسم، الباركود، SKU..." icon={<Search size={14} />} /></div>
         <div className="flex gap-1.5 overflow-x-auto">
-          {categories.map(c => <button key={c} onClick={() => setCatFilter(c)} className={`shrink-0 px-3 h-10 rounded-xl text-xs font-bold border transition-all ${catFilter === c ? "bg-primary text-white border-primary" : "border-border bg-card hover:border-primary hover:text-primary"}`}>{c}</button>)}
+          {(categories as string[]).map(c => <button key={c} onClick={() => setCatFilter(c)} className={`shrink-0 px-3 h-10 rounded-xl text-xs font-bold border transition-all ${catFilter === c ? "bg-primary text-white border-primary" : "border-border bg-card hover:border-primary hover:text-primary"}`}>{c}</button>)}
         </div>
       </div>
 
@@ -793,7 +793,7 @@ function InvScreen() {
   const saveJard = async () => {
     const counts = Object.entries(jardCounts)
       .filter(([, v]) => v !== "" && v !== undefined)
-      .map(([productId, actualQty]) => ({ productId, actualQty: parseInt(actualQty) || 0 }));
+      .map(([productId, actualQty]) => ({ productId, actualQty: parseInt(actualQty as string) || 0 }));
     try {
       await storeApi.post("/inventory/count", { counts });
       invalidateCache("/products"); await refreshInv();
@@ -1282,7 +1282,7 @@ function PurchScreen() {
 
       {/* New Order Modal */}
       {showAdd && (
-        <Modal title="طلب شراء جديد" onClose={() => setShowAdd(false)} wide>
+        <Modal title="طلب شراء جديد" onClose={() => setShowAdd(false)} size="xl">
           <div className="space-y-5 text-sm">
             {/* Header */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -1396,7 +1396,7 @@ function PurchScreen() {
 
       {/* View order modal */}
       {viewOrder && (
-        <Modal title={`طلب شراء — ${viewOrder.sup}`} sub={viewOrder.orderNo || ""} onClose={() => setViewOrder(null)} wide>
+        <Modal title={`طلب شراء — ${viewOrder.sup}`} sub={viewOrder.orderNo || ""} onClose={() => setViewOrder(null)} size="xl">
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
               {[["المورد", viewOrder.sup], ["الحالة", poStatusLabel(viewOrder.status)], ["تاريخ الطلب", viewOrder.createdAt ? new Date(viewOrder.createdAt).toLocaleDateString("ar-JO") : "—"], ...(viewOrder.notes ? [["ملاحظات", viewOrder.notes]] : [])].map(([l,v]) => (
@@ -1678,7 +1678,7 @@ function PurchaseOrdersScreen({ store }: { store: { id: string; nameAr: string }
         ))}
       </div>
       {loading ? <div className="flex justify-center py-12"><RefreshCw size={22} className="animate-spin text-muted-foreground"/></div>
-        : filtered.length === 0 ? <Empty icon={<ClipboardList size={28}/>} title="لا توجد طلبات شراء" sub="أنشئ أول طلب شراء الآن" />
+        : filtered.length === 0 ? <Empty icon={<ClipboardList size={28}/>} title="لا توجد طلبات شراء" desc="أنشئ أول طلب شراء الآن" />
         : (
         <div className="grid gap-3">
           {filtered.map(po => (
@@ -1692,7 +1692,7 @@ function PurchaseOrdersScreen({ store }: { store: { id: string; nameAr: string }
               </div>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{po.items?.length || 0} صنف • بواسطة: {po.requestedBy}</span>
-                <span>{dateAr(po.createdAt)}</span>
+                <span>{po.createdAt ? new Date(po.createdAt as string).toLocaleDateString("ar-JO") : ""}</span>
               </div>
             </div>
           ))}
@@ -1810,7 +1810,7 @@ function PromotionsScreen({ store }: { store: { id: string; nameAr: string } }) 
       <Hdr title="العروض والخصومات" sub={`${promos.filter(p => p.active).length} عرض نشط`}
         action={<Btn icon={<Plus size={13}/>} s="sm" onClick={() => setShowNew(true)}>عرض جديد</Btn>} />
       {loading ? <div className="flex justify-center py-12"><RefreshCw size={22} className="animate-spin text-muted-foreground"/></div>
-        : promos.length === 0 ? <Empty icon={<Percent size={28}/>} title="لا توجد عروض" sub="أنشئ أول عرض أو خصم الآن" />
+        : promos.length === 0 ? <Empty icon={<Percent size={28}/>} title="لا توجد عروض" desc="أنشئ أول عرض أو خصم الآن" />
         : (
         <div className="grid gap-3">
           {promos.map(p => {
@@ -1840,7 +1840,7 @@ function PromotionsScreen({ store }: { store: { id: string; nameAr: string } }) 
                   <span>{p.appliesTo === "all" ? "على جميع المنتجات" : "منتجات محددة"}</span>
                 </div>
                 <div className="flex gap-2">
-                  <Toggle checked={p.active} onChange={() => toggleActive(p)} />
+                  <Toggle on={p.active} onChange={() => toggleActive(p)} />
                   <span className="text-xs text-muted-foreground">{p.active ? "مفعّل" : "موقوف"}</span>
                   <button onClick={() => del(p)} className="mr-auto text-xs text-red-400 hover:text-red-600 flex items-center gap-1"><Trash2 size={12}/> حذف</button>
                 </div>
