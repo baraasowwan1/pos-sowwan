@@ -18,7 +18,7 @@ import {
   Info, ChevronLeft, Grid3X3, List, Hash, Tag, Ruler, Calculator, FlipHorizontal,
   Flower2, Gift, Bike, FileSpreadsheet,
 } from "lucide-react";
-import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules } from "./lib";
+import { storeApi, useApi, useApiCached, invalidateCache, getCacheAge, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules } from "./lib";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
 
 interface OFFProduct {
@@ -237,7 +237,7 @@ function ProductsMgr() {
   const storeCategory = (() => {
     try { return JSON.parse(localStorage.getItem(`sowwanjo_storeinfo_${sid}`) || "{}").category || "supermarket"; } catch { return "supermarket"; }
   })();
-  const { data: prodsRaw, loading: prodsLoading, refresh: refreshProds } = useApi<unknown[]>("/products", []);
+  const { data: prodsRaw, loading: prodsLoading, refresh: refreshProds } = useApiCached<unknown[]>("/products", []);
   const [prods, setProds] = useState<Product[]>([]);
   useEffect(() => { setProds(normList<Product>(prodsRaw)); }, [prodsRaw]);
   const [q, setQ] = useState("");
@@ -332,6 +332,7 @@ function ProductsMgr() {
       const result = res as { added: number; updated: number; skipped: number; errors: string[] };
       setImportResult(result);
       setImportPhase("done");
+      invalidateCache("/products");
       await refreshProds();
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "خطأ في الاستيراد");
@@ -377,6 +378,7 @@ function ProductsMgr() {
     };
     try {
       await storeApi.post("/products", payload);
+      invalidateCache("/products");
       await refreshProds();
       showToast(`تم إضافة "${f.nameAr}" وحفظه في قاعدة البيانات ✅`);
     } catch { showToast("خطأ في الحفظ", "error"); return; }
@@ -387,6 +389,7 @@ function ProductsMgr() {
     if (!editProd) return;
     try {
       await storeApi.put(`/products/${editProd.id}`, editProd);
+      invalidateCache("/products");
       await refreshProds();
       showToast(`تم تحديث "${editProd.nameAr}"`);
     } catch { showToast("خطأ في التحديث", "error"); }
@@ -404,7 +407,7 @@ function ProductsMgr() {
 
   return (
     <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
-      <Hdr title="إدارة المنتجات" sub={`${prods.length} منتج • ${categories.length - 1} فئة`}
+      <Hdr title="إدارة المنتجات" sub={`${prods.length} منتج • ${categories.length - 1} فئة${getCacheAge("/products") !== null ? ` • محدّث منذ ${getCacheAge("/products")}ث` : ""}`}
         action={<>
           <Btn v="secondary" s="sm" icon={<Upload size={13} />} onClick={() => { setShowImport(true); setImportPhase("idle"); setImportError(""); setImportResult(null); }}>استيراد Excel</Btn>
           <Btn v="secondary" s="sm" icon={<Download size={13} />} onClick={exportCSV}>تصدير CSV</Btn>
@@ -470,7 +473,7 @@ function ProductsMgr() {
                     <div className="flex gap-1 shrink-0">
                       <button title="طباعة ملصق" onClick={() => setLabelProd({ ...p })} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-purple-100 text-purple-500 active:scale-90"><Tag size={14} /></button>
                       <button onClick={() => setEditProd({ ...p })} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground active:scale-90"><Edit2 size={14} /></button>
-                      <button onClick={async () => { await storeApi.delete(`/products/${p.id}`); await refreshProds(); showToast(`تم حذف "${p.nameAr}"`, "warning"); }} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-red-100 text-red-500 active:scale-90"><Trash2 size={14} /></button>
+                      <button onClick={async () => { await storeApi.delete(`/products/${p.id}`); invalidateCache("/products"); await refreshProds(); showToast(`تم حذف "${p.nameAr}"`, "warning"); }} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-red-100 text-red-500 active:scale-90"><Trash2 size={14} /></button>
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs">
@@ -508,7 +511,7 @@ function ProductsMgr() {
                       <td className="p-3.5"><div className="flex gap-0.5">
                         <button title="طباعة ملصق باركود/QR" onClick={() => setLabelProd({ ...p })} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-purple-100 text-purple-500"><Tag size={11} /></button>
                         <button onClick={() => setEditProd({ ...p })} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground"><Edit2 size={11} /></button>
-                        <button onClick={async () => { await storeApi.delete(`/products/${p.id}`); await refreshProds(); showToast(`تم حذف "${p.nameAr}"`, "warning"); }} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500"><Trash2 size={11} /></button>
+                        <button onClick={async () => { await storeApi.delete(`/products/${p.id}`); invalidateCache("/products"); await refreshProds(); showToast(`تم حذف "${p.nameAr}"`, "warning"); }} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500"><Trash2 size={11} /></button>
                       </div></td>
                     </tr>
                   );
@@ -757,7 +760,7 @@ function ProductsMgr() {
 function InvScreen() {
   // نفس مخزن المنتجات — تغييرات الجرد تنعكس على POS مباشرة
   const sid = useStoreId();
-  const { data: invRaw, refresh: refreshInv } = useApi<unknown[]>("/products", []);
+  const { data: invRaw, refresh: refreshInv } = useApiCached<unknown[]>("/products", []);
   const [invProds, setInvProds] = useState<Product[]>([]);
   useEffect(() => { setInvProds(normList<Product>(invRaw)); }, [invRaw]);
   const [adjProd, setAdjProd] = useState<Product | null>(null);
@@ -774,7 +777,7 @@ function InvScreen() {
     const qty = parseInt(adjQty) || 0;
     try {
       await storeApi.patch(`/products/${adjProd.id}/stock`, { qty, type: adjType });
-      await refreshInv();
+      invalidateCache("/products"); await refreshInv();
       showToast(`تم تعديل مخزون "${adjProd.nameAr}" ✅`, "success");
     } catch { showToast("خطأ في تعديل المخزون", "error"); }
     setAdjProd(null);
@@ -793,7 +796,7 @@ function InvScreen() {
       .map(([productId, actualQty]) => ({ productId, actualQty: parseInt(actualQty) || 0 }));
     try {
       await storeApi.post("/inventory/count", { counts });
-      await refreshInv();
+      invalidateCache("/products"); await refreshInv();
       showToast("تم حفظ نتائج الجرد وتحديث المخزون في قاعدة البيانات ✓", "success");
     } catch { showToast("خطأ في حفظ الجرد", "error"); }
     setShowJard(false);
@@ -815,7 +818,7 @@ function InvScreen() {
 
   return (
     <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
-      <Hdr title="إدارة المخزون والجرد" action={
+      <Hdr title="إدارة المخزون والجرد" sub={getCacheAge("/products") !== null ? `${invProds.length} صنف • محدّث منذ ${getCacheAge("/products")}ث` : `${invProds.length} صنف`} action={
         <div className="flex gap-2">
           <Btn v="secondary" s="sm" icon={<Printer size={13} />} onClick={printJard}>طباعة ورقة الجرد</Btn>
           <Btn v="secondary" s="sm" icon={<RefreshCw size={13} />} onClick={startJard}>بدء الجرد</Btn>
