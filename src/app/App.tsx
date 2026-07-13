@@ -133,23 +133,8 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  // ── Service Worker registration ───────────────────────────────
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.ts").catch(() => {
-        // SW registration is non-critical; ignore failures
-      });
-      // Listen for background sync messages
-      navigator.serviceWorker.addEventListener("message", (event: MessageEvent) => {
-        if (event.data?.type === "BACKGROUND_SYNC") {
-          const sid = (() => {
-            try { const s = localStorage.getItem("sowwanjo_session"); if (!s) return ""; const { id } = JSON.parse(s); return id || ""; } catch { return ""; }
-          })();
-          if (sid) import("./syncEngine").then(({ runSync }) => runSync(sid, { silent: true }));
-        }
-      });
-    }
-  }, []);
+  // Service worker intentionally disabled — sw.ts cannot be served as JS from /public
+  // Offline support is handled entirely via IndexedDB (syncEngine + offlineDb)
 
   // ── PWA meta tags injection ──────────────────────────────────
   useEffect(() => {
@@ -159,8 +144,8 @@ export default function App() {
     let tc = document.querySelector("meta[name=theme-color]");
     if (!tc) { tc = document.createElement("meta"); tc.setAttribute("name","theme-color"); document.head.appendChild(tc); }
     tc.setAttribute("content", "#0F172A");
-    let am = document.querySelector("meta[name=apple-mobile-web-app-capable]");
-    if (!am) { am = document.createElement("meta"); am.setAttribute("name","apple-mobile-web-app-capable"); document.head.appendChild(am); }
+    let am = document.querySelector("meta[name=mobile-web-app-capable]");
+    if (!am) { am = document.createElement("meta"); am.setAttribute("name","mobile-web-app-capable"); document.head.appendChild(am); }
     am.setAttribute("content", "yes");
     let ams = document.querySelector("meta[name=apple-mobile-web-app-status-bar-style]");
     if (!ams) { ams = document.createElement("meta"); ams.setAttribute("name","apple-mobile-web-app-status-bar-style"); document.head.appendChild(ams); }
