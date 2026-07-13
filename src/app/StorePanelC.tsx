@@ -477,43 +477,47 @@ function StoreReports() {
     </div>
   );
 }
+type EmpRecord = {id:string;name:string;email:string;role:string;phone:string;sales:number;status:string;branch:string;shift:string;shiftStart:string;shiftEnd:string};
 function EmpScreen() {
   const sid = useStoreId();
   const { data: empsRaw, refresh: refreshEmps } = useApi<unknown[]>("/users", []);
-  const [emps, setEmps] = useState<{id:string;name:string;email:string;role:string;phone:string;sales:number;status:string;branch:string}[]>([]);
-  useEffect(() => { setEmps(normList<{id:string;name:string;email:string;role:string;phone:string;sales:number;status:string;branch:string}>(empsRaw)); }, [empsRaw]);
+  const [emps, setEmps] = useState<EmpRecord[]>([]);
+  useEffect(() => { setEmps(normList<EmpRecord>(empsRaw)); }, [empsRaw]);
   const [showNew, setShowNew] = useState(false);
-  const [editEmp, setEditEmp] = useState<{id:number;name:string;email:string;role:string;phone:string;sales:number;status:string;branch:string}|null>(null);
-  // Role / status mappings — form uses Arabic labels but DB stores English enum values
+  const [editEmp, setEditEmp] = useState<EmpRecord|null>(null);
   const ROLE_AR_TO_EN: Record<string,string> = { مدير:"manager", كاشير:"cashier", "مسؤول مخزون":"inventory", محاسب:"accountant", مالك:"owner" };
   const ROLE_EN_TO_AR: Record<string,string> = { owner:"مالك", manager:"مدير", cashier:"كاشير", inventory:"مسؤول مخزون", accountant:"محاسب" };
   const STATUS_AR_TO_EN: Record<string,string> = { نشط:"active", موقوف:"suspended", إجازة:"suspended" };
   const STATUS_EN_TO_AR: Record<string,string> = { active:"نشط", suspended:"موقوف" };
+  const SHIFT_EN_TO_AR: Record<string,string> = { morning:"صباحي", evening:"مسائي", night:"ليلي", flexible:"مرن" };
+  const SHIFT_ICON: Record<string,string> = { morning:"🌅", evening:"🌆", night:"🌙", flexible:"🔄" };
   const ROLE_OPTS = ["manager","cashier","inventory","accountant"].map(r => ({ value: r, label: ROLE_EN_TO_AR[r] || r }));
   const STATUS_OPTS = ["active","suspended"].map(s => ({ value: s, label: STATUS_EN_TO_AR[s] || s }));
+  const SHIFT_OPTS = ["morning","evening","night","flexible"].map(s => ({ value: s, label: `${SHIFT_ICON[s]} ${SHIFT_EN_TO_AR[s]}` }));
   const RC: Record<string, { c: string; b: string }> = { manager: { c: "#4F46E5", b: "#DBEAFE" }, cashier: { c: "#059669", b: "#D1FAE5" }, inventory: { c: "#D97706", b: "#FEF3C7" }, owner: { c: "#7C3AED", b: "#EDE9FE" }, accountant: { c: "#0891B2", b: "#CFFAFE" } };
 
-  const [nf, setNf] = useState({ name: '', role: 'cashier', phone: '', branch: 'الفرع الرئيسي', email: '', password: '', autoPass: true });
+  const emptyEmp = () => ({ name: '', role: 'cashier', phone: '', branch: 'الفرع الرئيسي', email: '', password: '', autoPass: true, shift: 'flexible', shiftStart: '', shiftEnd: '' });
+  const [nf, setNf] = useState(emptyEmp());
   const [createdCreds, setCreatedCreds] = useState<{name:string;email:string;password:string}|null>(null);
   const [editPass, setEditPass] = useState('');
   const addEmp = async () => {
     if (!nf.name || !nf.phone || !nf.email) return;
     try {
-      const body: Record<string,string> = { name: nf.name, phone: nf.phone, role: nf.role, email: nf.email };
+      const body: Record<string,string> = { name: nf.name, phone: nf.phone, role: nf.role, email: nf.email, shift: nf.shift, shiftStart: nf.shiftStart, shiftEnd: nf.shiftEnd };
       if (!nf.autoPass && nf.password) body["password"] = nf.password;
       const res = await storeApi.post("/users", body) as { generatedPassword?: string };
       await refreshEmps();
       const finalPass = (!nf.autoPass && nf.password) ? nf.password : (res.generatedPassword || "—");
       setCreatedCreds({ name: nf.name, email: nf.email, password: finalPass });
     } catch (e) { showToast((e as {error?:string}).error || "خطأ في إضافة الموظف", "error"); return; }
-    setShowNew(false); setNf({ name: '', role: 'cashier', phone: '', branch: 'الفرع الرئيسي', email: '', password: '', autoPass: true });
+    setShowNew(false); setNf(emptyEmp());
   };
   const delEmp = async (id: string) => { await storeApi.delete(`/users/${id}`); await refreshEmps(); showToast("تم حذف الموظف", "warning"); };
   const saveEdit = async () => {
     if (!editEmp) return;
     const enRole = ROLE_AR_TO_EN[editEmp.role] || editEmp.role;
     const enStatus = STATUS_AR_TO_EN[editEmp.status] || editEmp.status;
-    const body: Record<string,string> = { name: editEmp.name, phone: editEmp.phone || '', role: enRole, status: enStatus };
+    const body: Record<string,string> = { name: editEmp.name, phone: editEmp.phone || '', role: enRole, status: enStatus, shift: editEmp.shift || 'flexible', shiftStart: editEmp.shiftStart || '', shiftEnd: editEmp.shiftEnd || '' };
     if (editPass.trim()) body["password"] = editPass.trim();
     await storeApi.put(`/users/${editEmp.id}`, body);
     await refreshEmps(); showToast("تم حفظ تعديلات الموظف"); setEditEmp(null); setEditPass('');
@@ -539,7 +543,7 @@ function EmpScreen() {
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: rc.b, color: rc.c }}>{ROLE_EN_TO_AR[e.role] || e.role}</span>
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${e.status === "active" ? "text-emerald-700 bg-emerald-100" : "text-amber-700 bg-amber-100"}`}>{STATUS_EN_TO_AR[e.status] || e.status}</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{e.phone} • {e.branch}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{e.phone} • {e.branch} {e.shift && e.shift !== "flexible" ? `• ${SHIFT_ICON[e.shift] || ""} شفت ${SHIFT_EN_TO_AR[e.shift] || e.shift}${e.shiftStart ? ` (${e.shiftStart}–${e.shiftEnd})` : ""}` : ""}</p>
                 {e.email && <p className="text-xs text-blue-500 mt-0.5 font-mono">{e.email}</p>}
               </div>
               {e.sales > 0 && <div className="hidden sm:block text-right shrink-0"><p className="text-sm font-black">{e.sales.toFixed(3)} JOD</p><p className="text-xs text-muted-foreground">مبيعات الشهر</p></div>}
@@ -605,6 +609,13 @@ function EmpScreen() {
             <F label="البريد الإلكتروني (للدخول على النظام)" req><TInput value={nf.email} onChange={v=>setNf({...nf,email:v})} placeholder="employee@store.jo" /></F>
             <p className="text-xs text-muted-foreground -mt-2">💡 الموظف يقدر يدخل أيضاً برقم هاتفه المسجّل</p>
             <F label="الدور الوظيفي"><SInput value={nf.role} onChange={v=>setNf({...nf,role:v})} options={ROLE_OPTS} /></F>
+            <F label="شفت الدوام"><SInput value={nf.shift} onChange={v=>setNf({...nf,shift:v})} options={SHIFT_OPTS} /></F>
+            {nf.shift !== "flexible" && (
+              <div className="grid grid-cols-2 gap-3">
+                <F label="بداية الشفت"><TInput value={nf.shiftStart} onChange={v=>setNf({...nf,shiftStart:v})} placeholder="08:00" /></F>
+                <F label="نهاية الشفت"><TInput value={nf.shiftEnd} onChange={v=>setNf({...nf,shiftEnd:v})} placeholder="16:00" /></F>
+              </div>
+            )}
             <F label="الفرع"><SInput value={nf.branch} onChange={v=>setNf({...nf,branch:v})} options={["الفرع الرئيسي","فرع مرج الحمام","فرع الزرقاء"].map(b=>({value:b,label:b}))} /></F>
             <div>
               <label className="flex items-center gap-2 cursor-pointer mb-3 select-none">
@@ -637,6 +648,13 @@ function EmpScreen() {
             <F label="رقم الهاتف"><TInput value={editEmp.phone} onChange={v=>setEditEmp({...editEmp,phone:v})} /></F>
             <F label="الدور الوظيفي"><SInput value={editEmp.role} onChange={v=>setEditEmp({...editEmp,role:v})} options={ROLE_OPTS} /></F>
             <F label="الحالة"><SInput value={editEmp.status} onChange={v=>setEditEmp({...editEmp,status:v})} options={STATUS_OPTS} /></F>
+            <F label="شفت الدوام"><SInput value={editEmp.shift || "flexible"} onChange={v=>setEditEmp({...editEmp,shift:v})} options={SHIFT_OPTS} /></F>
+            {(editEmp.shift || "flexible") !== "flexible" && (
+              <div className="grid grid-cols-2 gap-3">
+                <F label="بداية الشفت"><TInput value={editEmp.shiftStart || ""} onChange={v=>setEditEmp({...editEmp,shiftStart:v})} placeholder="08:00" /></F>
+                <F label="نهاية الشفت"><TInput value={editEmp.shiftEnd || ""} onChange={v=>setEditEmp({...editEmp,shiftEnd:v})} placeholder="16:00" /></F>
+              </div>
+            )}
             <F label="كلمة مرور جديدة (اتركها فارغة إن لم تريد تغييرها)">
               <TInput value={editPass} onChange={setEditPass} placeholder="••••••••" />
             </F>
@@ -745,16 +763,16 @@ type Coupon = { id: string; code: string; desc: string; uses: number; exp: strin
 function LoyaltyScreen() {
   const { data: custsRaw } = useApi<unknown[]>("/customers", []);
   const { data: couponsRaw, refresh: refreshCoupons } = useApi<unknown[]>("/coupons", []);
-  const [custs, setCusts] = useState<{id:string;name:string;points?:number}[]>([]);
+  const [custs, setCusts] = useState<{id:string;name:string;loyaltyPoints?:number}[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [nf, setNf] = useState({ code: "", desc: "", exp: "", type: "نسبة", value: "", maxUses: "" });
 
-  useEffect(() => { setCusts(normList<{id:string;name:string;points?:number}>(custsRaw)); }, [custsRaw]);
+  useEffect(() => { setCusts(normList<{id:string;name:string;loyaltyPoints?:number}>(custsRaw)); }, [custsRaw]);
   useEffect(() => { setCoupons(normList<Coupon>(couponsRaw)); }, [couponsRaw]);
 
-  const totalPoints = custs.reduce((a, c) => a + (c.points || 0), 0);
+  const totalPoints = custs.reduce((a, c) => a + (c.loyaltyPoints || 0), 0);
   const activeCoupons = coupons.filter(c => c.active && (!c.exp || new Date(c.exp) >= new Date()));
 
   const TIERS = [
@@ -764,7 +782,7 @@ function LoyaltyScreen() {
     { l: "بلاتيني", min: 1000, max: 99999, icon: "💎" },
   ];
   const tierCounts = TIERS.map(t => ({
-    ...t, count: custs.filter(c => (c.points || 0) >= t.min && (c.points || 0) <= t.max).length,
+    ...t, count: custs.filter(c => (c.loyaltyPoints || 0) >= t.min && (c.loyaltyPoints || 0) <= t.max).length,
   }));
 
   const addCoupon = async () => {
@@ -1334,6 +1352,9 @@ function StoreSetts({ store }: { store: StoreData }) {
   const [printPhone,   setPrintPhone]   = useState(true);
   const [printBarcode, setPrintBarcode] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  // Loyalty settings
+  const [loyaltyPPJ, setLoyaltyPPJ] = useState(() => { try { return localStorage.getItem(sk(sid,"sett_loyalty_ppj")) || "1"; } catch { return "1"; } });
+  const [loyaltyPV,  setLoyaltyPV]  = useState(() => { try { return localStorage.getItem(sk(sid,"sett_loyalty_pv"))  || "0.010"; } catch { return "0.010"; } });
   // White-label branding state
   const [brandColor,   setBrandColor]   = useState(() => { try { const r = localStorage.getItem(`sowwanjo_storeinfo_${sid}`); return r ? (JSON.parse(r).primaryColor || "") : ""; } catch { return ""; } });
   const [brandAppName, setBrandAppName] = useState(() => { try { const r = localStorage.getItem(`sowwanjo_storeinfo_${sid}`); return r ? (JSON.parse(r).appName || "") : ""; } catch { return ""; } });
@@ -1397,6 +1418,8 @@ function StoreSetts({ store }: { store: StoreData }) {
       // تحديث localStorage للـ POS
       try { localStorage.setItem(sk(sid, "sett_tax"), String(parseFloat(tax) || 0)); } catch {}
       try { localStorage.setItem(sk(sid, "sett_paper"), paper); } catch {}
+      try { localStorage.setItem(sk(sid, "sett_loyalty_ppj"), loyaltyPPJ); } catch {}
+      try { localStorage.setItem(sk(sid, "sett_loyalty_pv"),  loyaltyPV); } catch {}
       // تحديث branding في localStorage
       try {
         const r = localStorage.getItem(`sowwanjo_storeinfo_${sid}`);
@@ -1457,6 +1480,16 @@ function StoreSetts({ store }: { store: StoreData }) {
           <F label="لغة الإيصال"><SInput value={rl} onChange={setRl} options={[{ value: "ar", label: "عربي فقط" }, { value: "en", label: "English Only" }, { value: "both", label: "عربي + إنجليزي" }]} /></F>
           <F label="العملة"><TInput value="دينار أردني (JOD)" readOnly /></F>
           <F label="نسبة ضريبة المبيعات (%)"><TInput value={tax} onChange={setTax} type="number" /></F>
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
+          <p className="font-bold flex items-center gap-2"><Star size={13} /> إعدادات نظام الولاء</p>
+          <F label="نقاط لكل دينار أردني مصروف">
+            <TInput value={loyaltyPPJ} onChange={setLoyaltyPPJ} type="number" placeholder="1" />
+          </F>
+          <F label="قيمة النقطة الواحدة (JOD)">
+            <TInput value={loyaltyPV} onChange={setLoyaltyPV} type="number" placeholder="0.010" />
+          </F>
+          <p className="text-xs text-muted-foreground">مثال: إذا كانت 1 نقطة لكل دينار، وقيمة النقطة 0.010 JOD — العميل يجمع 100 نقطة عند إنفاق 100 JOD (= 1 JOD خصم)</p>
         </div>
         <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
           <p className="font-bold flex items-center gap-2"><Printer size={13} /> إعدادات الطباعة</p>
@@ -1533,4 +1566,97 @@ function StoreSetts({ store }: { store: StoreData }) {
   );
 }
 
-export { StoreReports, EmpScreen, BranchScreen, LoyaltyScreen, PrintJobsScreen, PrintMatsScreen, PrintPricesScreen, StoreSetts };
+// ── DebtScreen — ذمم المتجر ───────────────────────────────────────────────────
+function DebtScreen() {
+  const { data: custsRaw, refresh } = useApi<unknown[]>("/customers", []);
+  type DebtCust = { id: string; name: string; phone: string; debt: number };
+  const [custs, setCusts] = useState<DebtCust[]>([]);
+  useEffect(() => {
+    setCusts(normList<DebtCust>(custsRaw).filter(c => (c.debt || 0) > 0));
+  }, [custsRaw]);
+
+  const [collecting, setCollecting] = useState<DebtCust | null>(null);
+  const [amount, setAmount] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const totalDebt = custs.reduce((a, c) => a + (c.debt || 0), 0);
+
+  const collect = async () => {
+    if (!collecting || !amount || parseFloat(amount) <= 0) return;
+    setSaving(true);
+    try {
+      await storeApi.patch(`/customers/${collecting.id}/collect-debt`, { amount: parseFloat(amount) });
+      showToast(`تم تسجيل تحصيل ${parseFloat(amount).toFixed(3)} JOD من ${collecting.name}`);
+      setCollecting(null);
+      setAmount("");
+      refresh();
+    } catch (e) {
+      showToast((e as {error?:string}).error || "فشل التحصيل", "error");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="p-3 sm:p-5 space-y-4 overflow-y-auto h-full">
+      <Hdr title="ذمم المتجر" sub="متابعة المبالغ المستحقة على العملاء" />
+      <div className="grid grid-cols-2 gap-3">
+        <KPI icon={<Landmark size={18} />} label="إجمالي الذمم" value={`${totalDebt.toFixed(3)} JOD`} color="#D97706" />
+        <KPI icon={<Users size={18} />} label="عملاء لديهم ذمم" value={String(custs.length)} color="#DC2626" />
+      </div>
+
+      {custs.length === 0 ? (
+        <div className="bg-card rounded-2xl border border-border">
+          <Empty icon={<Landmark size={28} />} title="لا توجد ذمم" desc="جميع العملاء سدّدوا مستحقاتهم" />
+        </div>
+      ) : (
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="divide-y divide-border/60">
+            {custs.map(c => (
+              <div key={c.id} className="flex items-center gap-4 p-4 hover:bg-muted/20">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
+                  <span className="font-black text-amber-700">{c.name[0]}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold">{c.name}</p>
+                  <p className="text-xs text-muted-foreground">{c.phone}</p>
+                </div>
+                <div className="text-left shrink-0">
+                  <p className="font-black text-lg text-amber-600">{(c.debt || 0).toFixed(3)} JOD</p>
+                  <p className="text-xs text-muted-foreground">مستحق</p>
+                </div>
+                <Btn s="sm" v="secondary" icon={<Check size={13} />} onClick={() => { setCollecting(c); setAmount(String((c.debt || 0).toFixed(3))); }}>
+                  تحصيل
+                </Btn>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {collecting && (
+        <Modal title={`تحصيل ذمة — ${collecting.name}`} onClose={() => { setCollecting(null); setAmount(""); }} size="sm">
+          <div className="space-y-4">
+            <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-center">
+              <p className="text-sm text-amber-700 mb-1">إجمالي المستحق</p>
+              <p className="text-3xl font-black text-amber-600">{(collecting.debt || 0).toFixed(3)} JOD</p>
+            </div>
+            <F label="المبلغ المُحصَّل (JOD)">
+              <TInput value={amount} onChange={setAmount} type="number" placeholder="0.000" icon={<Banknote size={13} />} />
+            </F>
+            <div className="flex gap-2">
+              {[0.5, 1, 5, 10].map(v => (
+                <button key={v} onClick={() => setAmount(String(v))} className="flex-1 h-9 rounded-xl text-xs font-bold border border-border bg-muted hover:bg-primary hover:text-white">{v} JOD</button>
+              ))}
+              <button onClick={() => setAmount(String((collecting.debt || 0).toFixed(3)))} className="flex-1 h-9 rounded-xl text-xs font-bold border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100">الكل</button>
+            </div>
+            <div className="flex gap-3">
+              <Btn v="secondary" onClick={() => { setCollecting(null); setAmount(""); }} cls="flex-1">إلغاء</Btn>
+              <Btn v="success" onClick={collect} disabled={saving || !amount || parseFloat(amount) <= 0} cls="flex-1" icon={<Check size={14} />}>تأكيد التحصيل</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+export { StoreReports, EmpScreen, BranchScreen, LoyaltyScreen, DebtScreen, PrintJobsScreen, PrintMatsScreen, PrintPricesScreen, StoreSetts };
