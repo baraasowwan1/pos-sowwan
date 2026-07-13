@@ -18,7 +18,7 @@ import {
   Info, ChevronLeft, Grid3X3, List, Hash, Tag, Ruler, Calculator, FlipHorizontal,
   Flower2, Gift, Bike, Moon, Sun,
 } from "lucide-react";
-import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules, useDarkMode } from "./lib";
+import { storeApi, useApi, useApiCached, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules, useDarkMode } from "./lib";
 import { SyncCenter, SyncStatusBadge } from "./SyncCenter";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
 import { SalesScreen, ProductsMgr, InvScreen, CustScreen, SuppScreen, PurchScreen, ExpScreen, ReturnScreen, PurchaseOrdersScreen, PromotionsScreen } from "./StorePanelB";
@@ -620,7 +620,7 @@ function POSTerm({ store }: { store: StoreData }) {
   const [closingBal, setClosingBal] = useState("");
 
   // منتجات POS — من Backend مع fallback إلى IndexedDB عند انقطاع الاتصال
-  const { data: prodsApiRaw, refresh: refreshPosProds } = useApi<unknown[]>("/products", []);
+  const { data: prodsApiRaw, refresh: refreshPosProds } = useApiCached<unknown[]>("/products", []);
   const [allProds, setAllProds] = useState<Product[]>([]);
   useEffect(() => {
     const prods = normList<Product>(prodsApiRaw);
