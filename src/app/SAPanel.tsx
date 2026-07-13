@@ -1806,7 +1806,7 @@ function SAAudit() {
       {loading ? (
         <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-12 bg-card rounded-xl border border-border animate-pulse" />)}</div>
       ) : logs.length === 0 ? (
-        <Empty icon={<ClipboardList size={36} />} title="لا توجد سجلات" sub="ستظهر هنا سجلات النشاط والتدقيق تلقائياً" />
+        <Empty icon={<ClipboardList size={36} />} title="لا توجد سجلات" desc="ستظهر هنا سجلات النشاط والتدقيق تلقائياً" />
       ) : (
         <>
           {/* Mobile cards */}
@@ -2898,7 +2898,7 @@ function SAMasterCatalog() {
                     { key: "updateDescriptions", label: "تحديث الأوصاف" },
                     { key: "skipExisting",       label: "تجاهل الموجودة (إضافة الجديدة فقط)" },
                   ] as { key: keyof typeof opts; label: string }[]).map(o => (
-                    <label key={o.key} className="flex items-center gap-2 cursor-pointer">
+                    <label key={String(o.key)} className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={opts[o.key]} onChange={e => setOpts(p => ({ ...p, [o.key]: e.target.checked }))}
                         className="w-3.5 h-3.5 accent-primary" />
                       <span className="text-xs">{o.label}</span>
