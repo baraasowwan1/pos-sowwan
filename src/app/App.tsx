@@ -28,10 +28,11 @@ function applyStoreBranding(branding: StoreBranding) {
   if (tc) tc.content = color;
   document.documentElement.style.setProperty("--brand-color", color);
   if (branding.app_name || branding.icon_url || branding.primary_color) {
+    const origin = window.location.origin;
     const manifest = {
       name: branding.app_name || "Sowwanjo POS",
       short_name: branding.app_name?.split(" ")[0] || "متجري",
-      start_url: "/",
+      start_url: origin + "/",
       display: "standalone",
       background_color: color,
       theme_color: color,
@@ -40,8 +41,8 @@ function applyStoreBranding(branding: StoreBranding) {
       icons: branding.icon_url
         ? [{ src: branding.icon_url, sizes: "any", type: "image/png", purpose: "any maskable" }]
         : [
-            { src: "/icons/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
-            { src: "/icons/icon-maskable.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
+            { src: origin + "/icons/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
+            { src: origin + "/icons/icon-maskable.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
           ],
     };
     const blob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
