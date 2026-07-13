@@ -620,19 +620,31 @@ export function Modal({ title, sub, onClose, children, size = "md" }: {
   );
 }
 
+const FORM_FIELD_TYPES = new Set(["input", "select", "textarea"]);
+function isFormField(el: React.ReactElement): boolean {
+  if (typeof el.type === "string") return FORM_FIELD_TYPES.has(el.type);
+  // TInput / SInput components — they accept and forward id
+  const name = (el.type as { displayName?: string; name?: string }).displayName
+    || (el.type as { name?: string }).name || "";
+  return name === "TInput" || name === "SInput";
+}
+
 export function F({ label, req, children, id }: { label: string; req?: boolean; children: React.ReactNode; id?: string }) {
   const autoId = React.useId();
   const fieldId = id || autoId;
-  // Inject id into a single direct child element (TInput, SInput, input, select, textarea)
-  const injected = React.Children.count(children) === 1
-    ? (() => {
-        const child = React.Children.toArray(children)[0] as React.ReactElement<{ id?: string }>;
-        return React.isValidElement(child) ? React.cloneElement(child, { id: child.props.id || fieldId }) : child;
-      })()
-    : children;
+  // Inject id into single direct form-field children only
+  let injected = children;
+  let labelFor: string | undefined;
+  if (React.Children.count(children) === 1) {
+    const child = React.Children.toArray(children)[0] as React.ReactElement<{ id?: string }>;
+    if (React.isValidElement(child) && isFormField(child)) {
+      injected = React.cloneElement(child, { id: child.props.id || fieldId });
+      labelFor = fieldId;
+    }
+  }
   return (
     <div className="space-y-1">
-      <label htmlFor={fieldId} className="text-xs font-medium text-foreground">{label}{req && <span className="text-destructive mr-0.5">*</span>}</label>
+      <label htmlFor={labelFor} className="text-xs font-medium text-foreground">{label}{req && <span className="text-destructive mr-0.5">*</span>}</label>
       {injected}
     </div>
   );
