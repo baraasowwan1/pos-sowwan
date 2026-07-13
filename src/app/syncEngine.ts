@@ -127,6 +127,22 @@ async function processItem(item: SyncQueueItem): Promise<void> {
           signal: AbortSignal.timeout(15000),
         });
         if (!res.ok) {
+          // 409 = duplicate operationId → already synced, treat as success
+          if (res.status === 409) {
+            const body = await res.json().catch(() => ({}));
+            serverRecordId = body.sale?._id || body.sale?.id || body._id;
+            await db.syncQueue.update(item.id, {
+              syncStatus: "synced",
+              serverRecordId,
+              lastAttemptAt: new Date().toISOString(),
+            });
+            await db.sales.update(sale.localId, {
+              syncStatus: "synced",
+              serverId: serverRecordId,
+              syncedAt: new Date().toISOString(),
+            }).catch(() => {});
+            return;
+          }
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || `HTTP ${res.status}`);
         }
