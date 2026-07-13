@@ -83,7 +83,15 @@ export function getCachedBranding(): PlatformBranding | null {
 
 // دخول المتجر من Backend
 export async function apiLoginStore(email: string, password: string) {
-  return apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }) as Promise<{token:string;store:{id:string;nameAr:string;category:string;plan:string;status:string}}>;
+  return apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }) as Promise<{
+    token: string;
+    store: {
+      id: string; _id?: string; nameAr: string; nameEn?: string; category: string;
+      plan: string; status: string; owner?: string; email?: string; phone?: string;
+      city?: string; expiresAt?: string | Date; taxNo?: string;
+    };
+    user?: { role?: string; name?: string; id?: string };
+  }>;
 }
 
 // دخول المدير العام من Backend
@@ -650,13 +658,13 @@ export function F({ label, req, children, id }: { label: string; req?: boolean; 
   );
 }
 
-export function TInput({ value, onChange, placeholder, type = "text", icon, readOnly, id, name }: {
-  value: string; onChange?: (v: string) => void; placeholder?: string; type?: string; icon?: React.ReactNode; readOnly?: boolean; id?: string; name?: string;
+export function TInput({ value, onChange, placeholder, type = "text", icon, readOnly, id, name, autoFocus }: {
+  value: string; onChange?: (v: string) => void; placeholder?: string; type?: string; icon?: React.ReactNode; readOnly?: boolean; id?: string; name?: string; autoFocus?: boolean;
 }) {
   return (
     <div className="relative">
       {icon && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">{icon}</span>}
-      <input id={id} name={name || id} type={type} value={value} readOnly={readOnly} onChange={e => onChange?.(e.target.value)} placeholder={placeholder}
+      <input id={id} name={name || id} type={type} value={value} readOnly={readOnly} autoFocus={autoFocus} onChange={e => onChange?.(e.target.value)} placeholder={placeholder}
         className={`w-full h-10 rounded-lg border border-border bg-input-background text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${icon ? "pr-9 pl-3" : "px-3"} ${readOnly ? "opacity-50 cursor-not-allowed" : ""}`} />
     </div>
   );
