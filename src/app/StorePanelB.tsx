@@ -339,7 +339,7 @@ function ProductsMgr() {
     }
   };
 
-  const emptyF = { nameAr: "", nameEn: "", barcode: "", sku: "", category: "", costPrice: "", sellPrice: "", stock: "", minStock: "", unit: "قطعة", image: "" };
+  const emptyF = { nameAr: "", nameEn: "", barcode: "", sku: "", category: "", costPrice: "", sellPrice: "", stock: "", minStock: "", unit: "قطعة", image: "", taxRate: "0" };
   const [f, setF] = useState(emptyF);
 
   const categories = ["الكل", ...Array.from(new Set(prods.map(p => p.category)))];
@@ -372,6 +372,7 @@ function ProductsMgr() {
       sellPrice: parseFloat(f.sellPrice) || 0,
       stock: parseInt(f.stock) || 0,
       minStock: parseInt(f.minStock) || 5,
+      taxRate: parseInt(f.taxRate) || 0,
       image: f.image || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=100&h=100&fit=crop",
     };
     try {
@@ -647,6 +648,7 @@ function ProductsMgr() {
             <F label="سعر البيع (JOD)" req><TInput value={f.sellPrice} onChange={v => setF({ ...f, sellPrice: v })} type="number" placeholder="4.750" /></F>
             <F label="الكمية في المخزون" req><TInput value={f.stock} onChange={v => setF({ ...f, stock: v })} type="number" placeholder="100" /></F>
             <F label="الحد الأدنى للتنبيه"><TInput value={f.minStock} onChange={v => setF({ ...f, minStock: v })} type="number" placeholder="20" /></F>
+            <F label="نسبة الضريبة %"><SInput value={f.taxRate} onChange={v => setF({...f, taxRate: v})} options={[{value:"0",label:"0% — معفى"},{value:"2",label:"2%"},{value:"4",label:"4%"},{value:"8",label:"8%"},{value:"16",label:"16% — ضريبة القيمة المضافة"}]} /></F>
             <div className="sm:col-span-2">
               <F label="رابط صورة المنتج (URL)"><TInput value={f.image} onChange={v => setF({ ...f, image: v })} placeholder="https://..." /></F>
             </div>
@@ -688,6 +690,7 @@ function ProductsMgr() {
             <F label="سعر البيع (JOD)"><TInput value={String(editProd.sellPrice)} onChange={v => setEditProd({...editProd, sellPrice: parseFloat(v)||0})} type="number" /></F>
             <F label="المخزون الحالي"><TInput value={String(editProd.stock)} onChange={v => setEditProd({...editProd, stock: parseInt(v)||0})} type="number" /></F>
             <F label="الحد الأدنى للتنبيه"><TInput value={String(editProd.minStock)} onChange={v => setEditProd({...editProd, minStock: parseInt(v)||0})} type="number" /></F>
+            <F label="نسبة الضريبة %"><SInput value={String(editProd.taxRate ?? 0)} onChange={v => setEditProd({...editProd, taxRate: parseInt(v)||0})} options={[{value:"0",label:"0% — معفى"},{value:"2",label:"2%"},{value:"4",label:"4%"},{value:"8",label:"8%"},{value:"16",label:"16%"}]} /></F>
           </div>
           <div className="flex gap-3 mt-5 justify-end">
             <Btn v="secondary" onClick={() => setEditProd(null)}>إلغاء</Btn>
@@ -1197,7 +1200,17 @@ function PurchScreen() {
 
   return (
     <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
-      <Hdr title="طلبات الشراء" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => { setHdr(blankForm()); setLines([]); setShowAdd(true); }}>طلب شراء جديد</Btn>} />
+      <Hdr title="طلبات الشراء" action={
+        <div className="flex gap-2">
+          <Btn v="secondary" s="sm" icon={<FileSpreadsheet size={13}/>} onClick={() => {
+            const rows = [["رقم الطلب","المورد","التاريخ","الأصناف","الإجمالي (JOD)","الحالة"],
+              ...orders.map(o => [o.orderNo||o.id.slice(-6).toUpperCase(), o.sup, o.createdAt ? new Date(o.createdAt).toLocaleDateString("ar-JO") : "—", o.lines?.length||o.items, (o.total||0).toFixed(3), poStatusLabel(o.status)])];
+            const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+            const b = new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8;"}); const a = document.createElement("a"); a.href=URL.createObjectURL(b); a.download="المشتريات.csv"; a.click();
+          }}>Excel</Btn>
+          <Btn s="sm" icon={<Plus size={13} />} onClick={() => { setHdr(blankForm()); setLines([]); setShowAdd(true); }}>طلب شراء جديد</Btn>
+        </div>
+      } />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KPI icon={<ClipboardList size={18} />} label="طلبات الشهر" value={String(thisMonth.length)} color="#4F46E5" />
         <KPI icon={<DollarSign size={18} />} label="إجمالي المشتريات" value={`${totalAll.toFixed(3)} JOD`} color="#059669" />
@@ -1436,7 +1449,24 @@ function ExpScreen() {
 
   return (
     <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
-      <Hdr title="إدارة المصروفات" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowAdd(true)}>مصروف جديد</Btn>} />
+      <Hdr title="إدارة المصروفات" action={
+        <div className="flex gap-2">
+          <Btn v="secondary" s="sm" icon={<Printer size={13}/>} onClick={() => {
+            const w = window.open("","_blank","width=600,height=600");
+            if (!w) return;
+            const rows = exps.map(e => `<tr><td>${e.desc}</td><td>${e.cat}</td><td>${e.method}</td><td>${e.date||"—"}</td><td style="font-weight:900">${e.amount.toFixed(3)} JOD</td></tr>`).join("");
+            w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><style>body{font-family:Cairo,Arial;padding:24px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:right}th{background:#f5f5f5}tfoot td{font-weight:900}</style></head><body><h2>تقرير المصروفات</h2><table><thead><tr><th>الوصف</th><th>التصنيف</th><th>الدفع</th><th>التاريخ</th><th>المبلغ</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="4">الإجمالي</td><td>${total.toFixed(3)} JOD</td></tr></tfoot></table><br><button onclick="window.print()">طباعة</button></body></html>`);
+            w.document.close();
+          }}>طباعة</Btn>
+          <Btn v="secondary" s="sm" icon={<FileSpreadsheet size={13}/>} onClick={() => {
+            const rows = [["الوصف","التصنيف","طريقة الدفع","التاريخ","المبلغ (JOD)"],
+              ...exps.map(e => [e.desc,e.cat,e.method,e.date||"—",e.amount.toFixed(3)])];
+            const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+            const b = new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8;"}); const a = document.createElement("a"); a.href=URL.createObjectURL(b); a.download="المصروفات.csv"; a.click();
+          }}>Excel</Btn>
+          <Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowAdd(true)}>مصروف جديد</Btn>
+        </div>
+      } />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI icon={<Wallet size={18} />} label="مصروفات الشهر" value={`${total.toFixed(3)} JOD`} color="#DC2626" />
         <KPI icon={<Landmark size={18} />} label="ثابتة" value={`${exps.filter(e=>e.cat==="ثابت").reduce((a,e)=>a+e.amount,0).toFixed(3)} JOD`} color="#D97706" />
@@ -1506,7 +1536,24 @@ function ReturnScreen() {
   const total = rets.filter(r=>r.status==="معتمد").reduce((a,r)=>a+r.amount,0);
   return (
     <div className="p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-y-auto h-full">
-      <Hdr title="المرتجعات والاسترداد" action={<Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowNew(true)}>مرتجع جديد</Btn>} />
+      <Hdr title="المرتجعات والاسترداد" action={
+        <div className="flex gap-2">
+          <Btn v="secondary" s="sm" icon={<Printer size={13}/>} onClick={() => {
+            const w = window.open("","_blank","width=600,height=600");
+            if (!w) return;
+            const rows = rets.map(r => `<tr><td>${r.id.slice(-6).toUpperCase()}</td><td>${r.inv||"—"}</td><td>${r.cust||"—"}</td><td>${r.reason||"—"}</td><td>${r.status}</td><td style="font-weight:900">${r.amount.toFixed(3)} JOD</td></tr>`).join("");
+            w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><style>body{font-family:Cairo,Arial;padding:24px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:right}th{background:#f5f5f5}</style></head><body><h2>تقرير المرتجعات</h2><table><thead><tr><th>الرقم</th><th>الفاتورة</th><th>العميل</th><th>السبب</th><th>الحالة</th><th>المبلغ</th></tr></thead><tbody>${rows}</tbody></table><br><button onclick="window.print()">طباعة</button></body></html>`);
+            w.document.close();
+          }}>طباعة</Btn>
+          <Btn v="secondary" s="sm" icon={<FileSpreadsheet size={13}/>} onClick={() => {
+            const rows = [["الرقم","رقم الفاتورة","العميل","السبب","الحالة","المبلغ (JOD)"],
+              ...rets.map(r => [r.id.slice(-6).toUpperCase(), r.inv||"—", r.cust||"—", r.reason||"—", r.status, r.amount.toFixed(3)])];
+            const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+            const b = new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8;"}); const a = document.createElement("a"); a.href=URL.createObjectURL(b); a.download="المرتجعات.csv"; a.click();
+          }}>Excel</Btn>
+          <Btn s="sm" icon={<Plus size={13} />} onClick={() => setShowNew(true)}>مرتجع جديد</Btn>
+        </div>
+      } />
       <div className="grid grid-cols-3 gap-4">
         <KPI icon={<RotateCcw size={18} />} label="مرتجعات الشهر" value={String(rets.length)} color="#DC2626" />
         <KPI icon={<DollarSign size={18} />} label="قيمة المرتجعات المعتمدة" value={`${total.toFixed(3)} JOD`} color="#D97706" />
@@ -1555,4 +1602,273 @@ function ReturnScreen() {
 }
 
 
-export { SalesScreen, ProductsMgr, InvScreen, CustScreen, SuppScreen, PurchScreen, ExpScreen, ReturnScreen };
+// ─────────────────────────────────────────────────────────────────────────────
+// PURCHASE ORDERS SCREEN — شاشة طلبات الشراء
+// ─────────────────────────────────────────────────────────────────────────────
+function PurchaseOrdersScreen({ store }: { store: { id: string; nameAr: string } }) {
+  type POStatus = "draft"|"pending"|"approved"|"rejected"|"ordered"|"received"|"cancelled";
+  type POItem = { productId?: string; nameAr: string; barcode: string; sku: string; unit: string; qtyOrdered: number; qtyReceived: number; costPrice: number; total: number };
+  type PO = { id: string; _id?: string; poNumber: string; supplierName: string; status: POStatus; total: number; requestedBy: string; items: POItem[]; createdAt: string; approvedBy?: string; rejectionNote?: string };
+  const { data: rawPos, loading, refresh } = useApi<PO[]>("/purchase-orders", []);
+  const pos = normList<PO>(rawPos);
+  const [showNew, setShowNew] = useState(false);
+  const [viewPo, setViewPo] = useState<PO | null>(null);
+  const [nf, setNf] = useState({ supplierName: "", notes: "", items: [{ nameAr: "", barcode: "", sku: "", unit: "قطعة", qtyOrdered: 1, costPrice: 0 }] });
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const STATUS_LABEL: Record<POStatus, string> = { draft:"مسودة", pending:"قيد الموافقة", approved:"معتمد", rejected:"مرفوض", ordered:"مطلوب", received:"مستلم", cancelled:"ملغى" };
+  const STATUS_COLOR: Record<POStatus, string> = { draft:"bg-muted text-muted-foreground", pending:"bg-amber-100 text-amber-700", approved:"bg-blue-100 text-blue-700", rejected:"bg-red-100 text-red-600", ordered:"bg-purple-100 text-purple-700", received:"bg-emerald-100 text-emerald-700", cancelled:"bg-muted text-muted-foreground" };
+
+  const create = async () => {
+    try {
+      const items = nf.items.filter(i => i.nameAr).map(i => ({ ...i, total: i.qtyOrdered * i.costPrice, qtyReceived: 0 }));
+      await storeApi.post("/purchase-orders", { supplierName: nf.supplierName, notes: nf.notes, items, subtotal: items.reduce((a,i) => a+i.total,0), total: items.reduce((a,i) => a+i.total,0), taxAmt: 0 });
+      setShowNew(false);
+      setNf({ supplierName: "", notes: "", items: [{ nameAr: "", barcode: "", sku: "", unit: "قطعة", qtyOrdered: 1, costPrice: 0 }] });
+      showToast("تم إنشاء طلب الشراء ✓", "success");
+      refresh();
+    } catch { showToast("خطأ في الإنشاء", "error"); }
+  };
+
+  const changeStatus = async (po: PO, status: POStatus, note?: string) => {
+    try {
+      await storeApi.patch(`/purchase-orders/${po.id}/status`, { status, note });
+      showToast(`تم تغيير الحالة إلى: ${STATUS_LABEL[status]}`, "success");
+      refresh();
+      setViewPo(null);
+    } catch { showToast("خطأ في تحديث الحالة", "error"); }
+  };
+
+  const printPO = (po: PO) => {
+    const html = `<html dir="rtl"><head><style>body{font-family:Arial;font-size:12px;margin:20px} table{width:100%;border-collapse:collapse} th,td{border:1px solid #ccc;padding:6px;text-align:right} th{background:#f5f5f5}</style></head><body>
+      <h2>طلب شراء — ${po.poNumber}</h2>
+      <p>المورد: ${po.supplierName || "—"} | الحالة: ${STATUS_LABEL[po.status]} | التاريخ: ${new Date(po.createdAt).toLocaleDateString("ar-JO")}</p>
+      <table><tr><th>المنتج</th><th>باركود</th><th>الوحدة</th><th>الكمية</th><th>سعر التكلفة</th><th>الإجمالي</th></tr>
+      ${po.items.map(i => `<tr><td>${i.nameAr}</td><td>${i.barcode||"—"}</td><td>${i.unit}</td><td>${i.qtyOrdered}</td><td>${i.costPrice.toFixed(3)}</td><td>${i.total.toFixed(3)}</td></tr>`).join("")}
+      <tr><td colspan="5" style="text-align:left;font-weight:bold">الإجمالي</td><td>${po.total.toFixed(3)} JOD</td></tr></table>
+      ${po.approvedBy ? `<p>معتمد بواسطة: ${po.approvedBy}</p>` : ""}
+      </body></html>`;
+    const w = window.open("", "_blank", "width=700,height=500");
+    if (w) { w.document.write(html); w.document.close(); w.print(); }
+  };
+
+  const exportExcel = (po: PO) => {
+    const rows = [["المنتج","باركود","SKU","الوحدة","الكمية المطلوبة","الكمية المستلمة","سعر التكلفة","الإجمالي"],
+      ...po.items.map(i => [i.nameAr, i.barcode||"", i.sku||"", i.unit, i.qtyOrdered, i.qtyReceived, i.costPrice.toFixed(3), i.total.toFixed(3)])];
+    const csv = rows.map(r => r.join(",")).join("\n");
+    const b = new Blob(["﻿"+csv], { type:"text/csv;charset=utf-8;" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `PO-${po.poNumber}.csv`; a.click();
+  };
+
+  const filtered = pos.filter(p => statusFilter === "all" || p.status === statusFilter);
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4 overflow-y-auto h-full">
+      <Hdr title="طلبات الشراء" sub={`${pos.length} طلب`}
+        action={<Btn icon={<Plus size={13}/>} s="sm" onClick={() => setShowNew(true)}>طلب جديد</Btn>} />
+      <div className="flex gap-2 flex-wrap">
+        {(["all","draft","pending","approved","rejected","received"] as const).map(s => (
+          <button key={s} onClick={() => setStatusFilter(s)}
+            className={`px-3 h-8 rounded-xl text-xs font-bold border transition-all ${statusFilter===s ? "bg-primary text-white border-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
+            {s==="all" ? "الكل" : STATUS_LABEL[s as POStatus]}
+          </button>
+        ))}
+      </div>
+      {loading ? <div className="flex justify-center py-12"><RefreshCw size={22} className="animate-spin text-muted-foreground"/></div>
+        : filtered.length === 0 ? <Empty icon={<ClipboardList size={28}/>} title="لا توجد طلبات شراء" sub="أنشئ أول طلب شراء الآن" />
+        : (
+        <div className="grid gap-3">
+          {filtered.map(po => (
+            <div key={po.id} className="bg-card border border-border rounded-2xl p-4 cursor-pointer hover:border-primary/40 transition-all" onClick={() => setViewPo(po)}>
+              <div className="flex items-center justify-between mb-2">
+                <div><p className="font-black text-sm">{po.poNumber}</p><p className="text-xs text-muted-foreground">{po.supplierName || "مورد غير محدد"}</p></div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${STATUS_COLOR[po.status]}`}>{STATUS_LABEL[po.status]}</span>
+                  <span className="font-black text-sm text-primary">{po.total.toFixed(3)} JOD</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{po.items?.length || 0} صنف • بواسطة: {po.requestedBy}</span>
+                <span>{dateAr(po.createdAt)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showNew && (
+        <Modal title="إنشاء طلب شراء جديد" sub="سيتم حفظه كمسودة — يمكن إرساله للموافقة لاحقاً" onClose={() => setShowNew(false)} size="xl">
+          <div className="space-y-4">
+            <F label="اسم المورد"><TInput value={nf.supplierName} onChange={v => setNf({...nf, supplierName: v})} placeholder="شركة التوريدات..." /></F>
+            <div className="border border-border rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-muted/40 border-b border-border">
+                <p className="font-bold text-sm">الأصناف</p>
+                <Btn s="sm" v="ghost" icon={<Plus size={12}/>} onClick={() => setNf(f => ({...f, items: [...f.items, { nameAr:"", barcode:"", sku:"", unit:"قطعة", qtyOrdered:1, costPrice:0 }]}))}>إضافة صنف</Btn>
+              </div>
+              <div className="p-3 space-y-2 max-h-64 overflow-y-auto">
+                {nf.items.map((item, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-1.5 items-center">
+                    <div className="col-span-4"><TInput value={item.nameAr} onChange={v => setNf(f => ({...f, items: f.items.map((x,i) => i===idx?{...x,nameAr:v}:x)})) } placeholder="اسم المنتج" /></div>
+                    <div className="col-span-3"><TInput value={item.barcode} onChange={v => setNf(f => ({...f, items: f.items.map((x,i) => i===idx?{...x,barcode:v}:x)}))} placeholder="باركود" /></div>
+                    <div className="col-span-2"><TInput value={String(item.qtyOrdered)} onChange={v => setNf(f => ({...f, items: f.items.map((x,i) => i===idx?{...x,qtyOrdered:parseInt(v)||1}:x)}))} type="number" placeholder="كمية" /></div>
+                    <div className="col-span-2"><TInput value={String(item.costPrice)} onChange={v => setNf(f => ({...f, items: f.items.map((x,i) => i===idx?{...x,costPrice:parseFloat(v)||0}:x)}))} type="number" placeholder="سعر" /></div>
+                    <div className="col-span-1"><button onClick={() => setNf(f => ({...f, items: f.items.filter((_,i) => i!==idx)}))} className="w-7 h-7 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-50"><X size={12}/></button></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="text-xs font-bold text-right">الإجمالي: {nf.items.reduce((a,i) => a + i.qtyOrdered * i.costPrice, 0).toFixed(3)} JOD</div>
+            <F label="ملاحظات"><TInput value={nf.notes} onChange={v => setNf({...nf, notes: v})} placeholder="ملاحظات اختيارية..." /></F>
+            <div className="flex gap-3 justify-end">
+              <Btn v="secondary" onClick={() => setShowNew(false)}>إلغاء</Btn>
+              <Btn onClick={create} icon={<Check size={13}/>} disabled={nf.items.every(i => !i.nameAr)}>حفظ كمسودة</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {viewPo && (
+        <Modal title={`طلب شراء: ${viewPo.poNumber}`} sub={`${STATUS_LABEL[viewPo.status]} • ${viewPo.supplierName||"—"}`} onClose={() => setViewPo(null)} size="xl">
+          <div className="space-y-4">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse">
+                <thead><tr className="bg-muted/40">{["المنتج","باركود","الوحدة","مطلوب","مستلم","السعر","الإجمالي"].map(h => <th key={h} className="px-3 py-2 text-right font-bold border border-border">{h}</th>)}</tr></thead>
+                <tbody>{viewPo.items?.map((item, i) => (
+                  <tr key={i} className="hover:bg-muted/30">
+                    <td className="px-3 py-2 border border-border font-medium">{item.nameAr}</td>
+                    <td className="px-3 py-2 border border-border text-muted-foreground">{item.barcode||"—"}</td>
+                    <td className="px-3 py-2 border border-border">{item.unit}</td>
+                    <td className="px-3 py-2 border border-border font-bold text-center">{item.qtyOrdered}</td>
+                    <td className="px-3 py-2 border border-border font-bold text-center text-emerald-600">{item.qtyReceived||0}</td>
+                    <td className="px-3 py-2 border border-border">{item.costPrice.toFixed(3)}</td>
+                    <td className="px-3 py-2 border border-border font-bold">{item.total.toFixed(3)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <div className="flex justify-between text-sm font-black border-t border-border pt-3">
+              <span>الإجمالي</span><span className="text-primary">{viewPo.total.toFixed(3)} JOD</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Btn v="secondary" s="sm" icon={<Printer size={12}/>} onClick={() => printPO(viewPo)}>طباعة</Btn>
+              <Btn v="secondary" s="sm" icon={<FileSpreadsheet size={12}/>} onClick={() => exportExcel(viewPo)}>Excel</Btn>
+              {viewPo.status === "draft" && <Btn s="sm" icon={<Send size={12}/>} onClick={() => changeStatus(viewPo, "pending")}>إرسال للموافقة</Btn>}
+              {viewPo.status === "pending" && <><Btn s="sm" icon={<Check size={12}/>} onClick={() => changeStatus(viewPo, "approved")}>اعتماد</Btn><Btn v="danger" s="sm" icon={<X size={12}/>} onClick={() => changeStatus(viewPo, "rejected")}>رفض</Btn></>}
+              {viewPo.status === "approved" && <Btn s="sm" icon={<Truck size={12}/>} onClick={() => changeStatus(viewPo, "ordered")}>تأكيد الطلب</Btn>}
+              {viewPo.status === "ordered" && <Btn s="sm" icon={<Archive size={12}/>} onClick={() => changeStatus(viewPo, "received")}>استلام + تحديث المخزون</Btn>}
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROMOTIONS SCREEN — شاشة العروض والخصومات
+// ─────────────────────────────────────────────────────────────────────────────
+function PromotionsScreen({ store }: { store: { id: string; nameAr: string } }) {
+  type PromoType = "percentage"|"fixed"|"bxgy";
+  type Promo = { id: string; _id?: string; name: string; type: PromoType; discountValue: number; appliesTo: "all"|"specific"; active: boolean; startDate: string; endDate: string; createdBy: string; categories?: string[] };
+  const { data: rawPromos, loading, refresh } = useApi<Promo[]>("/promotions", []);
+  const promos = normList<Promo>(rawPromos);
+  const [showNew, setShowNew] = useState(false);
+  const [nf, setNf] = useState({ name: "", type: "percentage" as PromoType, discountValue: 0, appliesTo: "all" as "all"|"specific", startDate: new Date().toISOString().slice(0,10), endDate: new Date(Date.now()+7*86400000).toISOString().slice(0,10) });
+
+  const TYPE_LABEL: Record<PromoType, string> = { percentage: "نسبة مئوية %", fixed: "خصم ثابت JOD", bxgy: "اشتر X احصل على Y" };
+  const TYPE_COLOR: Record<PromoType, string> = { percentage:"bg-blue-100 text-blue-700", fixed:"bg-emerald-100 text-emerald-700", bxgy:"bg-purple-100 text-purple-700" };
+
+  const create = async () => {
+    if (!nf.name || !nf.discountValue) return;
+    try {
+      await storeApi.post("/promotions", nf);
+      setShowNew(false);
+      setNf({ name: "", type: "percentage", discountValue: 0, appliesTo: "all", startDate: new Date().toISOString().slice(0,10), endDate: new Date(Date.now()+7*86400000).toISOString().slice(0,10) });
+      showToast("تم إنشاء العرض ✓", "success");
+      refresh();
+    } catch { showToast("خطأ في الإنشاء", "error"); }
+  };
+
+  const toggleActive = async (p: Promo) => {
+    try {
+      await storeApi.put(`/promotions/${p.id}`, { active: !p.active });
+      showToast(p.active ? "تم إيقاف العرض" : "تم تفعيل العرض ✓", p.active ? "warning" : "success");
+      refresh();
+    } catch { showToast("خطأ", "error"); }
+  };
+
+  const del = async (p: Promo) => {
+    if (!confirm(`حذف عرض "${p.name}"؟`)) return;
+    try { await storeApi.delete(`/promotions/${p.id}`); refresh(); showToast("تم الحذف", "warning"); } catch { showToast("خطأ في الحذف", "error"); }
+  };
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4 overflow-y-auto h-full">
+      <Hdr title="العروض والخصومات" sub={`${promos.filter(p => p.active).length} عرض نشط`}
+        action={<Btn icon={<Plus size={13}/>} s="sm" onClick={() => setShowNew(true)}>عرض جديد</Btn>} />
+      {loading ? <div className="flex justify-center py-12"><RefreshCw size={22} className="animate-spin text-muted-foreground"/></div>
+        : promos.length === 0 ? <Empty icon={<Percent size={28}/>} title="لا توجد عروض" sub="أنشئ أول عرض أو خصم الآن" />
+        : (
+        <div className="grid gap-3">
+          {promos.map(p => {
+            const now = Date.now();
+            const started = new Date(p.startDate).getTime() <= now;
+            const ended   = new Date(p.endDate).getTime()   < now;
+            const status  = !p.active ? "موقوف" : ended ? "منتهي" : !started ? "لم يبدأ" : "نشط";
+            const statusC = !p.active ? "bg-muted text-muted-foreground" : ended ? "bg-red-100 text-red-600" : !started ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700";
+            return (
+              <div key={p.id} className="bg-card border border-border rounded-2xl p-4">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <p className="font-black text-sm">{p.name}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${TYPE_COLOR[p.type]}`}>{TYPE_LABEL[p.type]}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${statusC}`}>{status}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-xl text-primary">
+                      {p.type === "percentage" ? `${p.discountValue}%` : `${p.discountValue.toFixed(3)} JOD`}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                  <span>يسري: {new Date(p.startDate).toLocaleDateString("ar-JO")} ← {new Date(p.endDate).toLocaleDateString("ar-JO")}</span>
+                  <span>{p.appliesTo === "all" ? "على جميع المنتجات" : "منتجات محددة"}</span>
+                </div>
+                <div className="flex gap-2">
+                  <Toggle checked={p.active} onChange={() => toggleActive(p)} />
+                  <span className="text-xs text-muted-foreground">{p.active ? "مفعّل" : "موقوف"}</span>
+                  <button onClick={() => del(p)} className="mr-auto text-xs text-red-400 hover:text-red-600 flex items-center gap-1"><Trash2 size={12}/> حذف</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showNew && (
+        <Modal title="إنشاء عرض جديد" onClose={() => setShowNew(false)} size="sm">
+          <div className="space-y-4">
+            <F label="اسم العرض" req><TInput value={nf.name} onChange={v => setNf({...nf, name: v})} placeholder="عرض نهاية الأسبوع..." /></F>
+            <div className="grid grid-cols-2 gap-3">
+              <F label="نوع الخصم"><SInput value={nf.type} onChange={v => setNf({...nf, type: v as PromoType})} options={[{ value:"percentage",label:"نسبة %" },{ value:"fixed",label:"مبلغ ثابت JOD" },{ value:"bxgy",label:"اشتر X احصل Y" }]} /></F>
+              <F label={nf.type === "percentage" ? "نسبة الخصم %" : "قيمة الخصم"} req><TInput value={String(nf.discountValue)} onChange={v => setNf({...nf, discountValue: parseFloat(v)||0})} type="number" placeholder="10" /></F>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <F label="تاريخ البداية"><TInput value={nf.startDate} onChange={v => setNf({...nf, startDate: v})} type="date" /></F>
+              <F label="تاريخ النهاية"><TInput value={nf.endDate} onChange={v => setNf({...nf, endDate: v})} type="date" /></F>
+            </div>
+            <F label="يُطبّق على"><SInput value={nf.appliesTo} onChange={v => setNf({...nf, appliesTo: v as "all"|"specific"})} options={[{ value:"all",label:"جميع المنتجات" },{ value:"specific",label:"منتجات محددة" }]} /></F>
+            <div className="flex gap-3 justify-end">
+              <Btn v="secondary" onClick={() => setShowNew(false)}>إلغاء</Btn>
+              <Btn onClick={create} icon={<Check size={13}/>} disabled={!nf.name||!nf.discountValue}>إنشاء العرض</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+export { SalesScreen, ProductsMgr, InvScreen, CustScreen, SuppScreen, PurchScreen, ExpScreen, ReturnScreen, PurchaseOrdersScreen, PromotionsScreen };
