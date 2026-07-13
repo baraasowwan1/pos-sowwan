@@ -348,6 +348,12 @@ class IDBStore<T extends object> {
     return prom<number>(tx.objectStore(this.storeName).count());
   }
 
+  async deleteByKey(key: IDBValidKey): Promise<void> {
+    const db = await openDB();
+    const tx = db.transaction(this.storeName, "readwrite");
+    await prom(tx.objectStore(this.storeName).delete(key));
+  }
+
   where(indexName: string) {
     const storeName = this.storeName;
     return {
