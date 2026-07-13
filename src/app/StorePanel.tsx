@@ -22,7 +22,7 @@ import { storeApi, useApi, useApiCached, useLS, norm, normList, dateAr, timeAr, 
 import { SyncCenter, SyncStatusBadge } from "./SyncCenter";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
 import { SalesScreen, ProductsMgr, InvScreen, CustScreen, SuppScreen, PurchScreen, ExpScreen, ReturnScreen, PurchaseOrdersScreen, PromotionsScreen } from "./StorePanelB";
-import { StoreReports, EmpScreen, BranchScreen, LoyaltyScreen, PrintJobsScreen, PrintMatsScreen, PrintPricesScreen, StoreSetts } from "./StorePanelC";
+import { StoreReports, EmpScreen, BranchScreen, LoyaltyScreen, DebtScreen, PrintJobsScreen, PrintMatsScreen, PrintPricesScreen, StoreSetts } from "./StorePanelC";
 import { FlowerOrdersScreen, BouquetBuilderScreen, DeliveryMgmtScreen } from "./StorePanelD";
 
 // Offline context — lets deep components (POSTerm) know network state
@@ -35,7 +35,7 @@ const useOffline = () => useContext(OfflineCtx);
 // Role → allowed screen IDs (* = all screens)
 const ROLE_SCREENS: Record<string, string[] | "*"> = {
   owner:      "*",
-  manager:    ["dashboard","pos","sales","products","inventory","customers","suppliers","purchases","expenses","returns","reports","employees","branches","loyalty","print_jobs","print_mats","print_prices","flower_orders","bouquet","delivery_mgmt","sync"],
+  manager:    ["dashboard","pos","sales","products","inventory","customers","debts","suppliers","purchases","expenses","returns","reports","employees","branches","loyalty","print_jobs","print_mats","print_prices","flower_orders","bouquet","delivery_mgmt","sync"],
   cashier:    ["dashboard","pos","sales","customers"],
   inventory:  ["dashboard","products","inventory","suppliers","purchases"],
   accountant: ["dashboard","sales","reports","expenses"],
@@ -58,6 +58,7 @@ const STORE_NAV = [
   { id: "employees",      label: "الموظفون",              icon: <UserCheck size={15} />,      sfKey: "users" },
   { id: "branches",       label: "الفروع والأجهزة",      icon: <Building2 size={15} />,      sfKey: "branches" },
   { id: "loyalty",        label: "الولاء",                icon: <Star size={15} />,           sfKey: "loyalty" },
+  { id: "debts",          label: "الذمم",                 icon: <Landmark size={15} />,       sfKey: "customers" },
   { id: "print_jobs",     label: "طلبات الطباعة",        icon: <Printer size={15} />,        sfKey: null },
   { id: "print_mats",     label: "مواد الطباعة",          icon: <Ruler size={15} />,          sfKey: null },
   { id: "print_prices",   label: "أسعار الطباعة",        icon: <Hash size={15} />,           sfKey: null },
@@ -236,7 +237,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
   const NAV_GROUPS = [
     { items: ["dashboard", "pos"] },
     { items: ["sales", "products", "inventory", "purchases", "purchaseOrders", "returns", "expenses"] },
-    { items: ["customers", "suppliers", "promotions"] },
+    { items: ["customers", "debts", "suppliers", "promotions"] },
     { items: ["reports", "employees", "branches", "loyalty"] },
     { items: ["print_jobs", "print_mats", "print_prices", "flower_orders", "bouquet", "delivery_mgmt"] },
     { items: ["settings", "sync"] },
@@ -484,6 +485,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
               {screen === "employees" && <EmpScreen />}
               {screen === "branches"  && <BranchScreen />}
               {screen === "loyalty"       && <LoyaltyScreen />}
+              {screen === "debts"         && <DebtScreen />}
               {screen === "print_jobs"    && <PrintJobsScreen store={store} />}
               {screen === "print_mats"   && <PrintMatsScreen />}
               {screen === "print_prices" && <PrintPricesScreen />}
@@ -741,7 +743,7 @@ function POSTerm({ store }: { store: StoreData }) {
     }
   }, [prodsApiRaw, sid]);
   // عملاء POS
-  type POSCust = {id:string;name:string;phone:string;email?:string};
+  type POSCust = {id:string;name:string;phone:string;email?:string;loyaltyPoints?:number;debt?:number};
   const { data: custsApiRaw, refresh: refreshCusts } = useApi<unknown[]>("/customers", []);
   const [posCustomers, setPosCustomers] = useState<POSCust[]>([]);
   useEffect(() => {
@@ -774,7 +776,7 @@ function POSTerm({ store }: { store: StoreData }) {
   const [drawerAuto, setDrawerAuto] = useLS<boolean>(sk(sid,"pos_drawer_auto"), false);
   const [drawerOpening, setDrawerOpening] = useState(false);
   const [disc, setDisc] = useState(0);
-  const [pay, setPay] = useState<"cash" | "cliq" | "card">("cash");
+  const [pay, setPay] = useState<"cash" | "cliq" | "card" | "credit">("cash");
   const [cash, setCash] = useState("");
   const [cliqRef, setCliqRef] = useState("");
   const [cliqSender, setCliqSender] = useState("");
@@ -782,11 +784,21 @@ function POSTerm({ store }: { store: StoreData }) {
   const [showPay, setShowPay] = useState(false);
   const [ok, setOk] = useState(false);
   // Customer selection
-  const [selectedCustomer, setSelectedCustomer] = useState<{id:string;name:string;phone:string}|null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<POSCust|null>(null);
   const [customerQ, setCustomerQ] = useState("");
   const [showCustSearch, setShowCustSearch] = useState(false);
   const [showAddCust, setShowAddCust] = useState(false);
   const [newCust, setNewCust] = useState({name:"",phone:"",email:"",address:"",notes:""});
+  // Loyalty
+  const loyaltyPPJ = (() => { try { return parseFloat(localStorage.getItem(sk(sid,"sett_loyalty_ppj")) || "1") || 1; } catch { return 1; } })();
+  const loyaltyPV  = (() => { try { return parseFloat(localStorage.getItem(sk(sid,"sett_loyalty_pv"))  || "0.01") || 0.01; } catch { return 0.01; } })();
+  const [redeemPoints, setRedeemPoints] = useState(false);
+  const customerPoints = selectedCustomer?.loyaltyPoints || 0;
+  const maxRedeemable = Math.floor(customerPoints);
+  const pointsDiscount = redeemPoints ? Math.min(maxRedeemable * loyaltyPV, total * 0.5) : 0; // max 50% discount via points
+  const finalTotal = Math.max(0, total - pointsDiscount);
+  const pointsToRedeem = redeemPoints ? Math.ceil(pointsDiscount / loyaltyPV) : 0;
+  const pointsEarned = selectedCustomer && pay !== "credit" ? Math.floor(finalTotal * loyaltyPPJ) : 0;
   // Calculator
   const [showCalc, setShowCalc] = useState(false);
   const [calcDisplay, setCalcDisplay] = useState("0");
@@ -911,7 +923,7 @@ function POSTerm({ store }: { store: StoreData }) {
     storePhone: store.phone || '',
     items: cart.map(i => ({ name: i.product.nameAr, qty: i.qty, price: i.product.sellPrice, discount: i.discount })),
     subtotal: sub, discountAmt: da, taxAmt: ta, taxRate: TAX, total,
-    payMethod: pay === "cash" ? "نقدي" : pay === "cliq" ? "كليك" : "بطاقة ائتمانية",
+    payMethod: pay === "cash" ? "نقدي" : pay === "cliq" ? "كليك" : pay === "card" ? "بطاقة ائتمانية" : "ذمة",
     change: change > 0 ? change : undefined,
     cashIn: pay === "cash" ? parseFloat(cash || "0") : undefined,
     date: new Date().toLocaleDateString("ar-JO"),
@@ -930,16 +942,18 @@ function POSTerm({ store }: { store: StoreData }) {
     const salePayload = {
       invoiceNo:    invNo,
       items:        saleItems,
-      subtotal: sub, discountAmt: da, taxAmt: ta, total,
+      subtotal: sub, discountAmt: da + pointsDiscount, taxAmt: ta, total: finalTotal,
       payMethod: pay,
       cashIn:     pay === "cash" ? parseFloat(cash || "0") : undefined,
-      change:     pay === "cash" ? Math.max(0, parseFloat(cash || "0") - total) : undefined,
+      change:     pay === "cash" ? Math.max(0, parseFloat(cash || "0") - finalTotal) : undefined,
       cliqRef:    pay === "cliq" ? cliqRef : undefined,
       cliqSender: pay === "cliq" ? cliqSender : undefined,
       cardRef:    pay === "card" ? cardRef : undefined,
       customerId:   selectedCustomer?.id,
       customerName: selectedCustomer?.name || "عميل نقدي",
       customerPhone:selectedCustomer?.phone,
+      loyaltyPointsEarned:   pointsEarned || undefined,
+      loyaltyPointsRedeemed: pointsToRedeem || undefined,
       status: "completed",
     };
 
@@ -959,6 +973,7 @@ function POSTerm({ store }: { store: StoreData }) {
     }
 
     setOk(true);
+    setRedeemPoints(false);
     invNoRef.current = `INV-${new Date().getFullYear()}${String(Date.now()).slice(-6)}`;
     if (drawerAuto && pay === "cash") openDrawer();
   };
@@ -1023,7 +1038,7 @@ function POSTerm({ store }: { store: StoreData }) {
   const handleClose = () => {
     setOk(false); setCart([]); setShowPay(false);
     setCash(""); setDisc(0); setCliqRef(""); setCliqSender(""); setCardRef("");
-    setSelectedCustomer(null); setCustomerQ("");
+    setSelectedCustomer(null); setCustomerQ(""); setRedeemPoints(false);
   };
 
   const openSession = () => {
@@ -1044,6 +1059,7 @@ function POSTerm({ store }: { store: StoreData }) {
     const cash   = filtered.filter(s => s.payMethod === "cash").reduce((a, s) => a + s.total, 0);
     const cliq   = filtered.filter(s => s.payMethod === "cliq").reduce((a, s) => a + s.total, 0);
     const card   = filtered.filter(s => s.payMethod === "card").reduce((a, s) => a + s.total, 0);
+    const credit = filtered.filter(s => s.payMethod === "credit").reduce((a, s) => a + s.total, 0);
 
     // Aggregate products
     const prodMap: Record<string, { nameAr: string; qty: number; total: number }> = {};
@@ -1065,7 +1081,7 @@ function POSTerm({ store }: { store: StoreData }) {
     ).join("");
 
     const invoiceRows = filtered.map(s =>
-      `<tr><td style="font-family:monospace">${s.invoiceNo}</td><td>${s.customerName || "نقدي"}</td><td style="text-align:center">${s.payMethod === "cash" ? "نقدي" : s.payMethod === "cliq" ? "كليك" : "بطاقة"}</td><td style="text-align:left">${s.total.toFixed(3)}</td></tr>`
+      `<tr><td style="font-family:monospace">${s.invoiceNo}</td><td>${s.customerName || "نقدي"}</td><td style="text-align:center">${s.payMethod === "cash" ? "نقدي" : s.payMethod === "cliq" ? "كليك" : s.payMethod === "card" ? "بطاقة" : "ذمة"}</td><td style="text-align:left">${s.total.toFixed(3)}</td></tr>`
     ).join("");
 
     return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير الشفت</title>
@@ -1096,6 +1112,7 @@ ${row("إجمالي المبيعات", `${gross.toFixed(3)} JOD`, true)}
 ${row("نقدي", `${cash.toFixed(3)} JOD`)}
 ${row("كليك", `${cliq.toFixed(3)} JOD`)}
 ${row("بطاقة", `${card.toFixed(3)} JOD`)}
+${credit > 0 ? row("ذمة (غير محصّلة)", `${credit.toFixed(3)} JOD`) : ""}
 ${session ? row("الرصيد الافتتاحي", `${session.openingBalance.toFixed(3)} JOD`) : ""}
 ${closingBalance !== undefined ? row("الرصيد الختامي", `${closingBalance.toFixed(3)} JOD`) : ""}
 ${closingBalance !== undefined && session ? row("الفرق", `${(closingBalance - session.openingBalance).toFixed(3)} JOD`, true) : ""}
@@ -1303,7 +1320,7 @@ ${filtered.length > 0 ? `
           <div className="relative">
             <button onClick={() => setShowCustSearch(s => !s)} className="w-full flex items-center gap-2 h-8 rounded-xl border border-border bg-muted/40 px-3 text-xs hover:bg-muted transition-all">
               <Users size={11} className="text-muted-foreground shrink-0" />
-              <span className="flex-1 text-right truncate">{selectedCustomer ? `${selectedCustomer.name} ${selectedCustomer.phone ? `• ${selectedCustomer.phone}` : ""}` : "عميل نقدي"}</span>
+              <span className="flex-1 text-right truncate">{selectedCustomer ? `${selectedCustomer.name}${selectedCustomer.loyaltyPoints ? ` 🌟${selectedCustomer.loyaltyPoints}` : ""}` : "عميل نقدي"}</span>
               {selectedCustomer && <button onClick={e => { e.stopPropagation(); setSelectedCustomer(null); setCustomerQ(""); }} className="text-muted-foreground hover:text-red-500"><X size={10} /></button>}
             </button>
             {showCustSearch && (
@@ -1312,7 +1329,7 @@ ${filtered.length > 0 ? `
                 {posCustomers.filter(c => !customerQ || c.name.includes(customerQ) || (c.phone||"").includes(customerQ)).slice(0,8).map(c => (
                   <button key={c.id} onClick={() => { setSelectedCustomer(c); setShowCustSearch(false); setCustomerQ(""); }} className="w-full flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-muted text-right">
                     <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-[10px] font-black">{c.name[0]}</div>
-                    <div className="flex-1 min-w-0"><p className="text-xs font-bold truncate">{c.name}</p><p className="text-[10px] text-muted-foreground">{c.phone}</p></div>
+                    <div className="flex-1 min-w-0"><p className="text-xs font-bold truncate">{c.name}</p><p className="text-[10px] text-muted-foreground">{c.phone}{(c.debt||0) > 0 ? <span className="text-amber-600 font-bold"> • ذمة: {(c.debt||0).toFixed(3)} JOD</span> : null}</p></div>
                   </button>
                 ))}
                 <button onClick={() => { setShowCustSearch(false); setShowAddCust(true); }} className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20">
@@ -1376,9 +1393,9 @@ ${filtered.length > 0 ? `
             <div className="space-y-1">
               <label className="text-xs font-bold text-muted-foreground">الدفع</label>
               <div className="flex gap-1">
-                {(["cash","cliq","card"] as const).map(m => (
+                {(["cash","cliq","card","credit"] as const).map(m => (
                   <button key={m} onClick={() => setPay(m)} className={`px-2 h-8 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap ${pay === m ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"}`}>
-                    {m === "cash" ? "نقدي" : m === "cliq" ? "كليك" : "بطاقة"}
+                    {m === "cash" ? "نقدي" : m === "cliq" ? "كليك" : m === "card" ? "بطاقة" : "ذمة"}
                   </button>
                 ))}
               </div>
@@ -1410,15 +1427,31 @@ ${filtered.length > 0 ? `
           <div className="space-y-4">
             <div className="bg-primary rounded-2xl p-5 text-center">
               <p className="text-white/60 text-sm mb-1">المبلغ المستحق</p>
-              <p className="text-5xl font-black text-white">{total.toFixed(3)}</p>
+              <p className="text-5xl font-black text-white">{finalTotal.toFixed(3)}</p>
               <p className="text-white/60 font-bold mt-1">دينار أردني</p>
+              {pointsDiscount > 0 && <p className="text-emerald-300 text-xs mt-1 font-bold">خصم نقاط: -{pointsDiscount.toFixed(3)} JOD</p>}
               {selectedCustomer && <p className="text-white/50 text-xs mt-2">العميل: {selectedCustomer.name}</p>}
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            {selectedCustomer && customerPoints > 0 && pay !== "credit" && (
+              <div className="flex items-center justify-between p-3 rounded-xl border border-amber-200 bg-amber-50">
+                <div>
+                  <p className="text-sm font-bold text-amber-800">🌟 نقاط {selectedCustomer.name}: {customerPoints} نقطة</p>
+                  <p className="text-xs text-amber-600">= {(customerPoints * loyaltyPV).toFixed(3)} JOD قابلة للاسترداد</p>
+                </div>
+                <button onClick={() => setRedeemPoints(v => !v)} className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${redeemPoints ? "bg-amber-500 text-white" : "bg-amber-100 text-amber-700 border border-amber-300"}`}>
+                  {redeemPoints ? "✓ استرداد نشط" : "استرداد النقاط"}
+                </button>
+              </div>
+            )}
+            {selectedCustomer && pay !== "credit" && pointsEarned > 0 && (
+              <p className="text-xs text-emerald-600 text-center font-bold">🎁 سيكسب العميل {pointsEarned} نقطة من هذه الفاتورة</p>
+            )}
+            <div className="grid grid-cols-2 gap-2">
               {([
-                { id: "cash", label: "💵 نقدي" },
-                { id: "cliq", label: "📱 كليك" },
-                { id: "card", label: "💳 بطاقة" },
+                { id: "cash",   label: "💵 نقدي" },
+                { id: "cliq",   label: "📱 كليك" },
+                { id: "card",   label: "💳 بطاقة" },
+                { id: "credit", label: "📒 ذمة" },
               ] as const).map(m => (
                 <button key={m.id} onClick={() => setPay(m.id)}
                   className={`h-12 rounded-2xl text-sm font-black border-2 transition-all ${pay === m.id ? "border-primary bg-primary text-white" : "border-border hover:border-primary/40"}`}>
@@ -1432,15 +1465,15 @@ ${filtered.length > 0 ? `
                 <F label="المبلغ المُستلَم (JOD)">
                   <TInput value={cash} onChange={setCash} placeholder="0.000" type="number" icon={<Banknote size={13} />} />
                 </F>
-                {parseFloat(cash || "0") >= total && (
+                {parseFloat(cash || "0") >= finalTotal && (
                   <div className="flex justify-between items-center p-4 bg-emerald-50 border-2 border-emerald-200 rounded-2xl">
                     <span className="font-bold text-emerald-700">الباقي للعميل</span>
-                    <span className="text-2xl font-black text-emerald-700">{change.toFixed(3)} JOD</span>
+                    <span className="text-2xl font-black text-emerald-700">{(parseFloat(cash || "0") - finalTotal).toFixed(3)} JOD</span>
                   </div>
                 )}
                 <div className="grid grid-cols-4 gap-1.5">
                   {[0.5, 1, 5, 10, 20, 50, 100].map(vv => <button key={vv} onClick={() => setCash(String(vv))} className="h-9 rounded-xl text-xs font-bold border border-border bg-muted hover:bg-primary hover:text-white hover:border-primary">{vv} JOD</button>)}
-                  <button onClick={() => setCash(total.toFixed(3))} className="h-9 rounded-xl text-xs font-bold border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100">المجموع</button>
+                  <button onClick={() => setCash(finalTotal.toFixed(3))} className="h-9 rounded-xl text-xs font-bold border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100">المجموع</button>
                 </div>
               </div>
             )}
@@ -1473,10 +1506,24 @@ ${filtered.length > 0 ? `
               </div>
             )}
 
+            {pay === "credit" && (
+              <div className="space-y-2 p-4 bg-amber-50 border-2 border-amber-200 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <FileText size={20} className="text-amber-600" />
+                  <p className="font-bold text-amber-800">بيع على الذمة</p>
+                </div>
+                {selectedCustomer ? (
+                  <p className="text-sm text-amber-700">سيُضاف مبلغ <strong>{total.toFixed(3)} JOD</strong> على ذمة <strong>{selectedCustomer.name}</strong></p>
+                ) : (
+                  <p className="text-sm text-red-600 font-bold">⚠️ يجب اختيار عميل للبيع على الذمة — حدد العميل من قائمة العملاء أعلاه</p>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <Btn v="secondary" onClick={() => setShowPay(false)} cls="flex-1">إلغاء</Btn>
               <Btn onClick={() => { doPay(); setShowPay(false); }} cls="flex-1" v="success" icon={<CheckCircle size={15} />}
-                disabled={pay === "cash" && parseFloat(cash || "0") < total}>
+                disabled={(pay === "cash" && parseFloat(cash || "0") < finalTotal) || (pay === "credit" && !selectedCustomer)}>
                 تأكيد الدفع
               </Btn>
             </div>
@@ -1543,6 +1590,7 @@ ${filtered.length > 0 ? `
           cash: shiftSalesList.filter(s => s.payMethod === "cash").reduce((a,s) => a + s.total, 0),
           cliq: shiftSalesList.filter(s => s.payMethod === "cliq").reduce((a,s) => a + s.total, 0),
           card: shiftSalesList.filter(s => s.payMethod === "card").reduce((a,s) => a + s.total, 0),
+          credit: shiftSalesList.filter(s => s.payMethod === "credit").reduce((a,s) => a + s.total, 0),
           items: shiftSalesList.reduce((a,s) => a + (s.items||[]).reduce((b,i) => b + i.qty, 0), 0),
         };
         // Aggregate products sold
@@ -1564,6 +1612,7 @@ ${filtered.length > 0 ? `
                 <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#22C55E"}}><p className="text-xs text-muted-foreground mb-1">إجمالي المبيعات</p><p className="font-black text-xl text-emerald-600">{shiftTotals.gross.toFixed(3)} JOD</p></div>
                 <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#4F46E5"}}><p className="text-xs text-muted-foreground mb-1">نقدي</p><p className="font-black text-xl text-primary">{shiftTotals.cash.toFixed(3)} JOD</p></div>
                 <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#8B5CF6"}}><p className="text-xs text-muted-foreground mb-1">كليك + بطاقة</p><p className="font-black text-xl" style={{color:"#8B5CF6"}}>{(shiftTotals.cliq + shiftTotals.card).toFixed(3)} JOD</p></div>
+                {shiftTotals.credit > 0 && <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center"><p className="text-xs text-amber-600 mb-1">ذمم غير محصّلة</p><p className="font-black text-xl text-amber-600">{shiftTotals.credit.toFixed(3)} JOD</p></div>}
               </div>
 
               {/* Products sold table */}
@@ -1604,7 +1653,7 @@ ${filtered.length > 0 ? `
                             <td className="px-3 py-2 font-mono">{s.invoiceNo}</td>
                             <td className="px-3 py-2">{s.customerName || "نقدي"}</td>
                             <td className="px-3 py-2 font-bold">{s.total.toFixed(3)} JOD</td>
-                            <td className="px-3 py-2">{s.payMethod === "cash" ? "نقدي" : s.payMethod === "cliq" ? "كليك" : "بطاقة"}</td>
+                            <td className="px-3 py-2">{s.payMethod === "cash" ? "نقدي" : s.payMethod === "cliq" ? "كليك" : s.payMethod === "card" ? "بطاقة" : "ذمة"}</td>
                             <td className="px-3 py-2 text-muted-foreground">{new Date(s.createdAt).toLocaleTimeString("ar-JO",{hour:"2-digit",minute:"2-digit"})}</td>
                           </tr>
                         ))}
@@ -1638,7 +1687,7 @@ ${filtered.length > 0 ? `
                   const created = await storeApi.post("/customers", { name: newCust.name, phone: newCust.phone, email: newCust.email, address: newCust.address });
                   const c = norm<POSCust>(created as POSCust & { _id?: string });
                   await refreshCusts();
-                  setSelectedCustomer({ id: c.id, name: c.name, phone: c.phone || "" });
+                  setSelectedCustomer({ id: c.id, name: c.name, phone: c.phone || "", loyaltyPoints: 0 });
                   setShowAddCust(false);
                   setNewCust({ name:"", phone:"", email:"", address:"", notes:"" });
                   showToast(`تم إضافة العميل "${c.name}" وتحديده ✓`, "success");
