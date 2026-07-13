@@ -257,8 +257,8 @@ async function pullData(storeId: string): Promise<void> {
 }
 
 // ── Main sync function ────────────────────────────────────────────────────────
-export async function runSync(storeId: string, opts: { silent?: boolean } = {}): Promise<boolean> {
-  if (_running) return false;
+export async function runSync(storeId: string, opts: { silent?: boolean } = {}): Promise<boolean | null> {
+  if (_running) return null; // null = busy, not a failure
   _running = true;
 
   emit({ status: "syncing", isSyncing: true, lastError: null });
