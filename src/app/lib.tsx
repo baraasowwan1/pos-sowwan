@@ -181,6 +181,19 @@ import {
 export type View = "login" | "superadmin" | "store";
 export type StoreCategory = "supermarket" | "clothing" | "cafe" | "electronics" | "barber" | "print_shop" | "flower_shop";
 
+export interface SidebarFeatures {
+  pos?: boolean; products?: boolean; inventory?: boolean;
+  sales?: boolean; customers?: boolean; suppliers?: boolean;
+  purchases?: boolean; purchaseOrders?: boolean; reports?: boolean;
+  expenses?: boolean; users?: boolean; settings?: boolean;
+  branches?: boolean; promotions?: boolean; returns?: boolean;
+}
+export const DEFAULT_SIDEBAR: Required<SidebarFeatures> = {
+  pos: true, products: true, inventory: true, sales: true,
+  customers: true, suppliers: true, purchases: true, purchaseOrders: true,
+  reports: true, expenses: true, users: true, settings: true,
+  branches: false, promotions: true, returns: true,
+};
 export interface StoreData {
   id: string; nameAr: string; nameEn: string; category: StoreCategory;
   owner: string; email: string; phone: string; city: string;
@@ -188,11 +201,16 @@ export interface StoreData {
   plan: string; users: number; products: number; sales: number;
   revenue: number; createdAt: string; expiresAt: string; branches: number;
   taxNo?: string;
+  sidebarFeatures?: SidebarFeatures;
 }
 export interface Product {
-  id: string; nameAr: string; nameEn: string; barcode: string; sku: string;
-  category: string; costPrice: number; sellPrice: number; stock: number;
-  minStock: number; image: string; unit: string;
+  id: string; nameAr: string; nameEn: string; barcode: string;
+  barcodes?: string[];
+  sku: string; category: string; costPrice: number; sellPrice: number;
+  stock: number; minStock: number; image: string; unit: string;
+  taxRate?: number;  // 0 | 2 | 4 | 8 | 16
+  taxable?: boolean;
+  brand?: string;
 }
 export interface CartItem { product: Product; qty: number; discount: number; }
 export interface Plan {
@@ -520,9 +538,9 @@ export function KPI({ icon, label, value, sub, color = "#4F46E5", trend }: {
 }
 
 export function Modal({ title, sub, onClose, children, size = "md" }: {
-  title: string; sub?: string; onClose: () => void; children: React.ReactNode; size?: "sm" | "md" | "lg";
+  title: string; sub?: string; onClose: () => void; children: React.ReactNode; size?: "sm" | "md" | "lg" | "xl";
 }) {
-  const w = { sm: "max-w-md", md: "max-w-xl", lg: "max-w-2xl" };
+  const w = { sm: "max-w-md", md: "max-w-xl", lg: "max-w-2xl", xl: "max-w-4xl" };
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" style={{ background: "rgba(15,23,42,0.55)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className={`bg-card rounded-t-2xl sm:rounded-2xl border border-border shadow-2xl w-full ${w[size]} max-h-[94vh] sm:max-h-[88vh] flex flex-col`} dir="rtl" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
