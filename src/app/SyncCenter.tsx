@@ -150,6 +150,7 @@ export function SyncCenter({ storeId }: { storeId: string }) {
   const handleSync = async () => {
     if (state.isSyncing || !online) return;
     const ok = await runSync(storeId);
+    if (ok === null) return; // already syncing, ignore
     if (ok) showToast("تمت المزامنة بنجاح", "success");
     else showToast("بعض العمليات لم تُزامن — راجع قائمة الأخطاء", "error");
     loadQueue();
