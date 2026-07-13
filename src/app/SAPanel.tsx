@@ -999,9 +999,10 @@ function SAStores() {
                   pos: "نقطة البيع", products: "المنتجات", inventory: "المخزون",
                   sales: "المبيعات", customers: "العملاء", suppliers: "الموردون",
                   purchases: "المشتريات", purchaseOrders: "طلبات الشراء",
-                  reports: "التقارير", expenses: "المصروفات", users: "المستخدمون",
-                  settings: "الإعدادات", branches: "الفروع", promotions: "العروض والخصومات",
-                  returns: "المرتجعات",
+                  reports: "التقارير", expenses: "المصروفات", users: "الموظفون",
+                  settings: "الإعدادات", branches: "الفروع والأجهزة",
+                  promotions: "العروض والخصومات", returns: "المرتجعات",
+                  loyalty: "برنامج الولاء", sync: "مركز المزامنة",
                 };
                 const on = nf.sidebarFeatures[key] ?? DEFAULT_SIDEBAR[key];
                 return (
@@ -1077,9 +1078,10 @@ function SAStores() {
                   pos: "نقطة البيع", products: "المنتجات", inventory: "المخزون",
                   sales: "المبيعات", customers: "العملاء", suppliers: "الموردون",
                   purchases: "المشتريات", purchaseOrders: "طلبات الشراء",
-                  reports: "التقارير", expenses: "المصروفات", users: "المستخدمون",
-                  settings: "الإعدادات", branches: "الفروع", promotions: "العروض والخصومات",
-                  returns: "المرتجعات",
+                  reports: "التقارير", expenses: "المصروفات", users: "الموظفون",
+                  settings: "الإعدادات", branches: "الفروع والأجهزة",
+                  promotions: "العروض والخصومات", returns: "المرتجعات",
+                  loyalty: "برنامج الولاء", sync: "مركز المزامنة",
                 };
                 const on = (editStore.sidebarFeatures?.[key] ?? DEFAULT_SIDEBAR[key]);
                 return (
