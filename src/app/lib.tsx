@@ -148,6 +148,64 @@ export function useApi<T>(path: string, initial: T): { data: T; loading: boolean
   return { data, loading, error, refresh };
 }
 
+// ── useApiCached hook — instant load from localStorage, refresh in background ─
+// Used for heavy lists like products that must be available immediately at POS.
+// Strategy: stale-while-revalidate — show cache first, fetch silently in BG,
+// update state + cache when response arrives. TTL: 5 minutes.
+const CACHE_TTL = 5 * 60 * 1000;
+export function useApiCached<T>(path: string, initial: T): { data: T; loading: boolean; error: string; refresh: () => void } {
+  const token = getToken();
+  const cacheKey = `sowwanjo_cache_${token ? token.slice(-12) : "guest"}_${path.replace(/\//g, "_")}`;
+
+  const readCache = (): { value: T; ts: number } | null => {
+    try { const s = localStorage.getItem(cacheKey); return s ? JSON.parse(s) : null; } catch { return null; }
+  };
+  const writeCache = (value: T) => {
+    try { localStorage.setItem(cacheKey, JSON.stringify({ value, ts: Date.now() })); } catch { /* quota */ }
+  };
+
+  const cached = readCache();
+  const [data, setData]       = useState<T>(cached ? cached.value : initial);
+  const [loading, setLoading] = useState(!cached);   // no spinner if we have cache
+  const [error, setError]     = useState("");
+  const [tick, setTick]       = useState(0);
+  const refresh = useCallback(() => setTick(t => t + 1), []);
+
+  useEffect(() => {
+    if (!token) { setLoading(false); return; }
+    const hit = readCache();
+    const stale = !hit || (Date.now() - hit.ts > CACHE_TTL);
+    if (hit && !stale && tick === 0) return;      // fresh cache, no need to fetch
+    if (!hit) setLoading(true);                   // first ever load — show spinner
+    storeApi.get(path)
+      .then(d => { setData(d as T); setError(""); writeCache(d as T); })
+      .catch(e => { setError((e as {error?:string}).error || "خطأ في جلب البيانات"); })
+      .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path, tick, token]);
+
+  return { data, loading, error, refresh };
+}
+
+// Invalidate all cached entries for a path (call after add/edit/delete product)
+export function invalidateCache(path: string) {
+  const token = getToken();
+  const cacheKey = `sowwanjo_cache_${token ? token.slice(-12) : "guest"}_${path.replace(/\//g, "_")}`;
+  try { localStorage.removeItem(cacheKey); } catch { /* ignore */ }
+}
+
+// Returns how many seconds ago the cache was last refreshed, or null if no cache
+export function getCacheAge(path: string): number | null {
+  const token = getToken();
+  const cacheKey = `sowwanjo_cache_${token ? token.slice(-12) : "guest"}_${path.replace(/\//g, "_")}`;
+  try {
+    const s = localStorage.getItem(cacheKey);
+    if (!s) return null;
+    const { ts } = JSON.parse(s);
+    return Math.round((Date.now() - ts) / 1000);
+  } catch { return null; }
+}
+
 // Normalize MongoDB _id to id
 export function norm<T extends object>(item: T & { _id?: string; id?: string }): T & { id: string } {
   return { ...item, id: item._id || item.id || String(Date.now()) };
