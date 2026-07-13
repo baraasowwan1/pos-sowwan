@@ -1308,7 +1308,7 @@ ${filtered.length > 0 ? `
             </button>
             {showCustSearch && (
               <div className="absolute top-9 left-0 right-0 z-50 bg-card border border-border rounded-xl shadow-xl p-2 space-y-1.5 max-h-56 overflow-y-auto">
-                <input autoFocus value={customerQ} onChange={e => setCustomerQ(e.target.value)} placeholder="ابحث بالاسم أو الجوال..." className="w-full h-8 rounded-lg border border-border bg-background text-xs px-3 focus:outline-none focus:ring-1 focus:ring-primary" />
+                <input name="search-customer" aria-label="بحث بالاسم أو الجوال" autoFocus value={customerQ} onChange={e => setCustomerQ(e.target.value)} placeholder="ابحث بالاسم أو الجوال..." className="w-full h-8 rounded-lg border border-border bg-background text-xs px-3 focus:outline-none focus:ring-1 focus:ring-primary" />
                 {posCustomers.filter(c => !customerQ || c.name.includes(customerQ) || (c.phone||"").includes(customerQ)).slice(0,8).map(c => (
                   <button key={c.id} onClick={() => { setSelectedCustomer(c); setShowCustSearch(false); setCustomerQ(""); }} className="w-full flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-muted text-right">
                     <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-[10px] font-black">{c.name[0]}</div>
