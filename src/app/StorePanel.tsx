@@ -21,7 +21,7 @@ import {
 import { storeApi, useApi, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules, useDarkMode } from "./lib";
 import { SyncCenter, SyncStatusBadge } from "./SyncCenter";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
-import { SalesScreen, ProductsMgr, InvScreen, CustScreen, SuppScreen, PurchScreen, ExpScreen, ReturnScreen } from "./StorePanelB";
+import { SalesScreen, ProductsMgr, InvScreen, CustScreen, SuppScreen, PurchScreen, ExpScreen, ReturnScreen, PurchaseOrdersScreen, PromotionsScreen } from "./StorePanelB";
 import { StoreReports, EmpScreen, BranchScreen, LoyaltyScreen, PrintJobsScreen, PrintMatsScreen, PrintPricesScreen, StoreSetts } from "./StorePanelC";
 import { FlowerOrdersScreen, BouquetBuilderScreen, DeliveryMgmtScreen } from "./StorePanelD";
 
@@ -35,28 +35,30 @@ const ROLE_SCREENS: Record<string, string[] | "*"> = {
 };
 
 const STORE_NAV = [
-  { id: "dashboard",  label: "الرئيسية",       icon: <LayoutDashboard size={15} /> },
-  { id: "pos",        label: "نقطة البيع",      icon: <ShoppingCart size={15} /> },
-  { id: "sales",      label: "المبيعات",         icon: <FileText size={15} /> },
-  { id: "products",   label: "المنتجات",         icon: <Package size={15} /> },
-  { id: "inventory",  label: "المخزون",          icon: <Boxes size={15} /> },
-  { id: "customers",  label: "العملاء",           icon: <Users size={15} /> },
-  { id: "suppliers",  label: "الموردون",          icon: <Truck size={15} /> },
-  { id: "purchases",  label: "المشتريات",         icon: <Clipboard size={15} /> },
-  { id: "expenses",   label: "المصروفات",         icon: <Wallet size={15} /> },
-  { id: "returns",    label: "المرتجعات",         icon: <RotateCcw size={15} /> },
-  { id: "reports",    label: "التقارير",          icon: <BarChart2 size={15} /> },
-  { id: "employees",  label: "الموظفون",          icon: <UserCheck size={15} /> },
-  { id: "branches",   label: "الفروع والأجهزة",  icon: <Building2 size={15} /> },
-  { id: "loyalty",       label: "الولاء",              icon: <Star size={15} /> },
-  { id: "print_jobs",    label: "طلبات الطباعة",      icon: <Printer size={15} /> },
-  { id: "print_mats",   label: "مواد الطباعة",        icon: <Ruler size={15} /> },
-  { id: "print_prices", label: "أسعار الطباعة",       icon: <Hash size={15} /> },
-  { id: "flower_orders", label: "طلبات الزهور",       icon: <Flower2 size={15} /> },
-  { id: "bouquet",       label: "باقة مخصصة",         icon: <Gift size={15} /> },
-  { id: "delivery_mgmt", label: "إدارة التوصيل",      icon: <Bike size={15} /> },
-  { id: "settings",     label: "الإعدادات",           icon: <Settings size={15} /> },
-  { id: "sync",         label: "مركز المزامنة",       icon: <RefreshCw size={15} /> },
+  { id: "dashboard",      label: "الرئيسية",           icon: <LayoutDashboard size={15} />, sfKey: null },
+  { id: "pos",            label: "نقطة البيع",          icon: <ShoppingCart size={15} />,  sfKey: "pos" },
+  { id: "sales",          label: "المبيعات",             icon: <FileText size={15} />,       sfKey: "sales" },
+  { id: "products",       label: "المنتجات",             icon: <Package size={15} />,        sfKey: "products" },
+  { id: "inventory",      label: "المخزون",              icon: <Boxes size={15} />,          sfKey: "inventory" },
+  { id: "customers",      label: "العملاء",               icon: <Users size={15} />,          sfKey: "customers" },
+  { id: "suppliers",      label: "الموردون",              icon: <Truck size={15} />,          sfKey: "suppliers" },
+  { id: "purchases",      label: "المشتريات",             icon: <Clipboard size={15} />,      sfKey: "purchases" },
+  { id: "purchaseOrders", label: "طلبات الشراء",          icon: <ClipboardList size={15} />,  sfKey: "purchaseOrders" },
+  { id: "promotions",     label: "العروض والخصومات",     icon: <Percent size={15} />,        sfKey: "promotions" },
+  { id: "expenses",       label: "المصروفات",             icon: <Wallet size={15} />,         sfKey: "expenses" },
+  { id: "returns",        label: "المرتجعات",             icon: <RotateCcw size={15} />,      sfKey: "returns" },
+  { id: "reports",        label: "التقارير",              icon: <BarChart2 size={15} />,      sfKey: "reports" },
+  { id: "employees",      label: "الموظفون",              icon: <UserCheck size={15} />,      sfKey: "users" },
+  { id: "branches",       label: "الفروع والأجهزة",      icon: <Building2 size={15} />,      sfKey: "branches" },
+  { id: "loyalty",        label: "الولاء",                icon: <Star size={15} />,           sfKey: null },
+  { id: "print_jobs",     label: "طلبات الطباعة",        icon: <Printer size={15} />,        sfKey: null },
+  { id: "print_mats",     label: "مواد الطباعة",          icon: <Ruler size={15} />,          sfKey: null },
+  { id: "print_prices",   label: "أسعار الطباعة",        icon: <Hash size={15} />,           sfKey: null },
+  { id: "flower_orders",  label: "طلبات الزهور",          icon: <Flower2 size={15} />,        sfKey: null },
+  { id: "bouquet",        label: "باقة مخصصة",            icon: <Gift size={15} />,           sfKey: null },
+  { id: "delivery_mgmt",  label: "إدارة التوصيل",         icon: <Bike size={15} />,           sfKey: null },
+  { id: "settings",       label: "الإعدادات",             icon: <Settings size={15} />,       sfKey: "settings" },
+  { id: "sync",           label: "مركز المزامنة",         icon: <RefreshCw size={15} />,      sfKey: null },
 ];
 
 function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => void }) {
@@ -124,10 +126,15 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
   const allowed = ROLE_SCREENS[userRole] ?? "*";
   const canSee = (id: string) => allowed === "*" || (allowed as string[]).includes(id);
 
+  const sf = store.sidebarFeatures || {};
   const visibleNav = STORE_NAV.filter(n => {
     if (!canSee(n.id)) return false;
     if (n.id === "print_jobs" || n.id === "print_mats" || n.id === "print_prices") return storeCategory === "print_shop";
     if (n.id === "flower_orders" || n.id === "bouquet" || n.id === "delivery_mgmt") return storeCategory === "flower_shop";
+    // sidebarFeatures override — if key set to false, hide; if no key defined, show by default
+    if (n.sfKey && Object.prototype.hasOwnProperty.call(sf, n.sfKey)) {
+      return sf[n.sfKey as keyof typeof sf] !== false;
+    }
     return true;
   });
   const [storeMobileMenu, setStoreMobileMenu] = useState(false);
@@ -168,8 +175,8 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
   // Group nav items for sidebar sections
   const NAV_GROUPS = [
     { items: ["dashboard", "pos"] },
-    { items: ["sales", "products", "inventory", "purchases", "returns", "expenses"] },
-    { items: ["customers", "suppliers"] },
+    { items: ["sales", "products", "inventory", "purchases", "purchaseOrders", "returns", "expenses"] },
+    { items: ["customers", "suppliers", "promotions"] },
     { items: ["reports", "employees", "branches", "loyalty"] },
     { items: ["print_jobs", "print_mats", "print_prices", "flower_orders", "bouquet", "delivery_mgmt"] },
     { items: ["settings", "sync"] },
@@ -383,10 +390,12 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
               {screen === "inventory" && <InvScreen />}
               {screen === "customers" && <CustScreen />}
               {screen === "suppliers" && <SuppScreen />}
-              {screen === "purchases" && <PurchScreen />}
-              {screen === "expenses"  && <ExpScreen />}
-              {screen === "returns"   && <ReturnScreen />}
-              {screen === "reports"   && <StoreReports />}
+              {screen === "purchases"      && <PurchScreen />}
+              {screen === "purchaseOrders" && <PurchaseOrdersScreen store={store} />}
+              {screen === "promotions"     && <PromotionsScreen store={store} />}
+              {screen === "expenses"       && <ExpScreen />}
+              {screen === "returns"        && <ReturnScreen />}
+              {screen === "reports"        && <StoreReports />}
               {screen === "employees" && <EmpScreen />}
               {screen === "branches"  && <BranchScreen />}
               {screen === "loyalty"       && <LoyaltyScreen />}
@@ -670,6 +679,9 @@ function POSTerm({ store }: { store: StoreData }) {
   const [cart, setCart] = useLS<CartItem[]>(sk(sid,"pos_cart"), []);  // السلة تبقى بعد الـ refresh
   const [holds, setHolds] = useLS<CartItem[][]>(sk(sid,"pos_holds"), []); // الطلبات المعلقة
   const [q, setQ] = useState("");
+  // Manual product entry (when barcode not found)
+  const [manualEntry, setManualEntry] = useState<{ barcode: string } | null>(null);
+  const [manualForm, setManualForm] = useState({ nameAr: "", sellPrice: "", qty: "1" });
   const [cat, setCat] = useState("الكل");
   const [drawerAuto, setDrawerAuto] = useLS<boolean>(sk(sid,"pos_drawer_auto"), false);
   const [drawerOpening, setDrawerOpening] = useState(false);
@@ -693,7 +705,7 @@ function POSTerm({ store }: { store: StoreData }) {
   const [calcExpr, setCalcExpr] = useState("");
   // Shift sales
   const [showShift, setShowShift] = useState(false);
-  const { data: shiftSales, refresh: refreshShift } = useApi<unknown[]>("/sales", []);
+  const { data: shiftSales, refresh: refreshShift } = useApi<unknown[]>("/sales?limit=500", []);
   const [vm, setVm] = useLS<"grid"|"list">(sk(sid,"pos_vm"), "grid");
   const [scannerMode, setScannerMode] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -716,7 +728,12 @@ function POSTerm({ store }: { store: StoreData }) {
   const TAX = savedTaxRate;
   const sub = cart.reduce((a, i) => a + i.product.sellPrice * i.qty * (1 - i.discount / 100), 0);
   const da = sub * (disc / 100);
-  const ta = (sub - da) * TAX;
+  // Per-product tax: use product.taxRate if defined, else fall back to store TAX
+  const ta = cart.reduce((acc, i) => {
+    const lineTotal = i.product.sellPrice * i.qty * (1 - i.discount / 100) * (1 - disc / 100);
+    const rate = i.product.taxRate !== undefined ? i.product.taxRate / 100 : TAX;
+    return acc + lineTotal * rate;
+  }, 0);
   const total = sub - da + ta;
   const change = parseFloat(cash || "0") - total;
   // Sort all products once: by category then name (Arabic)
@@ -757,16 +774,24 @@ function POSTerm({ store }: { store: StoreData }) {
 
   const displayedProds = prods.slice(0, displayCount);
 
-  // Barcode scanner: detect Enter key → instant add to cart
+  // Barcode scanner: detect Enter key → instant add to cart (supports barcodes[] array)
   const handleSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter" || !q.trim()) return;
     const val = q.trim();
-    const found = allProds.find(p => p.barcode === val || p.sku === val || p.nameAr === val);
+    const found = allProds.find(p =>
+      p.barcode === val ||
+      (p.barcodes && p.barcodes.includes(val)) ||
+      p.sku === val ||
+      p.nameAr === val
+    );
     if (found) {
       add(found);
       setQ("");
     } else {
-      showToast(`"${val}" غير موجود في قائمة المنتجات`, "error");
+      // Product not found — open manual entry modal
+      setManualEntry({ barcode: val });
+      setManualForm({ nameAr: "", sellPrice: "", qty: "1" });
+      setQ("");
     }
   };
 
@@ -918,21 +943,110 @@ function POSTerm({ store }: { store: StoreData }) {
     showToast(`تم فتح الجلسة — الرصيد الافتتاحي: ${(parseFloat(openingBal)||0).toFixed(3)} JOD`, "success");
   };
 
+  // ── Shift Report Print ─────────────────────────────────────────────────────
+  type ShiftSale = { id: string; total: number; payMethod: string; createdAt: string; invoiceNo: string; customerName?: string; items?: { nameAr?: string; qty: number; unitPrice?: number; total?: number }[] };
+
+  const buildShiftHtml = (salesList: ShiftSale[], closingBalance?: number, cashierName?: string) => {
+    const sessionStart = session?.openedAt ? new Date(session.openedAt) : null;
+    const filtered = salesList.filter(s => sessionStart ? new Date(s.createdAt) >= sessionStart : true);
+    const now = new Date();
+    const gross  = filtered.reduce((a, s) => a + s.total, 0);
+    const cash   = filtered.filter(s => s.payMethod === "cash").reduce((a, s) => a + s.total, 0);
+    const cliq   = filtered.filter(s => s.payMethod === "cliq").reduce((a, s) => a + s.total, 0);
+    const card   = filtered.filter(s => s.payMethod === "card").reduce((a, s) => a + s.total, 0);
+
+    // Aggregate products
+    const prodMap: Record<string, { nameAr: string; qty: number; total: number }> = {};
+    for (const sale of filtered) {
+      for (const item of sale.items || []) {
+        const key = item.nameAr || "منتج";
+        if (!prodMap[key]) prodMap[key] = { nameAr: key, qty: 0, total: 0 };
+        prodMap[key].qty   += item.qty || 0;
+        prodMap[key].total += item.total || 0;
+      }
+    }
+    const products = Object.values(prodMap).sort((a, b) => b.qty - a.qty);
+
+    const row = (label: string, value: string, bold = false) =>
+      `<div class="row${bold ? " bold" : ""}"><span>${label}</span><span>${value}</span></div>`;
+
+    const prodRows = products.map(p =>
+      `<tr><td>${p.nameAr}</td><td style="text-align:center">${p.qty}</td><td style="text-align:left">${p.total.toFixed(3)}</td></tr>`
+    ).join("");
+
+    const invoiceRows = filtered.map(s =>
+      `<tr><td style="font-family:monospace">${s.invoiceNo}</td><td>${s.customerName || "نقدي"}</td><td style="text-align:center">${s.payMethod === "cash" ? "نقدي" : s.payMethod === "cliq" ? "كليك" : "بطاقة"}</td><td style="text-align:left">${s.total.toFixed(3)}</td></tr>`
+    ).join("");
+
+    return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير الشفت</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cairo','Tahoma',Arial,sans-serif;direction:rtl;padding:20px 24px;color:#111;font-size:12px;max-width:80mm;margin:auto}
+h1{text-align:center;font-size:16px;font-weight:900;margin-bottom:2px}
+h2{font-size:13px;font-weight:700;margin:14px 0 6px;border-bottom:1px solid #ddd;padding-bottom:4px}
+p.sub{text-align:center;color:#555;font-size:10px;margin-bottom:4px}
+.row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e5e7eb;font-size:12px}
+.row.bold{font-weight:900;font-size:13px;border-bottom:2px solid #111;margin-top:2px}
+.badge{display:inline-block;background:#f3f4f6;padding:2px 8px;border-radius:4px;font-size:11px}
+table{width:100%;border-collapse:collapse;font-size:11px;margin-top:4px}
+thead tr{background:#f3f4f6}
+th,td{padding:4px 5px;text-align:right;border-bottom:1px solid #e5e7eb}
+.footer{margin-top:16px;text-align:center;font-size:9px;color:#999;border-top:1px dashed #ddd;padding-top:10px}
+@media print{body{padding:8px}}
+</style></head><body>
+<h1>تقرير الشفت</h1>
+<p class="sub">${store.nameAr}</p>
+${cashierName ? `<p class="sub">الكاشير: <strong>${cashierName}</strong></p>` : ""}
+<p class="sub">بدأ: ${sessionStart ? sessionStart.toLocaleString("ar-JO") : "—"}</p>
+<p class="sub">انتهى: ${now.toLocaleString("ar-JO")}</p>
+
+<h2>ملخص المبيعات</h2>
+${row("عدد الفواتير", String(filtered.length))}
+${row("إجمالي المبيعات", `${gross.toFixed(3)} JOD`, true)}
+${row("نقدي", `${cash.toFixed(3)} JOD`)}
+${row("كليك", `${cliq.toFixed(3)} JOD`)}
+${row("بطاقة", `${card.toFixed(3)} JOD`)}
+${session ? row("الرصيد الافتتاحي", `${session.openingBalance.toFixed(3)} JOD`) : ""}
+${closingBalance !== undefined ? row("الرصيد الختامي", `${closingBalance.toFixed(3)} JOD`) : ""}
+${closingBalance !== undefined && session ? row("الفرق", `${(closingBalance - session.openingBalance).toFixed(3)} JOD`, true) : ""}
+
+${products.length > 0 ? `
+<h2>المنتجات المباعة (${products.length} صنف)</h2>
+<table>
+<thead><tr><th>المنتج</th><th style="text-align:center">الكمية</th><th style="text-align:left">المبلغ</th></tr></thead>
+<tbody>${prodRows}</tbody>
+</table>` : ""}
+
+${filtered.length > 0 ? `
+<h2>الفواتير (${filtered.length})</h2>
+<table>
+<thead><tr><th>رقم</th><th>العميل</th><th style="text-align:center">الدفع</th><th style="text-align:left">المبلغ</th></tr></thead>
+<tbody>${invoiceRows}</tbody>
+</table>` : ""}
+
+<div class="footer">Sowwanjo POS · ${now.toLocaleDateString("ar-JO")}</div>
+</body></html>`;
+  };
+
+  const printShiftReport = (salesList: ShiftSale[], closingBalance?: number) => {
+    const cashierName = (() => { try { return JSON.parse(localStorage.getItem(`sowwanjo_storeinfo_${sid}`) || "{}").cashierName || ""; } catch { return ""; } })();
+    const html = buildShiftHtml(salesList, closingBalance, cashierName);
+    const w = window.open("", "_blank", "width=500,height=700");
+    if (w) { w.document.write(html); w.document.close(); setTimeout(() => { w.focus(); w.print(); }, 400); }
+  };
+
   const closeSession = () => {
     if (!session) return;
-    const closed: CashSession = { ...session, closingBalance: parseFloat(closingBal) || 0, totalSales: sub, status: "closed" };
-    // Print closing summary
-    const w = window.open("", "_blank", "width=500,height=600");
-    if (w) {
-      const now = new Date();
-      w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إغلاق الجلسة</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Cairo','Tahoma',Arial,sans-serif;direction:rtl;padding:28px;color:#111;font-size:13px}h1{text-align:center;font-size:18px;font-weight:900;margin-bottom:4px}p.sub{text-align:center;color:#666;font-size:11px;margin-bottom:20px}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e5e7eb;font-size:13px}.row:last-child{font-weight:bold;font-size:15px;border-bottom:2px solid #111}.footer{margin-top:20px;text-align:center;font-size:10px;color:#999}</style></head><body><h1>تقرير إغلاق الجلسة</h1><p class="sub">${store.nameAr}</p><p class="sub">فُتحت: ${new Date(session.openedAt).toLocaleString("ar-JO")} — أُغلقت: ${now.toLocaleString("ar-JO")}</p><div class="row"><span>الرصيد الافتتاحي</span><span>${session.openingBalance.toFixed(3)} JOD</span></div><div class="row"><span>الرصيد الختامي المُعدّ</span><span>${closed.closingBalance?.toFixed(3)} JOD</span></div><div class="row"><span>الفرق</span><span>${((closed.closingBalance||0) - session.openingBalance).toFixed(3)} JOD</span></div><div class="footer">Sowwanjo POS — نظام نقاط البيع</div></body></html>`);
-      w.document.close();
-      setTimeout(() => { w.focus(); w.print(); }, 400);
-    }
+    const closing = parseFloat(closingBal) || 0;
     setSession(null);
     setShowCloseSession(false);
     setCart([]);
     showToast("تم إغلاق الجلسة النقدية بنجاح", "success");
+    // Print shift report with products
+    const salesList = normList<ShiftSale>(shiftSales).filter(s =>
+      session.openedAt ? new Date(s.createdAt) >= new Date(session.openedAt) : true
+    );
+    printShiftReport(salesList, closing);
   };
 
   // If no session, show session open screen
@@ -964,7 +1078,7 @@ function POSTerm({ store }: { store: StoreData }) {
   }
 
   return (
-    <div className="flex h-full overflow-hidden bg-background">
+    <main className="flex h-full overflow-hidden bg-background" aria-label="نقطة البيع">
       {/* Products */}
       <div className="flex-1 flex flex-col overflow-hidden border-l border-border">
         <div className="p-3 bg-card border-b border-border space-y-2 shrink-0">
@@ -1128,7 +1242,15 @@ function POSTerm({ store }: { store: StoreData }) {
               {cart.map(item => (
                 <div key={item.product.id} className="p-3">
                   <div className="flex items-start gap-2 mb-2">
-                    <div className="flex-1 min-w-0"><p className="text-xs font-bold leading-tight">{item.product.nameAr}</p><p className="text-xs text-muted-foreground">{item.product.sellPrice.toFixed(3)} JOD</p></div>
+                    <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold leading-tight">{item.product.nameAr}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-xs text-muted-foreground">{item.product.sellPrice.toFixed(3)} JOD</span>
+                      {(item.product.taxRate ?? 0) > 0 && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">ضريبة {item.product.taxRate}%</span>
+                      )}
+                    </div>
+                  </div>
                     <button onClick={() => rm(item.product.id)} className="text-red-400 hover:text-red-600 shrink-0"><X size={12} /></button>
                   </div>
                   <div className="flex items-center justify-between mb-1.5">
@@ -1169,7 +1291,10 @@ function POSTerm({ store }: { store: StoreData }) {
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between text-muted-foreground"><span>المجموع الفرعي</span><span className="font-bold">{sub.toFixed(3)} JOD</span></div>
             {disc > 0 && <div className="flex justify-between text-emerald-600"><span>خصم {disc}%</span><span>-{da.toFixed(3)} JOD</span></div>}
-            <div className="flex justify-between text-muted-foreground"><span>ضريبة المبيعات {(TAX * 100).toFixed(0)}%</span><span>{ta.toFixed(3)} JOD</span></div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>{cart.some(i => (i.product.taxRate ?? 0) > 0) ? "ضريبة المبيعات (متنوعة)" : `ضريبة المبيعات ${(TAX * 100).toFixed(0)}%`}</span>
+              <span>{ta.toFixed(3)} JOD</span>
+            </div>
             <div className="flex justify-between items-center font-black border-t border-border pt-1.5">
               <span className="text-sm">الإجمالي</span><span className="text-xl text-primary">{total.toFixed(3)} JOD</span>
             </div>
@@ -1313,7 +1438,8 @@ function POSTerm({ store }: { store: StoreData }) {
       {/* Shift Sales Modal */}
       {showShift && (() => {
         const sessionStart = session?.openedAt ? new Date(session.openedAt) : null;
-        const shiftSalesList = normList<{id:string;total:number;payMethod:string;createdAt:string;invoiceNo:string;customerName?:string;items?:{qty:number}[]}>(shiftSales)
+        type ShiftSaleRow = { id:string; total:number; payMethod:string; createdAt:string; invoiceNo:string; customerName?:string; items?:{ nameAr?:string; qty:number; unitPrice?:number; total?:number }[] };
+        const shiftSalesList = normList<ShiftSaleRow>(shiftSales)
           .filter(s => sessionStart ? new Date(s.createdAt) >= sessionStart : true);
         const shiftTotals = {
           count: shiftSalesList.length,
@@ -1323,6 +1449,17 @@ function POSTerm({ store }: { store: StoreData }) {
           card: shiftSalesList.filter(s => s.payMethod === "card").reduce((a,s) => a + s.total, 0),
           items: shiftSalesList.reduce((a,s) => a + (s.items||[]).reduce((b,i) => b + i.qty, 0), 0),
         };
+        // Aggregate products sold
+        const shiftProdMap: Record<string, {nameAr:string;qty:number;total:number}> = {};
+        for (const sale of shiftSalesList) {
+          for (const item of sale.items || []) {
+            const key = item.nameAr || "منتج";
+            if (!shiftProdMap[key]) shiftProdMap[key] = { nameAr: key, qty: 0, total: 0 };
+            shiftProdMap[key].qty   += item.qty || 0;
+            shiftProdMap[key].total += item.total || 0;
+          }
+        }
+        const shiftProducts = Object.values(shiftProdMap).sort((a,b) => b.qty - a.qty);
         return (
           <Modal title="مبيعات الشفت الحالي" sub={session ? `فُتح: ${new Date(session.openedAt).toLocaleString("ar-JO")}` : ""} onClose={() => setShowShift(false)} wide>
             <div className="space-y-4">
@@ -1332,25 +1469,59 @@ function POSTerm({ store }: { store: StoreData }) {
                 <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#4F46E5"}}><p className="text-xs text-muted-foreground mb-1">نقدي</p><p className="font-black text-xl text-primary">{shiftTotals.cash.toFixed(3)} JOD</p></div>
                 <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#8B5CF6"}}><p className="text-xs text-muted-foreground mb-1">كليك + بطاقة</p><p className="font-black text-xl" style={{color:"#8B5CF6"}}>{(shiftTotals.cliq + shiftTotals.card).toFixed(3)} JOD</p></div>
               </div>
-              <div className="border border-border rounded-xl overflow-hidden max-h-64 overflow-y-auto">
-                {shiftSalesList.length === 0 ? <p className="text-center py-6 text-sm text-muted-foreground">لا توجد مبيعات في هذا الشفت</p> : (
-                  <table className="w-full text-xs">
-                    <thead className="bg-muted/50"><tr>{["الفاتورة","العميل","المبلغ","الدفع","الوقت"].map(h => <th key={h} className="px-3 py-2 text-right font-bold text-muted-foreground">{h}</th>)}</tr></thead>
-                    <tbody className="divide-y divide-border/60">
-                      {shiftSalesList.map(s => (
-                        <tr key={s.id} className="hover:bg-muted/20">
-                          <td className="px-3 py-2 font-mono">{s.invoiceNo}</td>
-                          <td className="px-3 py-2">{s.customerName || "نقدي"}</td>
-                          <td className="px-3 py-2 font-bold">{s.total.toFixed(3)} JOD</td>
-                          <td className="px-3 py-2">{s.payMethod === "cash" ? "نقدي" : s.payMethod === "cliq" ? "كليك" : "بطاقة"}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{new Date(s.createdAt).toLocaleTimeString("ar-JO",{hour:"2-digit",minute:"2-digit"})}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+
+              {/* Products sold table */}
+              {shiftProducts.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground mb-2 flex items-center gap-1"><Package size={12} /> المنتجات المباعة ({shiftProducts.length} صنف · {shiftTotals.items} قطعة)</p>
+                  <div className="border border-border rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/50 sticky top-0"><tr>
+                        <th className="px-3 py-2 text-right font-bold text-muted-foreground">المنتج</th>
+                        <th className="px-3 py-2 text-center font-bold text-muted-foreground">الكمية</th>
+                        <th className="px-3 py-2 text-left font-bold text-muted-foreground">المبلغ</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-border/60">
+                        {shiftProducts.map(p => (
+                          <tr key={p.nameAr} className="hover:bg-muted/20">
+                            <td className="px-3 py-2">{p.nameAr}</td>
+                            <td className="px-3 py-2 text-center font-bold text-emerald-600">{p.qty}</td>
+                            <td className="px-3 py-2 text-left font-mono">{p.total.toFixed(3)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Invoices table */}
+              <div>
+                <p className="text-xs font-bold text-muted-foreground mb-2">الفواتير</p>
+                <div className="border border-border rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+                  {shiftSalesList.length === 0 ? <p className="text-center py-6 text-sm text-muted-foreground">لا توجد مبيعات في هذا الشفت</p> : (
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/50 sticky top-0"><tr>{["الفاتورة","العميل","المبلغ","الدفع","الوقت"].map(h => <th key={h} className="px-3 py-2 text-right font-bold text-muted-foreground">{h}</th>)}</tr></thead>
+                      <tbody className="divide-y divide-border/60">
+                        {shiftSalesList.map(s => (
+                          <tr key={s.id} className="hover:bg-muted/20">
+                            <td className="px-3 py-2 font-mono">{s.invoiceNo}</td>
+                            <td className="px-3 py-2">{s.customerName || "نقدي"}</td>
+                            <td className="px-3 py-2 font-bold">{s.total.toFixed(3)} JOD</td>
+                            <td className="px-3 py-2">{s.payMethod === "cash" ? "نقدي" : s.payMethod === "cliq" ? "كليك" : "بطاقة"}</td>
+                            <td className="px-3 py-2 text-muted-foreground">{new Date(s.createdAt).toLocaleTimeString("ar-JO",{hour:"2-digit",minute:"2-digit"})}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
               </div>
-              <Btn full v="secondary" icon={<Power size={13} />} onClick={() => { setShowShift(false); setClosingBal(""); setShowCloseSession(true); }}>إغلاق الشفت</Btn>
+
+              <div className="flex gap-2">
+                <Btn full v="secondary" icon={<Printer size={13} />} onClick={() => printShiftReport(normList<ShiftSale>(shiftSales))}>طباعة التقرير</Btn>
+                <Btn full v="secondary" icon={<Power size={13} />} onClick={() => { setShowShift(false); setClosingBal(""); setShowCloseSession(true); }}>إغلاق الشفت</Btn>
+              </div>
             </div>
           </Modal>
         );
@@ -1414,7 +1585,46 @@ function POSTerm({ store }: { store: StoreData }) {
           </div>
         </Modal>
       )}
-    </div>
+
+      {/* ── Manual Product Entry Modal — shown when barcode not in system ── */}
+      {manualEntry && (
+        <Modal title="منتج غير مُعرَّف في النظام" sub={`باركود: ${manualEntry.barcode} — أدخل التفاصيل للبيع المؤقت`} onClose={() => setManualEntry(null)} size="sm">
+          <div className="space-y-4">
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 flex gap-2">
+              <AlertCircle size={13} className="shrink-0 mt-0.5"/>
+              <span>المنتج غير موجود في قاعدة البيانات — سيُضاف للفاتورة مؤقتاً. عرّفه لاحقاً في صفحة المنتجات.</span>
+            </div>
+            <F label="اسم المنتج" req><TInput value={manualForm.nameAr} onChange={v => setManualForm(f => ({...f, nameAr: v}))} placeholder="اسم المنتج..." autoFocus /></F>
+            <F label="سعر البيع (JOD)" req><TInput value={manualForm.sellPrice} onChange={v => setManualForm(f => ({...f, sellPrice: v}))} type="number" placeholder="0.000" /></F>
+            <F label="الكمية"><TInput value={manualForm.qty} onChange={v => setManualForm(f => ({...f, qty: v}))} type="number" placeholder="1" /></F>
+            <div className="flex gap-3 justify-end">
+              <Btn v="secondary" onClick={() => setManualEntry(null)}>إلغاء</Btn>
+              <Btn disabled={!manualForm.nameAr || !manualForm.sellPrice}
+                onClick={() => {
+                  const tempProduct: Product = {
+                    id: `manual_${Date.now()}`,
+                    nameAr: manualForm.nameAr, nameEn: manualForm.nameAr,
+                    barcode: manualEntry.barcode, barcodes: [],
+                    sku: "", category: "يدوي", costPrice: 0,
+                    sellPrice: parseFloat(manualForm.sellPrice) || 0,
+                    stock: 999, minStock: 0, image: "", unit: "قطعة",
+                    taxRate: 0, taxable: false,
+                  };
+                  const qty = parseInt(manualForm.qty) || 1;
+                  setCart(prev => {
+                    const ex = prev.find(i => i.product.id === tempProduct.id);
+                    if (ex) return prev.map(i => i.product.id === tempProduct.id ? {...i, qty: i.qty + qty} : i);
+                    return [...prev, { product: tempProduct, qty, discount: 0 }];
+                  });
+                  setManualEntry(null);
+                  showToast(`تمت إضافة "${manualForm.nameAr}" مؤقتاً`, "success");
+                }}
+                icon={<Plus size={13}/>}>إضافة للسلة</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </main>
   );
 }
 
