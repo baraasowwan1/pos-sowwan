@@ -189,7 +189,7 @@ export function SyncCenter({ storeId }: { storeId: string }) {
   const discardItem = async (item: SyncQueueItem) => {
     if (!item.id) return;
     try {
-      await db.syncQueue.delete(item.id);
+      await db.syncQueue.deleteByKey(item.id);
       loadQueue();
       showToast("تم حذف العملية", "info");
     } catch {}
