@@ -245,12 +245,14 @@ export interface SidebarFeatures {
   purchases?: boolean; purchaseOrders?: boolean; reports?: boolean;
   expenses?: boolean; users?: boolean; settings?: boolean;
   branches?: boolean; promotions?: boolean; returns?: boolean;
+  loyalty?: boolean; sync?: boolean;
 }
 export const DEFAULT_SIDEBAR: Required<SidebarFeatures> = {
   pos: true, products: true, inventory: true, sales: true,
   customers: true, suppliers: true, purchases: true, purchaseOrders: true,
   reports: true, expenses: true, users: true, settings: true,
   branches: false, promotions: true, returns: true,
+  loyalty: false, sync: true,
 };
 export interface StoreData {
   id: string; nameAr: string; nameEn: string; category: StoreCategory;
