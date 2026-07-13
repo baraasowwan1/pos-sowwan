@@ -16,7 +16,7 @@ import {
   Banknote, Landmark, Handshake, Globe, MapPin, Key, User,
   ArrowUpRight, ArrowDownRight, Clipboard, Copy, Power, Monitor,
   Info, ChevronLeft, Grid3X3, List, Hash, Tag, Ruler, Calculator, FlipHorizontal,
-  Flower2, Gift, Bike, Moon, Sun,
+  Flower2, Gift, Bike, Moon, Sun, WifiOff, Wifi, CloudOff, Clock,
 } from "lucide-react";
 import { storeApi, useApi, useApiCached, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules, useDarkMode } from "./lib";
 import { SyncCenter, SyncStatusBadge } from "./SyncCenter";
@@ -24,6 +24,13 @@ import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
 import { SalesScreen, ProductsMgr, InvScreen, CustScreen, SuppScreen, PurchScreen, ExpScreen, ReturnScreen, PurchaseOrdersScreen, PromotionsScreen } from "./StorePanelB";
 import { StoreReports, EmpScreen, BranchScreen, LoyaltyScreen, PrintJobsScreen, PrintMatsScreen, PrintPricesScreen, StoreSetts } from "./StorePanelC";
 import { FlowerOrdersScreen, BouquetBuilderScreen, DeliveryMgmtScreen } from "./StorePanelD";
+
+// Offline context — lets deep components (POSTerm) know network state
+const OfflineCtx = createContext<{ isOnline: boolean; queueOffline: (path: string, payload: object) => void }>({
+  isOnline: true,
+  queueOffline: () => {},
+});
+const useOffline = () => useContext(OfflineCtx);
 
 // Role → allowed screen IDs (* = all screens)
 const ROLE_SCREENS: Record<string, string[] | "*"> = {
@@ -50,7 +57,7 @@ const STORE_NAV = [
   { id: "reports",        label: "التقارير",              icon: <BarChart2 size={15} />,      sfKey: "reports" },
   { id: "employees",      label: "الموظفون",              icon: <UserCheck size={15} />,      sfKey: "users" },
   { id: "branches",       label: "الفروع والأجهزة",      icon: <Building2 size={15} />,      sfKey: "branches" },
-  { id: "loyalty",        label: "الولاء",                icon: <Star size={15} />,           sfKey: null },
+  { id: "loyalty",        label: "الولاء",                icon: <Star size={15} />,           sfKey: "loyalty" },
   { id: "print_jobs",     label: "طلبات الطباعة",        icon: <Printer size={15} />,        sfKey: null },
   { id: "print_mats",     label: "مواد الطباعة",          icon: <Ruler size={15} />,          sfKey: null },
   { id: "print_prices",   label: "أسعار الطباعة",        icon: <Hash size={15} />,           sfKey: null },
@@ -58,7 +65,7 @@ const STORE_NAV = [
   { id: "bouquet",        label: "باقة مخصصة",            icon: <Gift size={15} />,           sfKey: null },
   { id: "delivery_mgmt",  label: "إدارة التوصيل",         icon: <Bike size={15} />,           sfKey: null },
   { id: "settings",       label: "الإعدادات",             icon: <Settings size={15} />,       sfKey: "settings" },
-  { id: "sync",           label: "مركز المزامنة",         icon: <RefreshCw size={15} />,      sfKey: null },
+  { id: "sync",           label: "مركز المزامنة",         icon: <RefreshCw size={15} />,      sfKey: "sync" },
 ];
 
 function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => void }) {
@@ -139,6 +146,59 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
   });
   const [storeMobileMenu, setStoreMobileMenu] = useState(false);
 
+  // ── Offline detection ─────────────────────────────────────────────────────
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [offlineSince, setOfflineSince] = useState<Date | null>(null);
+  const [offlineQueue, setOfflineQueue] = useState<unknown[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`sowwanjo_offline_queue_${storeId}`) || "[]"); } catch { return []; }
+  });
+  const [syncing, setSyncing] = useState(false);
+
+  useEffect(() => {
+    const goOnline = () => {
+      setIsOnline(true);
+      setOfflineSince(null);
+      showToast("🌐 عاد الاتصال بالإنترنت", "success");
+    };
+    const goOffline = () => {
+      setIsOnline(false);
+      setOfflineSince(new Date());
+      showToast("📵 انقطع الاتصال — النظام يعمل أوف لاين", "warning");
+    };
+    window.addEventListener("online",  goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => { window.removeEventListener("online", goOnline); window.removeEventListener("offline", goOffline); };
+  }, []);
+
+  // Persist queue to localStorage whenever it changes
+  useEffect(() => {
+    try { localStorage.setItem(`sowwanjo_offline_queue_${storeId}`, JSON.stringify(offlineQueue)); } catch {}
+  }, [offlineQueue, storeId]);
+
+  // Auto-sync queue when back online
+  useEffect(() => {
+    if (!isOnline || offlineQueue.length === 0 || syncing) return;
+    const syncQueue = async () => {
+      setSyncing(true);
+      let success = 0;
+      const remaining: unknown[] = [];
+      for (const item of offlineQueue as { path: string; payload: object }[]) {
+        try { await storeApi.post(item.path, item.payload); success++; }
+        catch { remaining.push(item); }
+      }
+      setOfflineQueue(remaining);
+      setSyncing(false);
+      if (success > 0) showToast(`تمت مزامنة ${success} عملية معلقة ✓`, "success");
+    };
+    syncQueue();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline]);
+
+  const queueOffline = (path: string, payload: object) => {
+    setOfflineQueue(q => [...(q as unknown[]), { path, payload, ts: new Date().toISOString() }]);
+    showToast("💾 تم حفظ العملية — ستُرسل عند عودة الاتصال", "info");
+  };
+
   // ── Announcements ────────────────────────────────────────────────────────
   type AnnItem = { _id: string; title: string; message: string; type: string; createdAt: string };
   const [announcements, setAnnouncements] = useState<AnnItem[]>([]);
@@ -183,7 +243,32 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
   ];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
+    <OfflineCtx.Provider value={{ isOnline, queueOffline }}>
+    <div className="flex flex-col h-screen overflow-hidden bg-background" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
+
+      {/* ── Offline Banner ───────────────────────────────────────────────────── */}
+      {!isOnline && (
+        <div className="shrink-0 bg-amber-500 text-white px-4 py-2 flex items-center justify-between gap-3 z-50 text-sm font-bold">
+          <div className="flex items-center gap-2">
+            <WifiOff size={15} className="shrink-0" />
+            <span>وضع أوف لاين — البيانات محفوظة محلياً{offlineSince ? ` منذ ${Math.floor((Date.now() - offlineSince.getTime()) / 60000)} دقيقة` : ""}</span>
+          </div>
+          {offlineQueue.length > 0 && (
+            <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">{offlineQueue.length} عملية معلقة</span>
+          )}
+        </div>
+      )}
+      {isOnline && syncing && (
+        <div className="shrink-0 bg-emerald-500 text-white px-4 py-2 flex items-center gap-2 z-50 text-sm font-bold">
+          <RefreshCw size={13} className="animate-spin" />
+          <span>جاري مزامنة العمليات المعلقة...</span>
+        </div>
+      )}
+      {isOnline && !syncing && offlineQueue.length === 0 && (
+        <></> // no banner when online + clean
+      )}
+
+      <div className="flex flex-1 overflow-hidden">
 
       {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
       <aside
@@ -424,7 +509,9 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
           ))}
         </nav>
       </div>
+      </div> {/* flex flex-1 overflow-hidden */}
     </div>
+    </OfflineCtx.Provider>
   );
 }
 function StoreDash({ store }: { store: StoreData }) {
@@ -612,6 +699,7 @@ interface CashSession { id?: string; openedAt: string; openingBalance: number; c
 
 function POSTerm({ store }: { store: StoreData }) {
   const sid = useStoreId();
+  const { isOnline, queueOffline } = useOffline();
   // Cash session state
   const [session, setSession] = useLS<CashSession | null>(sk(sid, "pos_session"), null);
   const [showOpenSession, setShowOpenSession] = useState(false);
@@ -855,17 +943,19 @@ function POSTerm({ store }: { store: StoreData }) {
       status: "completed",
     };
 
-    if (navigator.onLine) {
+    if (isOnline) {
       try {
         await storeApi.post("/sales", salePayload);
         setTimeout(() => refreshPosProds(), 500);
       } catch {
         // Online but server error — save offline as fallback
         await saveOfflineSale(saleItems);
+        queueOffline("/sales", salePayload);
       }
     } else {
-      // Fully offline — save to IndexedDB + queue
+      // Fully offline — save to IndexedDB + localStorage queue
       await saveOfflineSale(saleItems);
+      queueOffline("/sales", salePayload);
     }
 
     setOk(true);
@@ -1082,6 +1172,12 @@ ${filtered.length > 0 ? `
       {/* Products */}
       <div className="flex-1 flex flex-col overflow-hidden border-l border-border">
         <div className="p-3 bg-card border-b border-border space-y-2 shrink-0">
+          {!isOnline && (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs font-bold text-amber-700">
+              <WifiOff size={13} className="shrink-0" />
+              <span>أوف لاين — المبيعات تُحفظ محلياً وتُرسل عند عودة الاتصال</span>
+            </div>
+          )}
           <div className="flex gap-2">
             <div className="flex-1 relative">
               {scannerMode
