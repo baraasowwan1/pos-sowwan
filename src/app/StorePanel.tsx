@@ -1557,7 +1557,7 @@ ${filtered.length > 0 ? `
         }
         const shiftProducts = Object.values(shiftProdMap).sort((a,b) => b.qty - a.qty);
         return (
-          <Modal title="مبيعات الشفت الحالي" sub={session ? `فُتح: ${new Date(session.openedAt).toLocaleString("ar-JO")}` : ""} onClose={() => setShowShift(false)} wide>
+          <Modal title="مبيعات الشفت الحالي" sub={session ? `فُتح: ${new Date(session.openedAt).toLocaleString("ar-JO")}` : ""} onClose={() => setShowShift(false)} size="xl">
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-card border border-border rounded-xl p-3 text-center"><p className="text-xs text-muted-foreground mb-1">فواتير</p><p className="font-black text-xl text-foreground">{shiftTotals.count}</p></div>
@@ -1636,7 +1636,7 @@ ${filtered.length > 0 ? `
               <Btn cls="flex-1" disabled={!newCust.name.trim()} onClick={async () => {
                 try {
                   const created = await storeApi.post("/customers", { name: newCust.name, phone: newCust.phone, email: newCust.email, address: newCust.address });
-                  const c = norm<POSCust>(created);
+                  const c = norm<POSCust>(created as POSCust & { _id?: string });
                   await refreshCusts();
                   setSelectedCustomer({ id: c.id, name: c.name, phone: c.phone || "" });
                   setShowAddCust(false);
