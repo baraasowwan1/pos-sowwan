@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, createContext, useContext } from "react";
+import React, { useState, useCallback, useRef, useEffect, createContext, useContext } from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API SERVICE — يربط Frontend بـ Backend API (MongoDB)
@@ -620,30 +620,39 @@ export function Modal({ title, sub, onClose, children, size = "md" }: {
   );
 }
 
-export function F({ label, req, children }: { label: string; req?: boolean; children: React.ReactNode }) {
+export function F({ label, req, children, id }: { label: string; req?: boolean; children: React.ReactNode; id?: string }) {
+  const autoId = React.useId();
+  const fieldId = id || autoId;
+  // Inject id into a single direct child element (TInput, SInput, input, select, textarea)
+  const injected = React.Children.count(children) === 1
+    ? (() => {
+        const child = React.Children.toArray(children)[0] as React.ReactElement<{ id?: string }>;
+        return React.isValidElement(child) ? React.cloneElement(child, { id: child.props.id || fieldId }) : child;
+      })()
+    : children;
   return (
     <div className="space-y-1">
-      <label className="text-xs font-medium text-foreground">{label}{req && <span className="text-destructive mr-0.5">*</span>}</label>
-      {children}
+      <label htmlFor={fieldId} className="text-xs font-medium text-foreground">{label}{req && <span className="text-destructive mr-0.5">*</span>}</label>
+      {injected}
     </div>
   );
 }
 
-export function TInput({ value, onChange, placeholder, type = "text", icon, readOnly }: {
-  value: string; onChange?: (v: string) => void; placeholder?: string; type?: string; icon?: React.ReactNode; readOnly?: boolean;
+export function TInput({ value, onChange, placeholder, type = "text", icon, readOnly, id, name }: {
+  value: string; onChange?: (v: string) => void; placeholder?: string; type?: string; icon?: React.ReactNode; readOnly?: boolean; id?: string; name?: string;
 }) {
   return (
     <div className="relative">
       {icon && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">{icon}</span>}
-      <input type={type} value={value} readOnly={readOnly} onChange={e => onChange?.(e.target.value)} placeholder={placeholder}
+      <input id={id} name={name || id} type={type} value={value} readOnly={readOnly} onChange={e => onChange?.(e.target.value)} placeholder={placeholder}
         className={`w-full h-10 rounded-lg border border-border bg-input-background text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${icon ? "pr-9 pl-3" : "px-3"} ${readOnly ? "opacity-50 cursor-not-allowed" : ""}`} />
     </div>
   );
 }
 
-export function SInput({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+export function SInput({ value, onChange, options, id, name }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; id?: string; name?: string; }) {
   return (
-    <select value={value} onChange={e => onChange(e.target.value)} className="w-full h-10 rounded-lg border border-border bg-input-background text-sm text-foreground px-3 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+    <select id={id} name={name || id} value={value} onChange={e => onChange(e.target.value)} className="w-full h-10 rounded-lg border border-border bg-input-background text-sm text-foreground px-3 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
