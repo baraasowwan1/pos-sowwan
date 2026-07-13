@@ -704,7 +704,12 @@ export function Empty({ icon, title, desc }: { icon: React.ReactNode; title: str
 // ── Toast notification system ──────────────────────────────────────────────────
 type ToastT = { id: number; msg: string; type: "success"|"error"|"info"|"warning" };
 const _toastListeners: ((t: ToastT) => void)[] = [];
+const _recentToastKeys = new Set<string>();
 export function showToast(msg: string, type: ToastT["type"] = "success") {
+  const key = `${type}:${msg}`;
+  if (_recentToastKeys.has(key)) return;
+  _recentToastKeys.add(key);
+  setTimeout(() => _recentToastKeys.delete(key), 2500);
   const t: ToastT = { id: Date.now() + Math.random(), msg, type };
   _toastListeners.forEach(fn => fn(t));
 }
