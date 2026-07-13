@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   RefreshCw, CheckCircle, AlertCircle, WifiOff, Wifi, Clock,
-  Download, Trash2, AlertTriangle, Info, Monitor,
+  Download, Trash2, AlertTriangle, Info, Monitor, RotateCcw, X,
 } from "lucide-react";
 import { runSync, subscribeSyncState, SyncState, bootstrapDevice } from "./syncEngine";
 import { db, SyncQueueItem, getDeviceId, isOfflineReady } from "./offlineDb";
@@ -166,11 +166,31 @@ export function SyncCenter({ storeId }: { storeId: string }) {
 
   const retryFailed = async () => {
     try {
+      // Reset both "failed" and stuck "pending" (retryCount > 0 means they've been attempted)
       await db.syncQueue
         .where("storeId").equals(storeId)
-        .filter(q => q.syncStatus === "failed")
+        .filter(q => q.syncStatus === "failed" || (q.syncStatus === "pending" && (q.retryCount || 0) > 0))
         .modify({ syncStatus: "pending", retryCount: 0, lastError: undefined });
       await handleSync();
+    } catch {}
+  };
+
+  const retryItem = async (item: SyncQueueItem) => {
+    if (!item.id) return;
+    try {
+      await db.syncQueue.update(item.id, { syncStatus: "pending", retryCount: 0, lastError: undefined });
+      loadQueue();
+      if (online) await handleSync();
+      else showToast("سيتم المزامنة عند عودة الاتصال", "info");
+    } catch {}
+  };
+
+  const discardItem = async (item: SyncQueueItem) => {
+    if (!item.id) return;
+    try {
+      await db.syncQueue.delete(item.id);
+      loadQueue();
+      showToast("تم حذف العملية", "info");
     } catch {}
   };
 
@@ -257,7 +277,7 @@ export function SyncCenter({ storeId }: { storeId: string }) {
             )}
           </div>
         </div>
-        {state.failed > 0 && online && (
+        {(state.failed > 0 || state.pending > 0) && online && (
           <Btn v="secondary" s="xs" onClick={retryFailed} icon={<RefreshCw size={11} />}>إعادة المحاولة</Btn>
         )}
       </div>
@@ -382,6 +402,24 @@ export function SyncCenter({ storeId }: { storeId: string }) {
                         <p className="text-[10px] text-red-600 mt-0.5 truncate">{item.lastError}</p>
                       )}
                     </div>
+                    {item.syncStatus !== "synced" && item.syncStatus !== "syncing" && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => retryItem(item)}
+                          title="إعادة المحاولة"
+                          className="p-1.5 rounded-md hover:bg-blue-50 text-blue-600 transition-colors"
+                        >
+                          <RotateCcw size={12} />
+                        </button>
+                        <button
+                          onClick={() => discardItem(item)}
+                          title="حذف العملية"
+                          className="p-1.5 rounded-md hover:bg-red-50 text-red-500 transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
