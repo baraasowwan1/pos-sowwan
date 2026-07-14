@@ -772,6 +772,8 @@ function SAStores() {
     } catch { /* fallback */ }
     setStores(p => p.map(s => s.id === editStore.id ? editStore : s));
     if (detail?.id === editStore.id) setDetail(editStore);
+    // تحديث localStorage حتى تُطبَّق التغييرات فوراً في واجهة المتجر
+    try { localStorage.setItem(`sowwanjo_storeinfo_${editStore.id}`, JSON.stringify(editStore)); } catch {}
     showToast(`تم تحديث بيانات "${editStore.nameAr}" بنجاح`);
     setEditStore(null);
   };
