@@ -104,6 +104,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
     branches: rawStore?.branches || 1,
     createdAt:rawStore?.createdAt|| new Date().toISOString().split("T")[0],
     expiresAt:rawStore?.expiresAt|| new Date(Date.now() + 365*86400000).toISOString().split("T")[0],
+    sidebarFeatures: rawStore?.sidebarFeatures || undefined,
   };
   const [screen, setScreen] = useState(() => {
     try {
