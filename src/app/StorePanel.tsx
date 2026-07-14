@@ -1297,134 +1297,348 @@ ${filtered.length > 0 ? `
   if (!session) {
     const ROLE_AR_MAP: Record<string,string> = { owner:"مالك", manager:"مدير", cashier:"كاشير", inventory:"مسؤول مخزون", accountant:"محاسب" };
     return (
-      <div className="flex h-full items-center justify-center p-6 bg-background">
-        <div className="bg-card rounded-2xl border border-border shadow-md p-8 max-w-md w-full text-center">
-          {/* Employee identity badge */}
+      <div className="flex h-full items-center justify-center" style={{background:"linear-gradient(135deg,#0f2520 0%,#173A34 60%,#1e4a3f 100%)"}}>
+        <div className="w-full max-w-md mx-auto px-4">
+          {/* Brand */}
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl" style={{background:"#C8A45C"}}>
+              <Monitor size={38} className="text-white" />
+            </div>
+            <h1 className="text-3xl font-black text-white mb-1">{store.nameAr || "نقطة البيع"}</h1>
+            <p className="text-sm" style={{color:"#C8A45C"}}>بدء جلسة نقدية جديدة</p>
+          </div>
+          {/* User badge */}
           {posUserName && (
-            <div className="flex items-center justify-center gap-2 mb-5 px-3 py-2 rounded-xl bg-primary/8 border border-primary/20">
-              <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                <span className="text-primary font-black text-xs">{posUserName.charAt(0)}</span>
+            <div className="flex items-center gap-3 mb-5 px-4 py-3 rounded-2xl border" style={{background:"rgba(255,255,255,0.06)",borderColor:"rgba(200,164,92,0.3)"}}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg shrink-0" style={{background:"#C8A45C",color:"#173A34"}}>
+                {posUserName.charAt(0)}
               </div>
-              <div className="text-right">
-                <p className="text-xs font-black text-foreground">{posUserName}</p>
-                <p className="text-[10px] text-muted-foreground">{ROLE_AR_MAP[posRole] || posRole} · {store.nameAr}</p>
+              <div>
+                <p className="font-black text-white text-sm">{posUserName}</p>
+                <p className="text-xs" style={{color:"rgba(255,255,255,0.5)"}}>{ROLE_AR_MAP[posRole] || posRole}</p>
               </div>
             </div>
           )}
-          <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <Wallet size={36} className="text-primary" />
+          {/* Card */}
+          <div className="rounded-2xl p-6 shadow-2xl" style={{background:"#F7F5F2"}}>
+            <p className="text-sm text-muted-foreground mb-4 text-center">أدخل الرصيد الافتتاحي في الدرج النقدي</p>
+            <F label="الرصيد الافتتاحي (JOD)">
+              <TInput value={openingBal} onChange={setOpeningBal} type="number" placeholder="0.000" icon={<Banknote size={13} />} />
+            </F>
+            <div className="grid grid-cols-3 gap-2 my-4">
+              {[0, 10, 20, 50, 100, 200].map(v => (
+                <button key={v} onClick={() => setOpeningBal(String(v))}
+                  className="h-11 rounded-xl text-sm font-bold border transition-all"
+                  style={openingBal === String(v)
+                    ? {background:"#173A34",color:"#F7F5F2",borderColor:"#173A34"}
+                    : {background:"white",color:"#173A34",borderColor:"#e5e7eb"}}>
+                  {v} JOD
+                </button>
+              ))}
+            </div>
+            <button onClick={openSession}
+              className="w-full h-12 rounded-xl font-black text-base flex items-center justify-center gap-2 transition-all hover:opacity-90"
+              style={{background:"#173A34",color:"#F7F5F2"}}>
+              <Power size={16} />فتح الجلسة
+            </button>
           </div>
-          <h2 className="text-2xl font-black mb-2">فتح جلسة POS</h2>
-          <p className="text-muted-foreground text-sm mb-6">أدخل الرصيد الافتتاحي في الدرج النقدي لبدء العمل</p>
-          <F label="الرصيد الافتتاحي (JOD)">
-            <TInput value={openingBal} onChange={setOpeningBal} type="number" placeholder="0.000" icon={<Banknote size={13} />} />
-          </F>
-          <div className="grid grid-cols-3 gap-2 my-4">
-            {[0, 10, 20, 50, 100, 200].map(v => (
-              <button key={v} onClick={() => setOpeningBal(String(v))} className="h-10 rounded-xl text-sm font-bold border border-border hover:bg-primary hover:text-white hover:border-primary transition-all">
-                {v} JOD
-              </button>
-            ))}
-          </div>
-          <Btn full s="lg" onClick={openSession} icon={<Power size={16} />}>فتح الجلسة</Btn>
-          <p className="text-xs text-muted-foreground mt-4">{new Date().toLocaleString("ar-JO")}</p>
+          <p className="text-center text-xs mt-4" style={{color:"rgba(255,255,255,0.35)"}}>{new Date().toLocaleString("ar-JO")}</p>
         </div>
       </div>
     );
   }
 
+  /* ─── MAIN 3-COLUMN POS LAYOUT ───────────────────────────────────────────── */
   return (
-    <main className="flex h-full overflow-hidden bg-background" aria-label="نقطة البيع">
-      {/* Products */}
-      <div className="flex-1 flex flex-col overflow-hidden border-l border-border">
-        <div className="p-3 bg-card border-b border-border space-y-2 shrink-0">
+    <main dir="rtl" className="flex h-full overflow-hidden" style={{background:"#F0EEE9",fontFamily:"'Cairo','Inter',sans-serif"}} aria-label="نقطة البيع">
+
+      {/* ══ LEFT PANEL — Cart ══════════════════════════════════════════════════ */}
+      <div className="flex flex-col overflow-hidden border-l border-border" style={{width:320,minWidth:320,background:"white"}}>
+
+        {/* Cart header */}
+        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border" style={{background:"#173A34"}}>
+          <div className="flex items-center gap-2">
+            <ShoppingCart size={16} className="text-white" />
+            <span className="font-black text-white text-sm">الفاتورة</span>
+            {cart.length > 0 && (
+              <span className="text-xs font-black px-2 py-0.5 rounded-full" style={{background:"#C8A45C",color:"#173A34"}}>
+                {cart.reduce((a,i)=>a+i.qty,0)}
+              </span>
+            )}
+          </div>
+          {cart.length > 0 && (
+            <button onClick={() => setCart([])} className="text-xs font-bold px-2 py-1 rounded-lg transition-all hover:bg-white/10" style={{color:"rgba(255,255,255,0.6)"}}>
+              مسح الكل
+            </button>
+          )}
+        </div>
+
+        {/* Customer selector */}
+        <div className="shrink-0 px-3 py-2.5 border-b border-border/60 relative">
+          <div className="flex gap-1.5">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                placeholder="اختر عميل (اختياري)..."
+                value={selectedCustomer ? selectedCustomer.name : customerQ}
+                onChange={e => { setCustomerQ(e.target.value); setShowCustSearch(true); setSelectedCustomer(null); }}
+                onFocus={() => setShowCustSearch(true)}
+                className="w-full h-9 rounded-xl border border-border bg-background text-sm px-3 pr-8 focus:outline-none focus:ring-2 focus:ring-ring/25"
+              />
+              <Users size={13} className="absolute right-2.5 top-2.5 text-muted-foreground pointer-events-none" />
+              {selectedCustomer && (
+                <button onClick={() => { setSelectedCustomer(null); setCustomerQ(""); }} className="absolute left-2.5 top-2.5 text-muted-foreground hover:text-foreground"><X size={13} /></button>
+              )}
+            </div>
+            <button onClick={() => setShowAddCust(true)} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center hover:bg-muted/50 transition-all shrink-0">
+              <Plus size={14} className="text-muted-foreground" />
+            </button>
+          </div>
+          {showCustSearch && customerQ && (
+            <div className="absolute right-3 left-3 top-full mt-1 bg-card border border-border rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
+              {posCustomers.filter(c => c.name.includes(customerQ) || (c.phone||"").includes(customerQ)).slice(0,8).map(c => (
+                <button key={c.id} className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-muted/50 transition-all text-right"
+                  onClick={() => { setSelectedCustomer(c); setCustomerQ(""); setShowCustSearch(false); }}>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-black" style={{background:"#173A34",color:"white"}}>{c.name.charAt(0)}</div>
+                  <div className="text-right flex-1">
+                    <p className="text-sm font-bold text-foreground">{c.name}</p>
+                    <p className="text-xs text-muted-foreground">{c.phone}</p>
+                  </div>
+                  {(c.loyaltyPoints||0) > 0 && <span className="text-xs font-black" style={{color:"#C8A45C"}}>{c.loyaltyPoints} نقطة</span>}
+                </button>
+              ))}
+              {posCustomers.filter(c => c.name.includes(customerQ) || (c.phone||"").includes(customerQ)).length === 0 && (
+                <p className="text-center py-3 text-sm text-muted-foreground">لا نتائج — <button className="text-primary font-bold" onClick={()=>{setShowCustSearch(false);setShowAddCust(true);}}>إضافة عميل جديد</button></p>
+              )}
+            </div>
+          )}
+          {selectedCustomer && (
+            <div className="flex items-center justify-between mt-1.5 px-1">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle size={12} style={{color:"#173A34"}} />
+                <span className="text-xs font-bold" style={{color:"#173A34"}}>{selectedCustomer.name}</span>
+              </div>
+              {(selectedCustomer.loyaltyPoints||0) > 0 && (
+                <div className="flex items-center gap-1">
+                  <Star size={11} style={{color:"#C8A45C"}} />
+                  <span className="text-xs font-black" style={{color:"#C8A45C"}}>{selectedCustomer.loyaltyPoints} نقطة</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Cart items */}
+        <div className="flex-1 overflow-y-auto" onClick={() => showCustSearch && setShowCustSearch(false)}>
+          {cart.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full py-10 px-4">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3" style={{background:"#F0EEE9"}}>
+                <ShoppingCart size={28} style={{color:"#C8A45C"}} />
+              </div>
+              <p className="text-sm font-bold text-muted-foreground">السلة فارغة</p>
+              <p className="text-xs text-muted-foreground mt-1">اضغط على منتج لإضافته</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {cart.map((item) => (
+                <div key={item.product.id} className="px-3 py-2.5 hover:bg-muted/30 transition-all">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground truncate leading-tight">{item.product.nameAr}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-xs font-black" style={{color:"#173A34"}}>{(item.product.sellPrice * (1 - item.discount/100)).toFixed(3)}</span>
+                        <span className="text-xs text-muted-foreground">JOD</span>
+                        {item.discount > 0 && <span className="text-xs line-through text-muted-foreground">{item.product.sellPrice.toFixed(3)}</span>}
+                        {item.promoApplied && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{background:"#173A34",color:"#C8A45C"}}>{item.promoApplied}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => item.qty === 1 ? rm(item.product.id) : upd(item.product.id, -1)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border border-border hover:bg-red-50 hover:border-red-200 hover:text-red-500">
+                        {item.qty === 1 ? <Trash2 size={11} /> : <Minus size={11} />}
+                      </button>
+                      <span className="w-7 text-center text-sm font-black">{item.qty}</span>
+                      <button onClick={() => upd(item.product.id, 1)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border border-border hover:border-primary hover:text-primary">
+                        <Plus size={11} />
+                      </button>
+                    </div>
+                    <div className="text-right shrink-0 w-16">
+                      <p className="text-sm font-black">{(item.product.sellPrice * item.qty * (1-item.discount/100)).toFixed(3)}</p>
+                    </div>
+                  </div>
+                  {isOwnerOrMgr && (
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <Percent size={10} className="text-muted-foreground shrink-0" />
+                      <input type="range" min={0} max={50} step={1} value={item.discount}
+                        onChange={e => updd(item.product.id, parseFloat(e.target.value))}
+                        className="flex-1 h-1 accent-primary cursor-pointer" />
+                      <span className="text-xs font-black w-8 text-left" style={{color: item.discount > 0 ? "#173A34" : undefined}}>{item.discount}%</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Held orders */}
+        {holds.length > 0 && (
+          <div className="shrink-0 border-t border-border/60 px-3 py-2" style={{background:"#FFFBF0"}}>
+            <p className="text-xs font-bold text-amber-700 mb-1.5 flex items-center gap-1"><Archive size={11} /> طلبات معلقة ({holds.length})</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {holds.map((h, i) => (
+                <button key={i} onClick={() => resume(i)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-bold border border-amber-200 bg-white text-amber-700 hover:bg-amber-100 transition-all">
+                  طلب {i+1} ({h.reduce((a,x)=>a+x.qty,0)} قطعة)
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Cart totals + checkout */}
+        {cart.length > 0 && (
+          <div className="shrink-0 border-t border-border" style={{background:"#F7F5F2"}}>
+            <div className="px-4 py-3 space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">المجموع الفرعي</span>
+                <span className="font-bold">{sub.toFixed(3)} JOD</span>
+              </div>
+              {isOwnerOrMgr && (
+                <div className="flex items-center gap-2 py-0.5">
+                  <span className="text-xs text-muted-foreground shrink-0">خصم الفاتورة</span>
+                  <input type="range" min={0} max={50} step={1} value={disc} onChange={e => setDisc(parseFloat(e.target.value))} className="flex-1 h-1 accent-primary cursor-pointer" />
+                  <span className="text-xs font-black w-8 text-left" style={{color: disc > 0 ? "#173A34" : undefined}}>{disc}%</span>
+                </div>
+              )}
+              {da > 0 && <div className="flex justify-between text-sm"><span className="text-red-500">خصم</span><span className="font-bold text-red-500">-{da.toFixed(3)} JOD</span></div>}
+              {ta > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">ضريبة</span><span className="font-bold">+{ta.toFixed(3)} JOD</span></div>}
+              {pointsDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-amber-500">نقاط الولاء</span><span className="font-bold text-amber-600">-{pointsDiscount.toFixed(3)} JOD</span></div>}
+              {giftDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-emerald-500">بطاقة هدية</span><span className="font-bold text-emerald-600">-{giftDiscount.toFixed(3)} JOD</span></div>}
+              {couponDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-blue-500">كوبون</span><span className="font-bold text-blue-600">-{couponDiscount.toFixed(3)} JOD</span></div>}
+              <div className="flex justify-between pt-1.5 border-t border-border">
+                <span className="font-black text-base">الإجمالي</span>
+                <span className="font-black text-xl" style={{color:"#173A34"}}>{finalTotal.toFixed(3)} JOD</span>
+              </div>
+            </div>
+            <div className="flex gap-1.5 px-3 pb-3">
+              <button onClick={hold} title="تعليق الطلب" className="w-10 h-10 rounded-xl border border-border flex items-center justify-center hover:bg-amber-50 hover:border-amber-200 transition-all shrink-0">
+                <Archive size={15} className="text-muted-foreground" />
+              </button>
+              <button onClick={doPrint} title="طباعة" className="w-10 h-10 rounded-xl border border-border flex items-center justify-center hover:bg-muted/50 transition-all shrink-0">
+                <Printer size={15} className="text-muted-foreground" />
+              </button>
+              <button onClick={() => setCart([])} title="مسح" className="w-10 h-10 rounded-xl border border-border flex items-center justify-center hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all shrink-0">
+                <X size={15} className="text-muted-foreground" />
+              </button>
+              <button onClick={() => setShowPay(true)}
+                className="flex-1 h-10 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90"
+                style={{background:"#C8A45C",color:"#173A34"}}>
+                <CreditCard size={15} />الدفع
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ══ CENTER PANEL — Products ════════════════════════════════════════════ */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Toolbar */}
+        <div className="shrink-0 px-3 py-2.5 border-b border-border space-y-2" style={{background:"white"}}>
           {!isOnline && (
             <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs font-bold text-amber-700">
-              <WifiOff size={13} className="shrink-0" />
-              <span>أوف لاين — المبيعات تُحفظ محلياً وتُرسل عند عودة الاتصال</span>
+              <WifiOff size={12} className="shrink-0" /><span>أوف لاين — المبيعات تُحفظ محلياً</span>
             </div>
           )}
           <div className="flex gap-2">
             <div className="flex-1 relative">
-              {scannerMode
-                ? <Scan size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 pointer-events-none animate-pulse" />
-                : <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              }
-              <input
-                ref={searchRef}
-                value={q}
-                onChange={e => setQ(e.target.value)}
-                onKeyDown={handleSearchKey}
-                placeholder={scannerMode ? "وضع السكانر — امسح الباركود..." : "بحث بالاسم، الباركود، SKU... أو اضغط Enter بعد الباركود"}
-                className={`w-full h-11 rounded-xl border text-sm pr-9 pl-3 focus:outline-none focus:ring-2 focus:ring-ring/25 ${scannerMode ? "border-emerald-400 bg-emerald-50/30 focus:border-emerald-500 dark:bg-emerald-950/20" : "border-border bg-background focus:border-primary"}`}
-              />
+              {scannerMode ? (
+                <div className="w-full h-10 rounded-xl border-2 border-dashed flex items-center gap-2 px-3" style={{borderColor:"#C8A45C",background:"#FFFBF0"}}>
+                  <Scan size={14} style={{color:"#C8A45C"}} className="shrink-0 animate-pulse" />
+                  <input ref={searchRef} type="text" value={q} onChange={e => setQ(e.target.value)} onKeyDown={handleSearchKey}
+                    className="flex-1 bg-transparent outline-none text-sm font-bold" placeholder="امسح الباركود..." autoFocus style={{color:"#173A34"}} />
+                </div>
+              ) : (
+                <div className="relative">
+                  <Search size={14} className="absolute right-3 top-3 text-muted-foreground pointer-events-none" />
+                  <input ref={searchRef} type="text" value={q} onChange={e => setQ(e.target.value)} onKeyDown={handleSearchKey}
+                    placeholder="ابحث بالاسم، الباركود، SKU..."
+                    className="w-full h-10 rounded-xl border border-border bg-background text-sm pr-9 pl-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+                  {q && <button onClick={() => setQ("")} className="absolute left-3 top-3 text-muted-foreground hover:text-foreground"><X size={12} /></button>}
+                </div>
+              )}
             </div>
-            <button
-              title={scannerMode ? "إيقاف وضع السكانر" : "تفعيل وضع السكانر"}
-              onClick={() => { setScannerMode(m => !m); setTimeout(() => searchRef.current?.focus(), 50); }}
-              className={`w-11 h-11 flex items-center justify-center rounded-xl border transition-all ${scannerMode ? "bg-emerald-500 border-emerald-500 text-white shadow-md" : "border-border bg-background hover:bg-muted text-muted-foreground"}`}
-            ><Scan size={18} /></button>
-            <button onClick={() => setVm(v => v === "grid" ? "list" : "grid")} className="w-11 h-11 flex items-center justify-center rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground">
-              {vm === "grid" ? <List size={18} /> : <Grid3X3 size={18} />}
+            <button onClick={() => { setScannerMode(m => !m); setQ(""); setTimeout(() => searchRef.current?.focus(), 50); }}
+              className="w-10 h-10 rounded-xl border transition-all flex items-center justify-center shrink-0"
+              style={scannerMode ? {background:"#173A34",borderColor:"#173A34",color:"white"} : {background:"white",borderColor:"#e5e7eb",color:"#6b7280"}}>
+              <Scan size={15} />
+            </button>
+            <button onClick={() => setVm(v => v === "grid" ? "list" : "grid")}
+              className="w-10 h-10 rounded-xl border border-border bg-white flex items-center justify-center shrink-0 hover:bg-muted/50 transition-all">
+              {vm === "grid" ? <List size={15} className="text-muted-foreground" /> : <Grid3X3 size={15} className="text-muted-foreground" />}
             </button>
           </div>
-          {/* Tab filters: All / Favorites / Recent */}
-          <div className="flex gap-1.5 border-b border-border pb-2">
-            {([["all","الكل",""],["fav","المفضلة","⭐"],["recent","الأخيرة","🕐"]] as const).map(([tab,label,icon]) => (
-              <button key={tab} onClick={() => setPosTab(tab)}
-                className={`flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-bold transition-all border ${posTab === tab ? "bg-primary text-white border-primary" : "border-border text-muted-foreground hover:border-primary hover:text-primary bg-transparent"}`}>
-                {icon && <span>{icon}</span>}
-                {label}
-                {tab === "fav" && favorites.length > 0 && <span className={`text-[10px] font-normal ${posTab === tab ? "opacity-80" : "opacity-50"}`}>({favorites.length})</span>}
-                {tab === "recent" && recentIds.length > 0 && <span className={`text-[10px] font-normal ${posTab === tab ? "opacity-80" : "opacity-50"}`}>({recentIds.length})</span>}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-            {cats.map(c => {
-              const count = c === "الكل" ? allProds.length : allProds.filter(p => p.category === c).length;
+          {/* Tabs + categories */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+            {(["all","fav","recent"] as const).map((t, i) => {
+              const labels = ["الكل","المفضلة","الأخيرة"];
               return (
-                <button key={c} onClick={() => setCat(c)} className={`shrink-0 px-3 h-8 rounded-full text-xs font-bold border transition-all flex items-center gap-1 ${cat === c ? "bg-primary text-white border-primary" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>
-                  {c}
-                  <span className={`text-[10px] font-normal ${cat === c ? "opacity-80" : "opacity-50"}`}>({count})</span>
+                <button key={t} onClick={() => setPosTab(t)}
+                  className="flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0"
+                  style={posTab === t ? {background:"#173A34",color:"white"} : {background:"#f3f4f6",color:"#6b7280"}}>
+                  {labels[i]}
                 </button>
               );
             })}
+            <div className="w-px h-5 bg-border shrink-0" />
+            {cats.map(c => (
+              <button key={c} onClick={() => setCat(c)}
+                className="px-3 h-8 rounded-lg text-xs font-bold whitespace-nowrap transition-all shrink-0"
+                style={cat === c ? {background:"#C8A45C",color:"#173A34"} : {background:"#f3f4f6",color:"#6b7280"}}>
+                {c}
+              </button>
+            ))}
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 sm:p-3">
-          {prods.length > 0 && (
-            <p className="text-xs text-muted-foreground mb-2 px-1">
-              {prods.length === allProds.length ? `${prods.length.toLocaleString("ar")} منتج` : `${prods.length.toLocaleString("ar")} نتيجة`}
-              {displayCount < prods.length && ` · عرض ${displayCount}`}
-            </p>
-          )}
-          {vm === "grid" ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
+
+        {/* Products grid */}
+        <div className="flex-1 overflow-y-auto p-3">
+          {prods.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full py-16">
+              <Package size={40} className="text-muted-foreground/30 mb-3" />
+              <p className="text-muted-foreground text-sm font-bold">{posTab === "fav" ? "لا توجد مفضلات" : posTab === "recent" ? "لا يوجد سجل حديث" : "لا توجد منتجات"}</p>
+              {q && <button onClick={() => setQ("")} className="mt-2 text-xs text-primary hover:underline">مسح البحث</button>}
+            </div>
+          ) : vm === "grid" ? (
+            <div className="grid gap-2" style={{gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))"}}>
               {displayedProds.map(p => {
                 const inCart = cart.find(i => i.product.id === p.id);
                 const outOfStock = p.stock <= 0;
                 const low = !outOfStock && p.stock <= p.minStock;
                 return (
-                  <div key={p.id} className="relative">
+                  <div key={p.id} className="relative group">
                     <button onClick={() => add(p)} disabled={outOfStock}
-                      className={`w-full bg-card rounded-2xl border-2 p-2.5 sm:p-3 text-right transition-all ${outOfStock ? "opacity-50 cursor-not-allowed border-border" : inCart ? "border-primary shadow-md bg-primary/2 active:scale-95 hover:shadow-md" : "border-border hover:-translate-y-0.5 hover:shadow-md active:scale-95"}`}>
-                      <div className="aspect-square rounded-xl bg-muted/40 mb-2 overflow-hidden relative">
-                        <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                        {outOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl"><span className="text-white text-xs font-black">نفد</span></div>}
-                        {low && !outOfStock && <div className="absolute top-1 left-1 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">منخفض</div>}
-                        {inCart && <div className="absolute top-1 right-1 w-5 h-5 bg-primary text-white text-xs font-black rounded-full flex items-center justify-center">{inCart.qty}</div>}
+                      className="w-full flex flex-col rounded-2xl border-2 transition-all text-right overflow-hidden"
+                      style={outOfStock ? {opacity:0.5,cursor:"not-allowed",borderColor:"#e5e7eb",background:"white"}
+                        : inCart ? {borderColor:"#173A34",background:"white",boxShadow:"0 2px 8px rgba(23,58,52,0.12)"}
+                        : {borderColor:"#e5e7eb",background:"white"}}>
+                      <div className="w-full aspect-square flex items-center justify-center relative overflow-hidden" style={{background:"#F0EEE9"}}>
+                        <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display="none"; }} />
+                        {outOfStock && <div className="absolute inset-0 flex items-center justify-center" style={{background:"rgba(0,0,0,0.45)"}}><span className="text-xs font-black text-white">نفد</span></div>}
+                        {low && !outOfStock && <span className="absolute top-1.5 right-1.5 text-[9px] font-black px-1.5 py-0.5 rounded-md bg-amber-400 text-white">{p.stock}</span>}
+                        {inCart && <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-black" style={{background:"#173A34",color:"white"}}>{inCart.qty}</span>}
                       </div>
-                      <p className="text-xs font-bold leading-tight line-clamp-2 mb-1.5">{p.nameAr}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-black text-primary">{p.sellPrice.toFixed(3)}</span>
-                        <span className={`text-xs font-semibold ${outOfStock ? "text-red-500" : low ? "text-amber-500" : "text-emerald-600"}`}>{outOfStock ? "نفد" : p.stock}</span>
+                      <div className="p-2">
+                        <p className="text-xs font-bold leading-snug line-clamp-2">{p.nameAr}</p>
+                        <p className="text-xs font-black mt-1" style={{color:"#173A34"}}>{p.sellPrice.toFixed(3)} <span className="font-normal text-muted-foreground" style={{fontSize:9}}>JOD</span></p>
                       </div>
-                      {inCart && <div className="mt-1.5 bg-primary/10 text-primary rounded-xl text-xs font-black text-center py-1">✓ في السلة</div>}
                     </button>
                     <button onClick={e => { e.stopPropagation(); toggleFav(p.id); }}
-                      className={`absolute bottom-2.5 left-2.5 text-sm leading-none transition-transform hover:scale-125 ${favorites.includes(p.id) ? "opacity-100" : "opacity-30 hover:opacity-70"}`}
-                      title={favorites.includes(p.id) ? "إزالة من المفضلة" : "إضافة للمفضلة"}>⭐</button>
+                      className="absolute bottom-2 left-2 text-sm leading-none transition-all opacity-0 group-hover:opacity-100"
+                      style={favorites.includes(p.id) ? {opacity:1} : {}}>
+                      {favorites.includes(p.id) ? "⭐" : "☆"}
+                    </button>
                   </div>
                 );
               })}
@@ -1434,356 +1648,243 @@ ${filtered.length > 0 ? `
               {displayedProds.map(p => {
                 const inCart = cart.find(i => i.product.id === p.id);
                 const outOfStock = p.stock <= 0;
+                const lowStock = !outOfStock && p.stock <= p.minStock;
                 return (
                   <button key={p.id} onClick={() => add(p)} disabled={outOfStock}
-                    className={`w-full flex items-center gap-3 bg-card rounded-xl border p-3 md:p-4 text-right hover:shadow-sm transition-all active:scale-[0.99] ${outOfStock ? "opacity-50 cursor-not-allowed border-border" : inCart ? "border-primary bg-primary/2" : "border-border"}`}>
-                    <img src={p.image} alt={p.nameAr} className="w-12 h-12 md:w-14 md:h-14 rounded-xl object-cover bg-muted shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                    <div className="flex-1 min-w-0"><p className="text-sm md:text-base font-bold truncate">{p.nameAr}</p><p className="text-xs text-muted-foreground">{p.sku} • {p.category}</p></div>
-                    <div className="text-right shrink-0"><p className="text-sm md:text-base font-black text-primary">{p.sellPrice.toFixed(3)} JOD</p><p className={`text-xs font-bold ${outOfStock ? "text-red-500" : p.stock <= p.minStock ? "text-amber-500" : "text-emerald-600"}`}>{outOfStock ? "نفد المخزون" : p.stock}</p></div>
-                    {inCart && <div className="w-7 h-7 rounded-full bg-primary text-white text-xs font-black flex items-center justify-center shrink-0">{inCart.qty}</div>}
+                    className="w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-all text-right"
+                    style={outOfStock ? {opacity:0.5,cursor:"not-allowed",borderColor:"#e5e7eb",background:"white"}
+                      : inCart ? {borderColor:"#173A34",background:"white"}
+                      : {borderColor:"#e5e7eb",background:"white"}}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden" style={{background:"#F0EEE9"}}>
+                      <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display="none"; }} />
+                    </div>
+                    <div className="flex-1 text-right min-w-0">
+                      <p className="text-sm font-bold truncate">{p.nameAr}</p>
+                      <p className="text-xs text-muted-foreground">{p.category} · مخزون: <span className={outOfStock ? "text-red-500" : lowStock ? "text-amber-500 font-bold" : "text-emerald-600"}>{p.stock}</span></p>
+                    </div>
+                    <div className="text-left shrink-0">
+                      <p className="text-sm font-black" style={{color:"#173A34"}}>{p.sellPrice.toFixed(3)}</p>
+                      <p className="text-xs text-muted-foreground">JOD</p>
+                    </div>
+                    {inCart && <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0" style={{background:"#173A34",color:"white"}}>{inCart.qty}</span>}
                   </button>
                 );
               })}
             </div>
           )}
-          {/* Infinite scroll sentinel */}
           <div ref={loadMoreRef} className="h-4" />
-          {displayCount < prods.length && (
-            <div className="flex justify-center py-3">
-              <button onClick={() => setDisplayCount(c => Math.min(c + DISPLAY_LIMIT, prods.length))} className="px-4 h-8 rounded-full bg-muted text-xs font-bold text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all">
-                عرض المزيد ({prods.length - displayCount} متبقي)
-              </button>
-            </div>
-          )}
-          {prods.length === 0 && <Empty icon={<Package size={24} />} title={posTab === "fav" ? "لا توجد مفضلات" : posTab === "recent" ? "لا يوجد سجل حديث" : "لا توجد منتجات"} desc={posTab === "fav" ? "اضغط على ⭐ في أي منتج لإضافته للمفضلة" : posTab === "recent" ? "ستظهر المنتجات التي أضفتها للسلة مؤخراً" : q ? `لا نتائج لـ "${q}" — جرب الباركود أو اضغط Enter مباشرة` : "جرب البحث بالاسم أو اختر فئة"} />}
         </div>
-        {holds.length > 0 && (
-          <div className="border-t border-border bg-muted/40 p-2.5 shrink-0">
-            <p className="text-xs font-bold text-muted-foreground mb-1.5">طلبات معلقة ({holds.length})</p>
-            <div className="flex gap-1.5 overflow-x-auto">
-              {holds.map((h, i) => <button key={i} onClick={() => resume(i)} className="shrink-0 px-3 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20">طلب {i + 1} ({h.length} صنف)</button>)}
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Cart */}
-      <div className="w-72 md:w-80 lg:w-96 bg-card flex flex-col border-l border-border shrink-0">
-        <div className="px-4 py-3 border-b border-border shrink-0 space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="font-bold">سلة المشتريات</p>
-            <div className="flex items-center gap-1">
-              <button onClick={() => { setShowCalc(true); }} title="الآلة الحاسبة" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground transition-colors"><Calculator size={13} /></button>
-              <button onClick={() => { refreshShift(); setShowShift(true); }} title="مبيعات الشفت" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground transition-colors"><BarChart2 size={13} /></button>
-              <button onClick={openDrawer} disabled={drawerOpening} title="فتح الدرج النقدي" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-emerald-100 text-emerald-600 transition-colors disabled:opacity-50"><Wallet size={13} /></button>
-              <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-lg">{invNo}</span>
-              <button onClick={() => { setClosingBal(""); setShowCloseSession(true); }} title="إغلاق الجلسة" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-500 transition-colors">
-                <Power size={13} />
-              </button>
+      {/* ══ RIGHT PANEL — Quick Actions ═══════════════════════════════════════ */}
+      <div className="flex flex-col overflow-hidden border-r border-border" style={{width:268,minWidth:268,background:"white"}}>
+
+        {/* Header */}
+        <div className="shrink-0 px-4 py-3 border-b border-border" style={{background:"#173A34"}}>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm shrink-0" style={{background:"#C8A45C",color:"#173A34"}}>
+              {posUserName ? posUserName.charAt(0) : "P"}
             </div>
-          </div>
-          {/* Customer selection */}
-          <div className="relative">
-            <button onClick={() => setShowCustSearch(s => !s)} className="w-full flex items-center gap-2 h-8 rounded-xl border border-border bg-muted/40 px-3 text-xs hover:bg-muted transition-all">
-              <Users size={11} className="text-muted-foreground shrink-0" />
-              <span className="flex-1 text-right truncate">{selectedCustomer ? `${selectedCustomer.name}${selectedCustomer.loyaltyPoints ? ` 🌟${selectedCustomer.loyaltyPoints}` : ""}` : "عميل نقدي"}</span>
-              {selectedCustomer && <button onClick={e => { e.stopPropagation(); setSelectedCustomer(null); setCustomerQ(""); }} className="text-muted-foreground hover:text-red-500"><X size={10} /></button>}
-            </button>
-            {showCustSearch && (
-              <div className="absolute top-9 left-0 right-0 z-50 bg-card border border-border rounded-xl shadow-xl p-2 space-y-1.5 max-h-56 overflow-y-auto">
-                <input name="search-customer" aria-label="بحث بالاسم أو الجوال" autoFocus value={customerQ} onChange={e => setCustomerQ(e.target.value)} placeholder="ابحث بالاسم أو الجوال..." className="w-full h-8 rounded-lg border border-border bg-background text-xs px-3 focus:outline-none focus:ring-1 focus:ring-primary" />
-                {posCustomers.filter(c => !customerQ || c.name.includes(customerQ) || (c.phone||"").includes(customerQ)).slice(0,8).map(c => (
-                  <button key={c.id} onClick={() => { setSelectedCustomer(c); setShowCustSearch(false); setCustomerQ(""); }} className="w-full flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-muted text-right">
-                    <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-[10px] font-black">{c.name[0]}</div>
-                    <div className="flex-1 min-w-0"><p className="text-xs font-bold truncate">{c.name}</p><p className="text-[10px] text-muted-foreground">{c.phone}{(c.debt||0) > 0 ? <span className="text-amber-600 font-bold"> • ذمة: {(c.debt||0).toFixed(3)} JOD</span> : null}</p></div>
-                  </button>
-                ))}
-                <button onClick={() => { setShowCustSearch(false); setShowAddCust(true); }} className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20">
-                  <Plus size={11} /> عميل جديد
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">{cart.length} صنف • {cart.reduce((a, i) => a + i.qty, 0)} وحدة</p>
-            <p className="text-xs text-emerald-600 font-bold">● جلسة مفتوحة</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black text-white truncate">{posUserName || "كاشير"}</p>
+              <p className="text-[10px]" style={{color:"rgba(200,164,92,0.8)"}}>
+                {session ? `${new Date(session.openedAt).toLocaleTimeString("ar-JO",{hour:"2-digit",minute:"2-digit"})} · مفتوح` : "جلسة مفتوحة"}
+              </p>
+            </div>
+            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded" style={{background:"rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.5)"}}>{invNo}</span>
           </div>
         </div>
+
         <div className="flex-1 overflow-y-auto">
-          {cart.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full p-6 text-muted-foreground">
-              <div className="w-16 h-16 rounded-2xl bg-muted/60 flex items-center justify-center mb-3"><ShoppingCart size={22} className="opacity-30" /></div>
-              <p className="text-sm font-semibold">السلة فارغة</p>
-              <p className="text-xs opacity-60 mt-1">اضغط على منتج للإضافة</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border/60">
-              {cart.map(item => (
-                <div key={item.product.id} className="p-3">
-                  <div className="flex items-start gap-2 mb-2">
-                    <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold leading-tight">{item.product.nameAr}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-xs text-muted-foreground">{item.product.sellPrice.toFixed(3)} JOD</span>
-                      {(item.product.taxRate ?? 0) > 0 && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">ضريبة {item.product.taxRate}%</span>
-                      )}
-                    </div>
-                  </div>
-                    <button onClick={() => rm(item.product.id)} className="text-red-400 hover:text-red-600 shrink-0"><X size={12} /></button>
-                  </div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => upd(item.product.id, -1)} className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-muted flex items-center justify-center hover:bg-red-100 hover:text-red-600 active:scale-90"><Minus size={12} /></button>
-                      <span className="w-8 text-center text-sm font-black">{item.qty}</span>
-                      <button onClick={() => upd(item.product.id, 1)} className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 active:scale-90"><Plus size={12} /></button>
-                    </div>
-                    <span className="text-sm font-black">{(item.product.sellPrice * item.qty * (1 - item.discount / 100)).toFixed(3)}</span>
-                  </div>
-                  {isOwnerOrMgr ? (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-muted-foreground shrink-0">خصم:</span>
-                      <input type="number" value={item.discount} min={0} max={100} onChange={e => updd(item.product.id, Number(e.target.value))} className="w-14 h-7 rounded-lg border border-border bg-input-background text-xs text-center focus:outline-none" />
-                      <span className="text-xs text-muted-foreground">%</span>
-                      {item.promoApplied && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">{item.promoApplied}</span>}
-                    </div>
-                  ) : item.discount > 0 ? (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
-                        {item.promoApplied || `خصم ${item.discount}%`}
-                      </span>
-                    </div>
-                  ) : null}
-                </div>
+          {/* Payment method */}
+          <div className="px-3 pt-3 pb-2">
+            <p className="text-[10px] font-black text-muted-foreground mb-2 uppercase tracking-wider">طريقة الدفع</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {([
+                {id:"cash" as const,  label:"نقدي",  icon:<Banknote size={15}/>,   color:"#22C55E"},
+                {id:"cliq" as const,  label:"كليك",  icon:<Zap size={15}/>,         color:"#8B5CF6"},
+                {id:"card" as const,  label:"بطاقة", icon:<CreditCard size={15}/>,  color:"#3B82F6"},
+                {id:"credit" as const,label:"ذمة",   icon:<FileText size={15}/>,    color:"#F59E0B"},
+              ]).map(m => (
+                <button key={m.id} onClick={() => setPay(m.id)}
+                  className="flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all font-bold text-xs"
+                  style={pay === m.id
+                    ? {background:m.color,borderColor:m.color,color:"white"}
+                    : {background:"#f9f9f9",borderColor:"#e5e7eb",color:"#6b7280"}}>
+                  {m.icon}{m.label}
+                </button>
               ))}
             </div>
+          </div>
+
+          {/* Extra fields for cliq/card */}
+          {pay === "cliq" && (
+            <div className="px-3 pb-2 space-y-1.5">
+              <input type="text" value={cliqRef} onChange={e => setCliqRef(e.target.value)} placeholder="رقم مرجع كليك (اختياري)" className="w-full h-9 rounded-xl border border-border bg-background text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+              <input type="text" value={cliqSender} onChange={e => setCliqSender(e.target.value)} placeholder="اسم المُرسِل (اختياري)" className="w-full h-9 rounded-xl border border-border bg-background text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+            </div>
           )}
+          {pay === "card" && (
+            <div className="px-3 pb-2">
+              <input type="text" value={cardRef} onChange={e => setCardRef(e.target.value)} placeholder="رقم مرجع البطاقة (اختياري)" className="w-full h-9 rounded-xl border border-border bg-background text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+            </div>
+          )}
+
+          {/* Gift card + Coupon + Loyalty */}
+          <div className="px-3 pb-2 space-y-1.5">
+            <div className="flex gap-1.5">
+              <input type="text" value={giftCode} onChange={e => setGiftCode(e.target.value.toUpperCase())} placeholder="كود بطاقة هدية..." className="flex-1 h-9 rounded-xl border border-border bg-background text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+              <button onClick={checkGiftCard} disabled={!giftCode.trim() || giftChecking}
+                className="w-9 h-9 rounded-xl border border-border flex items-center justify-center hover:bg-muted/50 transition-all shrink-0 disabled:opacity-40">
+                <Gift size={13} className="text-muted-foreground" />
+              </button>
+            </div>
+            {giftCard && (
+              <div className="flex items-center justify-between px-2 py-1.5 rounded-lg text-xs" style={{background:"#f0fdf4",border:"1px solid #bbf7d0"}}>
+                <span className="font-bold text-emerald-700">{giftCard.code}</span>
+                <span className="font-black text-emerald-700">-{giftDiscount.toFixed(3)} JOD</span>
+                <button onClick={() => { setGiftCard(null); setGiftCode(""); }} className="text-emerald-500 hover:text-red-500 ml-1"><X size={11} /></button>
+              </div>
+            )}
+            <div className="flex gap-1.5">
+              <input type="text" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="كود كوبون خصم..." className="flex-1 h-9 rounded-xl border border-border bg-background text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+              <button onClick={checkCoupon} disabled={!couponCode.trim() || couponChecking}
+                className="w-9 h-9 rounded-xl border border-border flex items-center justify-center hover:bg-muted/50 transition-all shrink-0 disabled:opacity-40">
+                <Tag size={13} className="text-muted-foreground" />
+              </button>
+            </div>
+            {coupon && (
+              <div className="flex items-center justify-between px-2 py-1.5 rounded-lg text-xs" style={{background:"#eff6ff",border:"1px solid #bfdbfe"}}>
+                <span className="font-bold text-blue-700">{coupon.code}</span>
+                <span className="font-black text-blue-700">-{couponDiscount.toFixed(3)} JOD</span>
+                <button onClick={() => { setCoupon(null); setCouponCode(""); }} className="text-blue-400 hover:text-red-500 ml-1"><X size={11} /></button>
+              </div>
+            )}
+            {selectedCustomer && maxRedeemable > 0 && (
+              <button onClick={() => setRedeemPoints(v => !v)}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl border-2 transition-all text-xs font-bold"
+                style={redeemPoints ? {background:"#FFF8E7",borderColor:"#C8A45C",color:"#92600A"} : {background:"#f9f9f9",borderColor:"#e5e7eb",color:"#6b7280"}}>
+                <div className="flex items-center gap-1.5"><Star size={11} style={{color:"#C8A45C"}} />نقاط الولاء</div>
+                <span>{maxRedeemable} → {(maxRedeemable*loyaltyPV).toFixed(3)}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Checkout button */}
+          <div className="px-3 pb-3">
+            <button onClick={() => cart.length > 0 && setShowPay(true)} disabled={cart.length===0}
+              className="w-full rounded-xl font-black py-4 flex flex-col items-center gap-0.5 transition-all hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{background: cart.length > 0 ? "linear-gradient(135deg,#173A34,#1e4a3f)" : "#e5e7eb", color: cart.length > 0 ? "#F7F5F2" : "#9ca3af"}}>
+              <span className="text-lg font-black">{finalTotal > 0 ? `${finalTotal.toFixed(3)} JOD` : "0.000 JOD"}</span>
+              <span className="text-xs font-bold opacity-80">اضغط للدفع</span>
+            </button>
+          </div>
+
+          {/* Quick actions */}
+          <div className="px-3 pb-3 border-t border-border/60 pt-3 space-y-1.5">
+            <p className="text-[10px] font-black text-muted-foreground mb-2 uppercase tracking-wider">إجراءات سريعة</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button onClick={hold} disabled={cart.length===0}
+                className="flex items-center justify-center gap-1.5 h-10 rounded-xl border border-border text-xs font-bold hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-all disabled:opacity-40">
+                <Archive size={13} />تعليق
+              </button>
+              <button onClick={() => setShowCalc(true)}
+                className="flex items-center justify-center gap-1.5 h-10 rounded-xl border border-border text-xs font-bold hover:bg-muted/50 transition-all">
+                <Calculator size={13} />حاسبة
+              </button>
+            </div>
+            <button onClick={openDrawer} disabled={drawerOpening}
+              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border border-border text-xs font-bold hover:bg-muted/50 transition-all disabled:opacity-40">
+              <Banknote size={13} className="text-muted-foreground" />{drawerOpening ? "جاري الفتح..." : "فتح الدرج النقدي"}
+            </button>
+            <div className="flex items-center justify-between px-3 py-2 rounded-xl border border-border/60 bg-muted/30">
+              <span className="text-xs text-muted-foreground">فتح الدرج تلقائياً</span>
+              <Toggle value={drawerAuto} onChange={setDrawerAuto} />
+            </div>
+          </div>
         </div>
-        <div className="border-t border-border p-3 space-y-3 shrink-0">
-          <div className="flex items-end gap-2">
-            {isOwnerOrMgr && (
-              <div className="flex-1 space-y-1">
-                <label className="text-xs font-bold text-muted-foreground">خصم الفاتورة %</label>
-                <input type="number" value={disc} min={0} max={100} onChange={e => setDisc(Number(e.target.value))} className="w-full h-8 rounded-xl border border-border bg-input-background text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-ring/25" />
-              </div>
-            )}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-muted-foreground">الدفع</label>
-              <div className="flex gap-1">
-                {(["cash","cliq","card","credit"] as const).map(m => (
-                  <button key={m} onClick={() => setPay(m)} className={`px-2 h-8 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap ${pay === m ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"}`}>
-                    {m === "cash" ? "نقدي" : m === "cliq" ? "كليك" : m === "card" ? "بطاقة" : "ذمة"}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="space-y-1.5 text-xs">
-            <div className="flex justify-between text-muted-foreground"><span>المجموع الفرعي</span><span className="font-bold">{sub.toFixed(3)} JOD</span></div>
-            {disc > 0 && <div className="flex justify-between text-emerald-600"><span>خصم {disc}%</span><span>-{da.toFixed(3)} JOD</span></div>}
-            {hasMultiTax ? (
-              taxBreakdown.map(({ rate, amt }) => (
-                <div key={rate} className="flex justify-between text-muted-foreground">
-                  <span>ضريبة {rate}%</span>
-                  <span>{amt.toFixed(3)} JOD</span>
-                </div>
-              ))
-            ) : (
-              <div className="flex justify-between text-muted-foreground">
-                <span>ضريبة المبيعات {taxBreakdown[0] ? `${taxBreakdown[0].rate}%` : `${(TAX*100).toFixed(0)}%`}</span>
-                <span>{ta.toFixed(3)} JOD</span>
-              </div>
-            )}
-            <div className="flex justify-between items-center font-black border-t border-border pt-1.5">
-              <span className="text-sm">الإجمالي</span><span className="text-xl text-primary">{total.toFixed(3)} JOD</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-1.5">
-            <Btn v="secondary" s="sm" onClick={hold} disabled={!cart.length} icon={<Archive size={12} />}>تعليق</Btn>
-            <Btn v="ghost" s="sm" onClick={() => setCart([])} disabled={!cart.length} icon={<RotateCcw size={12} />}>مسح</Btn>
-            <Btn v="secondary" s="sm" icon={<Printer size={12} />} onClick={() => cart.length ? doPrint() : showToast("السلة فارغة", "warning")}>طباعة</Btn>
-          </div>
-          <Btn full s="lg" onClick={() => setShowPay(true)} disabled={!cart.length} icon={<Banknote size={16} />}>إتمام الدفع</Btn>
+
+        {/* Bottom shift controls */}
+        <div className="shrink-0 border-t border-border px-3 py-2.5 space-y-1.5">
+          <button onClick={() => { refreshShift(); setShowShift(true); }}
+            className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border border-border text-xs font-bold hover:bg-muted/50 transition-all">
+            <Activity size={13} className="text-muted-foreground" />تقرير الشفت
+          </button>
+          <button onClick={() => { setClosingBal(""); setShowCloseSession(true); }}
+            className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border-2 text-xs font-bold transition-all hover:opacity-80"
+            style={{borderColor:"#173A34",color:"#173A34"}}>
+            <Power size={13} />إغلاق الجلسة
+          </button>
         </div>
       </div>
 
       {/* Payment Modal */}
       {showPay && (
-        <Modal title="إتمام عملية الدفع" sub={invNo} onClose={() => setShowPay(false)}>
+        <Modal title="إتمام عملية الدفع" sub={`الإجمالي: ${finalTotal.toFixed(3)} JOD`} onClose={() => setShowPay(false)} size="md">
           <div className="space-y-4">
-            <div className="bg-primary rounded-2xl p-5 text-center">
-              <p className="text-white/60 text-sm mb-1">المبلغ المستحق</p>
-              <p className="text-5xl font-black text-white">{finalTotal.toFixed(3)}</p>
-              <p className="text-white/60 font-bold mt-1">دينار أردني</p>
-              {pointsDiscount > 0 && <p className="text-emerald-300 text-xs mt-1 font-bold">خصم نقاط: -{pointsDiscount.toFixed(3)} JOD</p>}
-              {giftDiscount > 0 && <p className="text-yellow-300 text-xs font-bold">بطاقة هدية: -{giftDiscount.toFixed(3)} JOD</p>}
-              {couponDiscount > 0 && <p className="text-pink-300 text-xs font-bold">كوبون {coupon?.code}: -{couponDiscount.toFixed(3)} JOD</p>}
-              {selectedCustomer && <p className="text-white/50 text-xs mt-2">العميل: {selectedCustomer.name}</p>}
-            </div>
-            {selectedCustomer && customerPoints > 0 && pay !== "credit" && (
-              <div className="flex items-center justify-between p-3 rounded-xl border border-amber-200 bg-amber-50">
-                <div>
-                  <p className="text-sm font-bold text-amber-800">🌟 نقاط {selectedCustomer.name}: {customerPoints} نقطة</p>
-                  <p className="text-xs text-amber-600">= {(customerPoints * loyaltyPV).toFixed(3)} JOD قابلة للاسترداد</p>
-                </div>
-                <button onClick={() => setRedeemPoints(v => !v)} className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${redeemPoints ? "bg-amber-500 text-white" : "bg-amber-100 text-amber-700 border border-amber-300"}`}>
-                  {redeemPoints ? "✓ استرداد نشط" : "استرداد النقاط"}
-                </button>
-              </div>
-            )}
-            {selectedCustomer && pay !== "credit" && pointsEarned > 0 && (
-              <p className="text-xs text-emerald-600 text-center font-bold">🎁 سيكسب العميل {pointsEarned} نقطة من هذه الفاتورة</p>
-            )}
-
-            {/* Gift Card Section */}
-            <div className="border border-border rounded-xl overflow-hidden">
-              <div className="flex items-center gap-2 px-3 py-2.5 bg-muted/40 border-b border-border">
-                <span className="text-base">🎁</span>
-                <p className="text-sm font-bold flex-1">بطاقة هدية</p>
-                {giftCard && <span className="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">-{giftDiscount.toFixed(3)} JOD</span>}
-              </div>
-              <div className="p-3 space-y-2">
-                {giftCard ? (
-                  <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
-                    <div>
-                      <p className="text-sm font-black text-emerald-800">{giftCard.code}</p>
-                      <p className="text-xs text-emerald-600">رصيد البطاقة: {giftCard.balance.toFixed(3)} JOD</p>
-                    </div>
-                    <button onClick={() => { setGiftCard(null); setGiftCode(""); }} className="text-xs text-red-500 hover:text-red-700 font-bold">إزالة</button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <input value={giftCode} onChange={e => setGiftCode(e.target.value.toUpperCase())}
-                      placeholder="أدخل كود البطاقة..."
-                      className="flex-1 h-9 text-sm rounded-xl border border-border bg-background px-3 focus:outline-none focus:ring-2 focus:ring-ring/25"
-                      onKeyDown={e => e.key === "Enter" && checkGiftCard()} />
-                    <button onClick={checkGiftCard} disabled={giftChecking || !giftCode.trim()}
-                      className="px-3 h-9 rounded-xl bg-primary text-white text-xs font-black disabled:opacity-50 hover:bg-primary/90 transition-all">
-                      {giftChecking ? "..." : "تحقق"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Coupon Section */}
-            <div className="border border-border rounded-xl overflow-hidden">
-              <div className="flex items-center gap-2 px-3 py-2.5 bg-muted/40 border-b border-border">
-                <span className="text-base">🏷️</span>
-                <p className="text-sm font-bold flex-1">كوبون خصم</p>
-                {coupon && <span className="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">-{couponDiscount.toFixed(3)} JOD</span>}
-              </div>
-              <div className="p-3">
-                {coupon ? (
-                  <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
-                    <div>
-                      <p className="text-sm font-black text-emerald-800">{coupon.code}</p>
-                      <p className="text-xs text-emerald-600">{coupon.type === "نسبة" ? `${coupon.value}% خصم` : `${coupon.value.toFixed(3)} JOD خصم`}{coupon.desc ? ` · ${coupon.desc}` : ""}</p>
-                    </div>
-                    <button onClick={() => { setCoupon(null); setCouponCode(""); }} className="text-xs text-red-500 hover:text-red-700 font-bold">إزالة</button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <input value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())}
-                      placeholder="أدخل كود الكوبون..."
-                      className="flex-1 h-9 text-sm rounded-xl border border-border bg-background px-3 focus:outline-none focus:ring-2 focus:ring-ring/25"
-                      onKeyDown={e => e.key === "Enter" && checkCoupon()} />
-                    <button onClick={checkCoupon} disabled={couponChecking || !couponCode.trim()}
-                      className="px-3 h-9 rounded-xl bg-primary text-white text-xs font-black disabled:opacity-50 hover:bg-primary/90 transition-all">
-                      {couponChecking ? "..." : "تطبيق"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Split Payment Toggle */}
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-bold text-foreground">طريقة الدفع</p>
-              {!splitMode && (
-                <button onClick={() => setSplitMode(true)} className="text-xs font-bold text-primary hover:underline">دفع مختلط ✦</button>
-              )}
-              {splitMode && (
-                <button onClick={() => { setSplitMode(false); setSplitRows([{method:"cash",amount:""},{method:"cliq",amount:""}]); }}
-                  className="text-xs font-bold text-muted-foreground hover:text-foreground hover:underline">إلغاء الدفع المختلط</button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-4 gap-1.5">
               {([
-                { id: "cash",   label: "💵 نقدي" },
-                { id: "cliq",   label: "📱 كليك" },
-                { id: "card",   label: "💳 بطاقة" },
-                { id: "credit", label: "📒 ذمة" },
-              ] as const).map(m => (
+                {id:"cash" as const,  label:"نقدي",  icon:<Banknote size={15}/>},
+                {id:"cliq" as const,  label:"كليك",  icon:<Zap size={15}/>},
+                {id:"card" as const,  label:"بطاقة", icon:<CreditCard size={15}/>},
+                {id:"credit" as const,label:"ذمة",   icon:<FileText size={15}/>},
+              ]).map(m => (
                 <button key={m.id} onClick={() => setPay(m.id)}
-                  className={`h-12 rounded-2xl text-sm font-black border-2 transition-all ${pay === m.id ? "border-primary bg-primary text-white" : "border-border hover:border-primary/40"}`}>
-                  {m.label}
+                  className="flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 transition-all text-xs font-bold"
+                  style={pay === m.id ? {background:"#173A34",borderColor:"#173A34",color:"white"} : {background:"#f9f9f9",borderColor:"#e5e7eb",color:"#6b7280"}}>
+                  {m.icon}{m.label}
                 </button>
               ))}
             </div>
-
-            {pay === "cash" && (
+            <div className="flex items-center justify-between px-3 py-2 rounded-xl border border-border bg-muted/30">
+              <span className="text-sm font-bold">دفع مختلط (أكثر من وسيلة)</span>
+              <Toggle value={splitMode} onChange={setSplitMode} />
+            </div>
+            {!splitMode && pay === "cash" && (
               <div className="space-y-3">
-                <F label="المبلغ المُستلَم (JOD)">
-                  <TInput value={cash} onChange={setCash} placeholder="0.000" type="number" icon={<Banknote size={13} />} />
+                <F label="المبلغ المستلم (JOD)">
+                  <TInput value={cash} onChange={setCash} type="number" placeholder="0.000" icon={<Banknote size={13} />} autoFocus />
                 </F>
-                {parseFloat(cash || "0") >= finalTotal && (
-                  <div className="flex justify-between items-center p-4 bg-emerald-50 border-2 border-emerald-200 rounded-2xl">
-                    <span className="font-bold text-emerald-700">الباقي للعميل</span>
-                    <span className="text-2xl font-black text-emerald-700">{(parseFloat(cash || "0") - finalTotal).toFixed(3)} JOD</span>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[finalTotal, Math.ceil(finalTotal), Math.ceil(finalTotal/5)*5, Math.ceil(finalTotal/10)*10].filter((v,i,a) => a.indexOf(v)===i).map(v => (
+                    <button key={v} onClick={() => setCash(v.toFixed(3))}
+                      className="h-9 rounded-xl border border-border text-xs font-bold hover:bg-primary hover:text-white hover:border-primary transition-all">
+                      {v.toFixed(3)}
+                    </button>
+                  ))}
+                </div>
+                {parseFloat(cash||"0") >= finalTotal && finalTotal > 0 && (
+                  <div className="p-3 rounded-xl text-center" style={{background:"#f0fdf4",border:"2px solid #86efac"}}>
+                    <p className="text-xs text-emerald-600 mb-1">الباقي للعميل</p>
+                    <p className="text-2xl font-black text-emerald-700">{(parseFloat(cash)-finalTotal).toFixed(3)} JOD</p>
                   </div>
                 )}
-                <div className="grid grid-cols-4 gap-1.5">
-                  {[0.5, 1, 5, 10, 20, 50, 100].map(vv => <button key={vv} onClick={() => setCash(String(vv))} className="h-9 rounded-xl text-xs font-bold border border-border bg-muted hover:bg-primary hover:text-white hover:border-primary">{vv} JOD</button>)}
-                  <button onClick={() => setCash(finalTotal.toFixed(3))} className="h-9 rounded-xl text-xs font-bold border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100">المجموع</button>
-                </div>
               </div>
             )}
-
             {pay === "cliq" && (
               <div className="space-y-3 p-4 bg-muted/40 border border-border rounded-xl">
-                <div className="flex items-center gap-2 mb-1">
-                  <CreditCard size={20} className="text-primary" />
-                  <p className="font-bold text-foreground">دفع عبر كليك</p>
-                </div>
-                <F label="رقم مرجع المعاملة (اختياري)">
-                  <TInput value={cliqRef} onChange={setCliqRef} placeholder="مثال: TX-123456" />
-                </F>
-                <F label="اسم المُرسِل (اختياري)">
-                  <TInput value={cliqSender} onChange={setCliqSender} placeholder="اسم العميل المُرسِل" />
-                </F>
+                <div className="flex items-center gap-2 mb-1"><CreditCard size={20} className="text-primary" /><p className="font-bold">دفع عبر كليك</p></div>
+                <F label="رقم مرجع المعاملة (اختياري)"><TInput value={cliqRef} onChange={setCliqRef} placeholder="مثال: TX-123456" /></F>
+                <F label="اسم المُرسِل (اختياري)"><TInput value={cliqSender} onChange={setCliqSender} placeholder="اسم العميل المُرسِل" /></F>
               </div>
             )}
-
             {pay === "card" && (
               <div className="space-y-3 p-4 bg-muted/40 border border-border rounded-xl">
-                <div className="flex items-center gap-2 mb-1">
-                  <CreditCard size={20} className="text-primary" />
-                  <p className="font-bold text-foreground">دفع بالبطاقة</p>
-                </div>
-                <F label="رقم المرجع / التفويض (اختياري)">
-                  <TInput value={cardRef} onChange={setCardRef} placeholder="مثال: AUTH-789012" />
-                </F>
+                <div className="flex items-center gap-2 mb-1"><CreditCard size={20} className="text-primary" /><p className="font-bold">دفع بالبطاقة</p></div>
+                <F label="رقم المرجع / التفويض (اختياري)"><TInput value={cardRef} onChange={setCardRef} placeholder="مثال: AUTH-789012" /></F>
                 <p className="text-xs text-muted-foreground">أدخل البطاقة في القارئ وانتظر التفويض</p>
               </div>
             )}
-
             {pay === "credit" && (
               <div className="space-y-2 p-4 bg-amber-50 border-2 border-amber-200 rounded-xl">
-                <div className="flex items-center gap-2">
-                  <FileText size={20} className="text-amber-600" />
-                  <p className="font-bold text-amber-800">بيع على الذمة</p>
-                </div>
+                <div className="flex items-center gap-2"><FileText size={20} className="text-amber-600" /><p className="font-bold text-amber-800">بيع على الذمة</p></div>
                 {selectedCustomer ? (
                   <p className="text-sm text-amber-700">سيُضاف مبلغ <strong>{total.toFixed(3)} JOD</strong> على ذمة <strong>{selectedCustomer.name}</strong></p>
                 ) : (
-                  <p className="text-sm text-red-600 font-bold">⚠️ يجب اختيار عميل للبيع على الذمة — حدد العميل من قائمة العملاء أعلاه</p>
+                  <p className="text-sm text-red-600 font-bold">⚠️ يجب اختيار عميل للبيع على الذمة</p>
                 )}
               </div>
             )}
-
-            {/* Split Payment Rows */}
             {splitMode && (
               <div className="border border-border rounded-xl overflow-hidden">
                 <div className="px-3 py-2.5 bg-muted/40 border-b border-border flex items-center justify-between">
@@ -1797,41 +1898,22 @@ ${filtered.length > 0 ? `
                     <div key={i} className="flex gap-2 items-center">
                       <select value={row.method} onChange={e => setSplitRows(prev => prev.map((r,j) => j===i ? {...r, method: e.target.value as SplitRow["method"]} : r))}
                         className="h-9 rounded-xl border border-border bg-background text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring/25 shrink-0 w-24">
-                        <option value="cash">نقدي</option>
-                        <option value="cliq">كليك</option>
-                        <option value="card">بطاقة</option>
+                        <option value="cash">نقدي</option><option value="cliq">كليك</option><option value="card">بطاقة</option>
                       </select>
                       <input type="number" value={row.amount} onChange={e => setSplitRows(prev => prev.map((r,j) => j===i ? {...r, amount: e.target.value} : r))}
                         placeholder="0.000" className="flex-1 h-9 text-sm rounded-xl border border-border bg-background px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
-                      {splitRows.length > 2 && (
-                        <button onClick={() => setSplitRows(prev => prev.filter((_,j)=>j!==i))} className="w-9 h-9 flex items-center justify-center rounded-xl text-red-400 hover:text-red-600 hover:bg-red-50 border border-border transition-all">✕</button>
-                      )}
+                      {splitRows.length > 2 && <button onClick={() => setSplitRows(prev => prev.filter((_,j)=>j!==i))} className="w-9 h-9 flex items-center justify-center rounded-xl text-red-400 hover:text-red-600 hover:bg-red-50 border border-border transition-all">✕</button>}
                     </div>
                   ))}
-                  {splitRows.length < 4 && (
-                    <button onClick={() => setSplitRows(prev => [...prev, {method:"cash",amount:""}])}
-                      className="w-full h-8 border border-dashed border-border rounded-xl text-xs font-bold text-muted-foreground hover:border-primary hover:text-primary transition-all">
-                      + إضافة طريقة دفع
-                    </button>
-                  )}
-                  {splitRemaining > 0.005 && (
-                    <button onClick={() => setSplitRows(prev => { const cp = [...prev]; cp[0] = {...cp[0], amount: (parseFloat(cp[0].amount||"0") + splitRemaining).toFixed(3)}; return cp; })}
-                      className="w-full h-8 bg-primary/10 text-primary rounded-xl text-xs font-bold hover:bg-primary/20 transition-all">
-                      إضافة المتبقي ({splitRemaining.toFixed(3)} JOD) للأول
-                    </button>
-                  )}
+                  {splitRows.length < 4 && <button onClick={() => setSplitRows(prev => [...prev, {method:"cash",amount:""}])} className="w-full h-8 border border-dashed border-border rounded-xl text-xs font-bold text-muted-foreground hover:border-primary hover:text-primary transition-all">+ إضافة طريقة دفع</button>}
+                  {splitRemaining > 0.005 && <button onClick={() => setSplitRows(prev => { const cp = [...prev]; cp[0] = {...cp[0], amount: (parseFloat(cp[0].amount||"0") + splitRemaining).toFixed(3)}; return cp; })} className="w-full h-8 bg-primary/10 text-primary rounded-xl text-xs font-bold hover:bg-primary/20 transition-all">إضافة المتبقي ({splitRemaining.toFixed(3)} JOD) للأول</button>}
                 </div>
               </div>
             )}
-
             <div className="flex gap-3">
               <Btn v="secondary" onClick={() => setShowPay(false)} cls="flex-1">إلغاء</Btn>
               <Btn onClick={() => { doPay(); setShowPay(false); }} cls="flex-1" v="success" icon={<CheckCircle size={15} />}
-                disabled={
-                  (!splitMode && pay === "cash" && parseFloat(cash || "0") < finalTotal) ||
-                  (!splitMode && pay === "credit" && !selectedCustomer) ||
-                  (splitMode && splitRemaining > 0.005)
-                }>
+                disabled={(!splitMode && pay === "cash" && parseFloat(cash || "0") < finalTotal) || (!splitMode && pay === "credit" && !selectedCustomer) || (splitMode && splitRemaining > 0.005)}>
                 تأكيد الدفع
               </Btn>
             </div>
@@ -1839,12 +1921,9 @@ ${filtered.length > 0 ? `
         </Modal>
       )}
       {ok && (
-        <SuccessOverlay
-          invNo={invNo} total={total} pay={pay} change={change}
+        <SuccessOverlay invNo={invNo} total={total} pay={pay} change={change}
           drawerAuto={drawerAuto} setDrawerAuto={setDrawerAuto}
-          onPrint={doPrint} onDrawer={openDrawer} drawerOpening={drawerOpening}
-          onClose={handleClose}
-        />
+          onPrint={doPrint} onDrawer={openDrawer} drawerOpening={drawerOpening} onClose={handleClose} />
       )}
 
       {/* Calculator Modal */}
@@ -1872,7 +1951,7 @@ ${filtered.length > 0 ? `
               <div className="grid grid-cols-4 gap-1.5">
                 {keys.map((k, i) => k ? (
                   <button key={i} onClick={() => calcPress(k)}
-                    className={`h-12 rounded-xl font-bold text-lg transition-all active:scale-90 ${k === "=" ? "bg-primary text-white col-span-1" : k === "C" ? "bg-red-100 text-red-600" : ["+","-","×","÷"].includes(k) ? "bg-primary/10 text-primary" : "bg-muted hover:bg-muted/80"}`}>
+                    className={`h-12 rounded-xl font-bold text-lg transition-all active:scale-90 ${k === "=" ? "bg-primary text-white" : k === "C" ? "bg-red-100 text-red-600" : ["+","-","×","÷"].includes(k) ? "bg-primary/10 text-primary" : "bg-muted hover:bg-muted/80"}`}>
                     {k}
                   </button>
                 ) : <div key={i} />)}
@@ -1890,8 +1969,7 @@ ${filtered.length > 0 ? `
       {showShift && (() => {
         const sessionStart = session?.openedAt ? new Date(session.openedAt) : null;
         type ShiftSaleRow = { id:string; total:number; payMethod:string; createdAt:string; invoiceNo:string; customerName?:string; items?:{ nameAr?:string; qty:number; unitPrice?:number; total?:number }[] };
-        const shiftSalesList = normList<ShiftSaleRow>(shiftSales)
-          .filter(s => sessionStart ? new Date(s.createdAt) >= sessionStart : true);
+        const shiftSalesList = normList<ShiftSaleRow>(shiftSales).filter(s => sessionStart ? new Date(s.createdAt) >= sessionStart : true);
         const shiftTotals = {
           count: shiftSalesList.length,
           gross: shiftSalesList.reduce((a,s) => a + s.total, 0),
@@ -1901,54 +1979,37 @@ ${filtered.length > 0 ? `
           credit: shiftSalesList.filter(s => s.payMethod === "credit").reduce((a,s) => a + s.total, 0),
           items: shiftSalesList.reduce((a,s) => a + (s.items||[]).reduce((b,i) => b + i.qty, 0), 0),
         };
-        // Aggregate products sold
         const shiftProdMap: Record<string, {nameAr:string;qty:number;total:number}> = {};
-        for (const sale of shiftSalesList) {
-          for (const item of sale.items || []) {
-            const key = item.nameAr || "منتج";
-            if (!shiftProdMap[key]) shiftProdMap[key] = { nameAr: key, qty: 0, total: 0 };
-            shiftProdMap[key].qty   += item.qty || 0;
-            shiftProdMap[key].total += item.total || 0;
-          }
+        for (const sale of shiftSalesList) for (const item of sale.items || []) {
+          const key = item.nameAr || "منتج";
+          if (!shiftProdMap[key]) shiftProdMap[key] = { nameAr: key, qty: 0, total: 0 };
+          shiftProdMap[key].qty += item.qty || 0;
+          shiftProdMap[key].total += item.total || 0;
         }
         const shiftProducts = Object.values(shiftProdMap).sort((a,b) => b.qty - a.qty);
         return (
           <Modal title="مبيعات الشفت الحالي" sub={session ? `${posUserName ? posUserName + " · " : ""}فُتح: ${new Date(session.openedAt).toLocaleString("ar-JO")}` : ""} onClose={() => setShowShift(false)} size="xl">
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-card border border-border rounded-xl p-3 text-center"><p className="text-xs text-muted-foreground mb-1">فواتير</p><p className="font-black text-xl text-foreground">{shiftTotals.count}</p></div>
+                <div className="bg-card border border-border rounded-xl p-3 text-center"><p className="text-xs text-muted-foreground mb-1">فواتير</p><p className="font-black text-xl">{shiftTotals.count}</p></div>
                 <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#22C55E"}}><p className="text-xs text-muted-foreground mb-1">إجمالي المبيعات</p><p className="font-black text-xl text-emerald-600">{shiftTotals.gross.toFixed(3)} JOD</p></div>
                 <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#4F46E5"}}><p className="text-xs text-muted-foreground mb-1">نقدي</p><p className="font-black text-xl text-primary">{shiftTotals.cash.toFixed(3)} JOD</p></div>
                 <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#8B5CF6"}}><p className="text-xs text-muted-foreground mb-1">كليك + بطاقة</p><p className="font-black text-xl" style={{color:"#8B5CF6"}}>{(shiftTotals.cliq + shiftTotals.card).toFixed(3)} JOD</p></div>
                 {shiftTotals.credit > 0 && <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center"><p className="text-xs text-amber-600 mb-1">ذمم غير محصّلة</p><p className="font-black text-xl text-amber-600">{shiftTotals.credit.toFixed(3)} JOD</p></div>}
               </div>
-
-              {/* Products sold table */}
               {shiftProducts.length > 0 && (
                 <div>
                   <p className="text-xs font-bold text-muted-foreground mb-2 flex items-center gap-1"><Package size={12} /> المنتجات المباعة ({shiftProducts.length} صنف · {shiftTotals.items} قطعة)</p>
                   <div className="border border-border rounded-xl overflow-hidden max-h-48 overflow-y-auto">
                     <table className="w-full text-xs">
-                      <thead className="bg-muted/50 sticky top-0"><tr>
-                        <th className="px-3 py-2 text-right font-bold text-muted-foreground">المنتج</th>
-                        <th className="px-3 py-2 text-center font-bold text-muted-foreground">الكمية</th>
-                        <th className="px-3 py-2 text-left font-bold text-muted-foreground">المبلغ</th>
-                      </tr></thead>
+                      <thead className="bg-muted/50 sticky top-0"><tr><th className="px-3 py-2 text-right font-bold text-muted-foreground">المنتج</th><th className="px-3 py-2 text-center font-bold text-muted-foreground">الكمية</th><th className="px-3 py-2 text-left font-bold text-muted-foreground">المبلغ</th></tr></thead>
                       <tbody className="divide-y divide-border/60">
-                        {shiftProducts.map(p => (
-                          <tr key={p.nameAr} className="hover:bg-muted/20">
-                            <td className="px-3 py-2">{p.nameAr}</td>
-                            <td className="px-3 py-2 text-center font-bold text-emerald-600">{p.qty}</td>
-                            <td className="px-3 py-2 text-left font-mono">{p.total.toFixed(3)}</td>
-                          </tr>
-                        ))}
+                        {shiftProducts.map(p => (<tr key={p.nameAr} className="hover:bg-muted/20"><td className="px-3 py-2">{p.nameAr}</td><td className="px-3 py-2 text-center font-bold text-emerald-600">{p.qty}</td><td className="px-3 py-2 text-left font-mono">{p.total.toFixed(3)}</td></tr>))}
                       </tbody>
                     </table>
                   </div>
                 </div>
               )}
-
-              {/* Invoices table */}
               <div>
                 <p className="text-xs font-bold text-muted-foreground mb-2">الفواتير</p>
                 <div className="border border-border rounded-xl overflow-hidden max-h-48 overflow-y-auto">
@@ -1970,7 +2031,6 @@ ${filtered.length > 0 ? `
                   )}
                 </div>
               </div>
-
               <div className="flex gap-2">
                 <Btn full v="secondary" icon={<Printer size={13} />} onClick={() => printShiftReport(normList<ShiftSale>(shiftSales))}>طباعة التقرير</Btn>
                 <Btn full v="secondary" icon={<Power size={13} />} onClick={() => { setShowShift(false); setClosingBal(""); setShowCloseSession(true); }}>إغلاق الشفت</Btn>
