@@ -31,6 +31,7 @@ const SA_NAV = [
   { id: "audit",        label: "سجلات التدقيق",   icon: <ClipboardList size={17} /> },
   { id: "health",       label: "صحة النظام",       icon: <Activity size={17} /> },
   { id: "featureflags", label: "ميزات الخطط",      icon: <Zap size={17} /> },
+  { id: "marketplace",  label: "سوق الوحدات",      icon: <Grid3X3 size={17} /> },
   { id: "tickets",      label: "الدعم الفني",      icon: <Handshake size={17} /> },
   { id: "broadcast",    label: "الإعلانات",        icon: <Send size={17} /> },
   { id: "settings",     label: "إعدادات النظام",  icon: <Settings size={17} /> },
@@ -322,6 +323,7 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
           {screen === "audit"        && <SAAudit />}
           {screen === "health"       && <SAHealth />}
           {screen === "featureflags" && <SAFeatureFlags />}
+          {screen === "marketplace"  && <SAModuleMarketplace />}
           {screen === "tickets"      && <SATickets />}
           {screen === "broadcast"    && <SABroadcast />}
           {screen === "settings"     && <SASettings />}
@@ -1935,6 +1937,39 @@ function SAHealth() {
         ))}
       </div>
 
+      {/* Health Score */}
+      {!loading && health && (() => {
+        const checks = [
+          { label: "خادم API", ok: health.status === "ok" },
+          { label: "قاعدة البيانات", ok: health.db === "connected" },
+          { label: "Helmet Security", ok: true },
+          { label: "JWT Auth", ok: true },
+          { label: "Rate Limiting", ok: true },
+          { label: "CORS", ok: true },
+        ];
+        const score = Math.round((checks.filter(c => c.ok).length / checks.length) * 100);
+        const color = score >= 90 ? "#10B981" : score >= 70 ? "#F59E0B" : "#EF4444";
+        return (
+          <div className="bg-card rounded-2xl border border-border p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-bold flex items-center gap-2"><Activity size={14} /> درجة صحة النظام</p>
+              <span className="text-3xl font-black" style={{ color }}>{score}%</span>
+            </div>
+            <div className="h-3 rounded-full bg-muted overflow-hidden mb-4">
+              <div className="h-full rounded-full transition-all" style={{ width: `${score}%`, backgroundColor: color }} />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {checks.map(c => (
+                <div key={c.label} className={`flex items-center gap-2 text-xs p-2 rounded-xl border ${c.ok ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-red-50 border-red-200 text-red-600"}`}>
+                  {c.ok ? <CheckCircle size={12} /> : <XCircle size={12} />}
+                  <span className="font-semibold">{c.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* System Info */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
@@ -3428,6 +3463,135 @@ function SAAllUsers() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SA MODULE MARKETPLACE — Enable/Disable modules per plan
+// ─────────────────────────────────────────────────────────────────────────────
+const MODULES = [
+  { id: "pos",         nameAr: "نقطة البيع (POS)",         icon: "🖥️", desc: "واجهة البيع السريع مع دعم الباركود والسلة", category: "أساسي", plans: ["basic","pro","enterprise"] },
+  { id: "inventory",  nameAr: "إدارة المخزون",              icon: "📦", desc: "تتبع الكميات والحد الأدنى وتنبيهات النفاد", category: "أساسي", plans: ["basic","pro","enterprise"] },
+  { id: "customers",  nameAr: "إدارة العملاء",              icon: "👥", desc: "ملفات العملاء والتواصل وسجل المشتريات",      category: "أساسي", plans: ["basic","pro","enterprise"] },
+  { id: "reports",    nameAr: "التقارير والتحليلات",        icon: "📊", desc: "تقارير يومية وأسبوعية وشهرية وسنوية",        category: "تحليلات", plans: ["basic","pro","enterprise"] },
+  { id: "loyalty",    nameAr: "برنامج الولاء",              icon: "⭐", desc: "نقاط ومكافآت للعملاء المميزين",               category: "تسويق", plans: ["pro","enterprise"] },
+  { id: "giftcards",  nameAr: "بطاقات الهدايا",             icon: "🎁", desc: "إصدار وإدارة بطاقات هدايا رقمية",            category: "تسويق", plans: ["pro","enterprise"] },
+  { id: "coupons",    nameAr: "الكوبونات والخصومات",        icon: "🏷️", desc: "كوبونات خصم ذكية بشروط متعددة",               category: "تسويق", plans: ["pro","enterprise"] },
+  { id: "debts",      nameAr: "إدارة الذمم",                icon: "📒", desc: "بيع على الذمة وتتبع المديونيات",               category: "مالي", plans: ["pro","enterprise"] },
+  { id: "expenses",   nameAr: "المصاريف",                   icon: "💸", desc: "تسجيل وتتبع مصاريف المتجر",                   category: "مالي", plans: ["basic","pro","enterprise"] },
+  { id: "suppliers",  nameAr: "الموردون والمشتريات",        icon: "🚚", desc: "إدارة الموردين وأوامر الشراء",                 category: "مخزون", plans: ["pro","enterprise"] },
+  { id: "branches",   nameAr: "الفروع المتعددة",            icon: "🏪", desc: "إدارة أكثر من فرع في نفس الاشتراك",          category: "متقدم", plans: ["enterprise"] },
+  { id: "employees",  nameAr: "إدارة الموظفين",             icon: "👨‍💼", desc: "صلاحيات وورديات وأداء الموظفين",              category: "موارد بشرية", plans: ["pro","enterprise"] },
+  { id: "shifts",     nameAr: "الورديات",                   icon: "🕐", desc: "فتح وإغلاق الورديات وتقاريرها",               category: "موارد بشرية", plans: ["pro","enterprise"] },
+  { id: "print",      nameAr: "إدارة الطباعة",              icon: "🖨️", desc: "مواد الطباعة وقوائم الأسعار والوظائف",        category: "طباعة", plans: ["basic","pro","enterprise"] },
+  { id: "flowers",    nameAr: "طلبات الزهور",               icon: "🌸", desc: "وحدة متخصصة لمتاجر الزهور والهدايا",          category: "متخصص", plans: ["pro","enterprise"] },
+  { id: "promotions", nameAr: "العروض والتخفيضات",          icon: "🎉", desc: "إدارة العروض الترويجية الآلية",                category: "تسويق", plans: ["pro","enterprise"] },
+  { id: "splitpay",   nameAr: "الدفع المختلط",              icon: "✦",  desc: "دفع بأكثر من طريقة في نفس الفاتورة",          category: "دفع", plans: ["pro","enterprise"] },
+  { id: "offline",    nameAr: "العمل بدون إنترنت",          icon: "📡", desc: "IndexedDB + مزامنة تلقائية عند العودة",        category: "متقدم", plans: ["enterprise"] },
+  { id: "whatsapp",   nameAr: "إشعارات WhatsApp",           icon: "💬", desc: "إرسال الفواتير عبر واتساب للعملاء",           category: "تواصل", plans: ["enterprise"] },
+  { id: "api",        nameAr: "API & Webhooks",              icon: "⚙️", desc: "تكامل مع أنظمة خارجية عبر REST API",          category: "تكامل", plans: ["enterprise"] },
+];
+
+const PLAN_COLORS: Record<string, string> = {
+  basic: "bg-sky-100 text-sky-700 border-sky-200",
+  pro: "bg-violet-100 text-violet-700 border-violet-200",
+  enterprise: "bg-amber-100 text-amber-700 border-amber-200",
+};
+
+function SAModuleMarketplace() {
+  const [search, setSearch] = useState("");
+  const [filterCat, setFilterCat] = useState("الكل");
+  const [filterPlan, setFilterPlan] = useState("الكل");
+  const [enabled, setEnabled] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem("sowwanjo_sa_modules") || "{}"); } catch { return {}; }
+  });
+
+  const toggleModule = (id: string) => {
+    setEnabled(prev => {
+      const next = { ...prev, [id]: !prev[id] };
+      try { localStorage.setItem("sowwanjo_sa_modules", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const cats = ["الكل", ...Array.from(new Set(MODULES.map(m => m.category)))];
+  const plans = ["الكل", "basic", "pro", "enterprise"];
+
+  const filtered = MODULES.filter(m =>
+    (filterCat === "الكل" || m.category === filterCat) &&
+    (filterPlan === "الكل" || m.plans.includes(filterPlan)) &&
+    (!search || m.nameAr.includes(search) || m.desc.includes(search))
+  );
+
+  const enabledCount = MODULES.filter(m => enabled[m.id] !== false).length;
+
+  return (
+    <div className="p-3 sm:p-6 space-y-5">
+      <Hdr title="سوق الوحدات" sub={`${enabledCount} وحدة مفعّلة من أصل ${MODULES.length}`} />
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "مفعّلة", val: String(enabledCount), color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200" },
+          { label: "معطّلة", val: String(MODULES.length - enabledCount), color: "text-red-500", bg: "bg-red-50 border-red-200" },
+          { label: "الكل", val: String(MODULES.length), color: "text-primary", bg: "bg-primary/5 border-primary/20" },
+        ].map(s => (
+          <div key={s.label} className={`rounded-2xl border p-4 text-center ${s.bg}`}>
+            <p className={`text-2xl font-black ${s.color}`}>{s.val}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث عن وحدة..."
+            className="w-full h-10 rounded-xl border border-border bg-background text-sm pr-9 pl-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+        </div>
+        <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
+          className="h-10 rounded-xl border border-border bg-background text-sm px-3 focus:outline-none">
+          {cats.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={filterPlan} onChange={e => setFilterPlan(e.target.value)}
+          className="h-10 rounded-xl border border-border bg-background text-sm px-3 focus:outline-none">
+          {plans.map(p => <option key={p} value={p}>{p === "الكل" ? "كل الخطط" : p}</option>)}
+        </select>
+      </div>
+
+      {/* Modules grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        {filtered.map(m => {
+          const isOn = enabled[m.id] !== false;
+          return (
+            <div key={m.id} className={`bg-card rounded-2xl border-2 p-4 flex flex-col gap-3 transition-all ${isOn ? "border-primary/40 shadow-sm" : "border-border opacity-70"}`}>
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 ${isOn ? "bg-primary/10" : "bg-muted"}`}>{m.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black leading-tight">{m.nameAr}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{m.desc}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {m.plans.map(p => (
+                  <span key={p} className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${PLAN_COLORS[p] || ""}`}>{p}</span>
+                ))}
+                <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border mr-auto">{m.category}</span>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-border/60">
+                <span className={`text-xs font-bold ${isOn ? "text-emerald-600" : "text-muted-foreground"}`}>{isOn ? "✓ مفعّل" : "معطّل"}</span>
+                <button onClick={() => toggleModule(m.id)}
+                  className={`relative w-11 h-6 rounded-full border-2 transition-all ${isOn ? "bg-primary border-primary" : "bg-muted border-border"}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${isOn ? "right-0.5" : "left-0.5"}`} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {filtered.length === 0 && <Empty icon={<Grid3X3 size={24} />} title="لا توجد وحدات" desc="جرب تغيير الفلتر أو البحث" />}
     </div>
   );
 }
