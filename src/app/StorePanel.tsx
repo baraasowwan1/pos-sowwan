@@ -792,7 +792,6 @@ function POSTerm({ store }: { store: StoreData }) {
   const [giftCode, setGiftCode] = useState("");
   const [giftCard, setGiftCard] = useState<{code:string;balance:number}|null>(null);
   const [giftChecking, setGiftChecking] = useState(false);
-  const giftDiscount = giftCard ? Math.min(giftCard.balance, (total||0)) : 0;
   const checkGiftCard = async () => {
     if (!giftCode.trim()) return;
     setGiftChecking(true);
@@ -807,7 +806,6 @@ function POSTerm({ store }: { store: StoreData }) {
   const [couponCode, setCouponCode] = useState("");
   const [coupon, setCoupon] = useState<{id:string;code:string;type:"نسبة"|"مبلغ";value:number;desc?:string}|null>(null);
   const [couponChecking, setCouponChecking] = useState(false);
-  const couponDiscount = coupon ? (coupon.type === "نسبة" ? Math.min(total * (coupon.value / 100), total) : Math.min(coupon.value, total)) : 0;
   const checkCoupon = async () => {
     if (!couponCode.trim()) return;
     setCouponChecking(true);
@@ -837,11 +835,7 @@ function POSTerm({ store }: { store: StoreData }) {
   const [redeemPoints, setRedeemPoints] = useState(false);
   const customerPoints = selectedCustomer?.loyaltyPoints || 0;
   const maxRedeemable = Math.floor(customerPoints);
-  const pointsDiscount = redeemPoints ? Math.min(maxRedeemable * loyaltyPV, total * 0.5) : 0;
-  const finalTotal = Math.max(0, total - pointsDiscount - giftDiscount - couponDiscount);
-  const splitRemaining = Math.max(0, finalTotal - splitTotal);
-  const pointsToRedeem = redeemPoints ? Math.ceil(pointsDiscount / loyaltyPV) : 0;
-  const pointsEarned = selectedCustomer && pay !== "credit" ? Math.floor(finalTotal * loyaltyPPJ) : 0;
+  // finalTotal وما يعتمد عليها — معرّفة بعد total أسفل
   // Calculator
   const [showCalc, setShowCalc] = useState(false);
   const [calcDisplay, setCalcDisplay] = useState("0");
@@ -878,6 +872,13 @@ function POSTerm({ store }: { store: StoreData }) {
     return acc + lineTotal * rate;
   }, 0);
   const total = sub - da + ta;
+  const giftDiscount = giftCard ? Math.min(giftCard.balance, total) : 0;
+  const couponDiscount = coupon ? (coupon.type === "نسبة" ? Math.min(total * (coupon.value / 100), total) : Math.min(coupon.value, total)) : 0;
+  const pointsDiscount = redeemPoints ? Math.min(maxRedeemable * loyaltyPV, total * 0.5) : 0;
+  const finalTotal = Math.max(0, total - pointsDiscount - giftDiscount - couponDiscount);
+  const splitRemaining = Math.max(0, finalTotal - splitTotal);
+  const pointsToRedeem = redeemPoints ? Math.ceil(pointsDiscount / loyaltyPV) : 0;
+  const pointsEarned = selectedCustomer && pay !== "credit" ? Math.floor(finalTotal * loyaltyPPJ) : 0;
   const change = parseFloat(cash || "0") - total;
   // Sort all products once: by category then name (Arabic)
   const sortedProds = useMemo(() =>
