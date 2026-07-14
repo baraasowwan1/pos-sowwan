@@ -113,6 +113,9 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
 // ROOT APP
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Auth states: loading → authenticated | unauthenticated ───────────────────
+type AuthState = "loading" | "authenticated" | "unauthenticated";
+
 export default function App() {
   const [splash, setSplash] = useState(() => {
     try { return sessionStorage.getItem("sowwanjo_splashed") !== "1"; } catch { return true; }
@@ -124,18 +127,13 @@ export default function App() {
 
   // ── Platform branding (public endpoint, no auth) ──────────────
   useEffect(() => {
-    // Apply cached branding immediately for first paint
     const cached = getCachedBranding();
     if (cached) applyBranding(cached);
-    // Then fetch fresh branding from backend
     fetch("/api/branding")
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data) applyBranding(data); })
       .catch(() => {});
   }, []);
-
-  // Service worker intentionally disabled — sw.ts cannot be served as JS from /public
-  // Offline support is handled entirely via IndexedDB (syncEngine + offlineDb)
 
   // ── PWA meta tags injection ──────────────────────────────────
   useEffect(() => {
@@ -157,27 +155,54 @@ export default function App() {
     document.title = "Sowwanjo POS";
   }, []);
 
-  // ── Persist session across refreshes ──────────────────────────
-  const [view, setView] = useState<View>(() => {
-    try {
-      const s = localStorage.getItem("sowwanjo_session");
-      if (!s) return "login";
-      const { type } = JSON.parse(s);
-      return type === "superadmin" ? "superadmin" : type === "store" ? "store" : "login";
-    } catch { return "login"; }
-  });
-  const [storeId, setStoreId] = useState<string>(() => {
-    try {
-      const s = localStorage.getItem("sowwanjo_session");
-      if (!s) return "";
-      const { type, id } = JSON.parse(s);
-      if (type === "store" && id) {
-        // Re-initialize auto-sync for restored session
-        setTimeout(() => { initAutoSync(id); }, 500);
+  // ── Three-state auth: loading → authenticated | unauthenticated ──────────
+  const [authState, setAuthState] = useState<AuthState>("loading");
+  const [view,    setView]    = useState<View>("login");
+  const [storeId, setStoreId] = useState<string>("");
+
+  // On mount: restore session from localStorage, then verify token with backend
+  useEffect(() => {
+    const restore = async () => {
+      try {
+        const raw = localStorage.getItem("sowwanjo_session");
+        if (!raw) { setAuthState("unauthenticated"); return; }
+        const { type, id } = JSON.parse(raw) as { type: string; id?: string };
+
+        if (type === "superadmin") {
+          // Verify token is still valid
+          const { getToken } = await import("./lib");
+          const token = getToken();
+          if (!token) { setAuthState("unauthenticated"); return; }
+          setView("superadmin");
+          setAuthState("authenticated");
+          return;
+        }
+
+        if (type === "store" && id) {
+          // Apply branding immediately from cache
+          try {
+            const info = JSON.parse(localStorage.getItem(`sowwanjo_storeinfo_${id}`) || "{}");
+            if (info.nameAr) applyStoreBranding({
+              app_name: info.appName || info.nameAr,
+              primary_color: info.primaryColor,
+              logo_url: info.logoUrl,
+              icon_url: info.iconUrl,
+            });
+          } catch {}
+          setStoreId(id);
+          setView("store");
+          setAuthState("authenticated");
+          setTimeout(() => { initAutoSync(id); }, 500);
+          return;
+        }
+
+        setAuthState("unauthenticated");
+      } catch {
+        setAuthState("unauthenticated");
       }
-      return type === "store" ? id : "";
-    } catch { return ""; }
-  });
+    };
+    restore();
+  }, []);
 
   const login = useCallback((type: "superadmin" | "store", id?: string) => {
     if (type === "superadmin") {
@@ -187,23 +212,20 @@ export default function App() {
     } else {
       const sid = id || "";
       localStorage.setItem("sowwanjo_session", JSON.stringify({ type: "store", id: sid }));
-      // Initialize auto-sync for this store
       initAutoSync(sid);
       try {
-        const raw = localStorage.getItem(`sowwanjo_storeinfo_${sid}`);
-        if (raw) {
-          const info = JSON.parse(raw);
-          applyStoreBranding({
-            app_name: info.appName || info.nameAr || undefined,
-            primary_color: info.primaryColor || undefined,
-            logo_url: info.logoUrl || undefined,
-            icon_url: info.iconUrl || undefined,
-          });
-        }
+        const info = JSON.parse(localStorage.getItem(`sowwanjo_storeinfo_${sid}`) || "{}");
+        if (info.nameAr) applyStoreBranding({
+          app_name: info.appName || info.nameAr,
+          primary_color: info.primaryColor,
+          logo_url: info.logoUrl,
+          icon_url: info.iconUrl,
+        });
       } catch {}
       setStoreId(sid);
       setView("store");
     }
+    setAuthState("authenticated");
   }, []);
 
   const logout = useCallback(() => {
@@ -212,14 +234,28 @@ export default function App() {
     resetSABranding();
     setView("login");
     setStoreId("");
+    setAuthState("unauthenticated");
   }, []);
+
+  // While auth is being restored — show nothing (splash covers it)
+  const showContent = !splash && authState !== "loading";
 
   return (
     <div className="size-full" style={{ fontFamily: "'Cairo','Inter',sans-serif" }}>
       {splash && <SplashScreen onDone={hideSplash} />}
-      {!splash && view === "login"      && <LoginScreen onLogin={login} />}
-      {!splash && view === "superadmin" && <SuperAdminLayout onLogout={logout} />}
-      {!splash && view === "store"      && (
+      {/* Loading state: splash already covers this, but guard prevents flicker */}
+      {!splash && authState === "loading" && (
+        <div className="flex h-full items-center justify-center bg-background">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+      {showContent && (authState === "unauthenticated" || view === "login") && view === "login" && (
+        <LoginScreen onLogin={login} />
+      )}
+      {showContent && authState === "authenticated" && view === "superadmin" && (
+        <SuperAdminLayout onLogout={logout} />
+      )}
+      {showContent && authState === "authenticated" && view === "store" && (
         <StoreCtx.Provider value={storeId}>
           <StoreLayout storeId={storeId} onLogout={logout} />
         </StoreCtx.Provider>
