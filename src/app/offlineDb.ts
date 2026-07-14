@@ -39,7 +39,7 @@ export interface OfflineSale {
   discountAmt: number;
   taxAmt: number;
   total: number;
-  payMethod: "cash" | "cliq" | "card";
+  payMethod: "cash" | "cliq" | "card" | "credit";
   cashIn?: number;
   change?: number;
   cliqRef?: string;
