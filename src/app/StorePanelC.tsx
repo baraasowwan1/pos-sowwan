@@ -1363,6 +1363,16 @@ function StoreSetts({ store }: { store: StoreData }) {
   // Loyalty settings
   const [loyaltyPPJ, setLoyaltyPPJ] = useState(() => { try { return localStorage.getItem(sk(sid,"sett_loyalty_ppj")) || "1"; } catch { return "1"; } });
   const [loyaltyPV,  setLoyaltyPV]  = useState(() => { try { return localStorage.getItem(sk(sid,"sett_loyalty_pv"))  || "0.010"; } catch { return "0.010"; } });
+  // Sidebar features state — loaded from store prop or localStorage
+  const [sf, setSf] = useState<Record<string,boolean>>(() => {
+    try {
+      const r = localStorage.getItem(`sowwanjo_storeinfo_${sid}`);
+      const stored = r ? JSON.parse(r) : {};
+      return { ...(store.sidebarFeatures || {}), ...(stored.sidebarFeatures || {}) };
+    } catch { return store.sidebarFeatures as Record<string,boolean> || {}; }
+  });
+  const toggleSf = (key: string) => setSf(prev => ({ ...prev, [key]: !prev[key] }));
+
   // White-label branding state
   const [brandColor,   setBrandColor]   = useState(() => { try { const r = localStorage.getItem(`sowwanjo_storeinfo_${sid}`); return r ? (JSON.parse(r).primaryColor || "") : ""; } catch { return ""; } });
   const [brandAppName, setBrandAppName] = useState(() => { try { const r = localStorage.getItem(`sowwanjo_storeinfo_${sid}`); return r ? (JSON.parse(r).appName || "") : ""; } catch { return ""; } });
@@ -1411,6 +1421,9 @@ function StoreSetts({ store }: { store: StoreData }) {
     if (settingsRaw.printTax    !== undefined) setPrintTax(Boolean(settingsRaw.printTax));
     if (settingsRaw.printPhone  !== undefined) setPrintPhone(Boolean(settingsRaw.printPhone));
     if (settingsRaw.printBarcode!== undefined) setPrintBarcode(Boolean(settingsRaw.printBarcode));
+    if (settingsRaw.sidebarFeatures && typeof settingsRaw.sidebarFeatures === "object") {
+      setSf(settingsRaw.sidebarFeatures as Record<string,boolean>);
+    }
   }, [settingsRaw, sid]);
 
   const doSave = async () => {
@@ -1422,22 +1435,23 @@ function StoreSetts({ store }: { store: StoreData }) {
         printLogo, printTax, printPhone, printBarcode,
         // White-label branding
         appName: brandAppName, primaryColor: brandColor, logoUrl: logo,
+        // Sidebar features
+        sidebarFeatures: sf,
       });
       // تحديث localStorage للـ POS
       try { localStorage.setItem(sk(sid, "sett_tax"), String(parseFloat(tax) || 0)); } catch {}
       try { localStorage.setItem(sk(sid, "sett_paper"), paper); } catch {}
       try { localStorage.setItem(sk(sid, "sett_loyalty_ppj"), loyaltyPPJ); } catch {}
       try { localStorage.setItem(sk(sid, "sett_loyalty_pv"),  loyaltyPV); } catch {}
-      // تحديث branding في localStorage
+      // تحديث localStorage فوراً حتى تُطبَّق التغييرات بدون إعادة تسجيل دخول
       try {
         const r = localStorage.getItem(`sowwanjo_storeinfo_${sid}`);
-        if (r) {
-          const info = JSON.parse(r);
-          info.appName = brandAppName;
-          info.primaryColor = brandColor;
-          info.logoUrl = logo;
-          localStorage.setItem(`sowwanjo_storeinfo_${sid}`, JSON.stringify(info));
-        }
+        const info = r ? JSON.parse(r) : {};
+        info.appName = brandAppName;
+        info.primaryColor = brandColor;
+        info.logoUrl = logo;
+        info.sidebarFeatures = sf;
+        localStorage.setItem(`sowwanjo_storeinfo_${sid}`, JSON.stringify(info));
       } catch {}
       await refreshSettings();
       showToast("تم حفظ إعدادات المتجر في قاعدة البيانات ✅", "success");
@@ -1552,6 +1566,34 @@ function StoreSetts({ store }: { store: StoreData }) {
           <Btn v="secondary" full icon={<TrendingUp size={13} />} onClick={() => setShowUpgrade(true)}>ترقية الاشتراك</Btn>
           <Btn v="ghost" full icon={<Download size={13} />} onClick={() => showToast("جاري تحضير تصدير بيانات المتجر...", "info")}>تصدير بيانات المتجر</Btn>
         </div>
+      </div>
+
+      {/* ── Sidebar Features ── */}
+      <div className="bg-card rounded-2xl border border-border p-5">
+        <p className="font-bold mb-4 flex items-center gap-2"><LayoutDashboard size={13} /> الأقسام المرئية في الشريط الجانبي</p>
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {([
+            ["pos","نقطة البيع"],["products","المنتجات"],["inventory","المخزون"],
+            ["customers","العملاء"],["suppliers","الموردون"],["purchases","المشتريات"],
+            ["expenses","المصروفات"],["returns","المرتجعات"],["purchaseorders","طلبات الشراء"],
+            ["promotions","العروض والخصومات"],["sales","المبيعات"],["reports","التقارير"],
+            ["employees","الموظفون"],["branches","الفروع والأجهزة"],["loyalty","برنامج الولاء"],
+            ["debt","الذمم"],["giftcards","بطاقات الهدايا"],["settings","الإعدادات"],
+            ["syncCenter","مركز المزامنة"],
+          ] as [string,string][]).map(([key, label]) => {
+            const isOn = sf[key] !== false;
+            return (
+              <button key={key} onClick={() => toggleSf(key)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${isOn ? "border-primary bg-primary/8 text-primary" : "border-border bg-muted/30 text-muted-foreground"}`}>
+                <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isOn ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
+                  {isOn && <Check size={9} className="text-white" />}
+                </div>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground mt-3">التغييرات تُطبَّق بعد الضغط على «حفظ الإعدادات»</p>
       </div>
 
       {showUpgrade && (
