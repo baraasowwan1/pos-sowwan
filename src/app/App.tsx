@@ -13,6 +13,7 @@ import {
 import { initAutoSync } from "./syncEngine";
 import { SuperAdminLayout } from "./SAPanel";
 import { StoreLayout } from "./StorePanel";
+import { POSDemo } from "./POSDemo"; // استيراد صفحة POS التجريبية
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WHITE-LABEL BRANDING
@@ -150,7 +151,7 @@ function BusinessScene() {
           <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 9, marginBottom: 4 }}>المبيعات اليوم</p>
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 3 }}>
             <p style={{ color: "#fff", fontSize: 24, fontWeight: 900, lineHeight: 1 }}>٢٤,٨٣٠</p>
-            <span style={{ background: "rgba(46,139,87,0.2)", color: "#4ade80", fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 5 }}>▲ ١٢٪</span>
+            <span style={{ background: "rgba(46,139,87,0.2)", color: "#4ade80", fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 5 }}>▲ ٠٥٪</span>
           </div>
           <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 8, marginBottom: 10 }}>دينار أردني · آخر تحديث ٣ دقائق</p>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 44 }}>
@@ -169,7 +170,7 @@ function BusinessScene() {
           </div>
           <div style={{ padding: "8px 9px 11px" }}>
             <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 7, marginBottom: 7, fontWeight: 600, letterSpacing: "0.05em" }}>طلب جديد</p>
-            {[["بيبسي ٣٣٠مل", "١.٢٠٠"], ["شيبس لايز", "٢.٥٠٠"], ["مياه نوتيكا", "٠.٣٥٠"]].map(([name, price], i) => (
+            {[["بيبسي ٣٣٠مل", "٢.٢٠٠"], ["شيبس لايز", "٢.٥٠٠"], ["مياه نوتيكا", "٠.٣٥٠"]].map(([name, price], i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, alignItems: "center" }}>
                 <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 7, flex: 1 }}>{name}</span>
                 <span style={{ color: "#C8A45C", fontSize: 7, fontWeight: 700 }}>{price}</span>
@@ -217,7 +218,7 @@ function BusinessScene() {
             </div>
           </div>
           <div style={{ padding: "0 13px 11px", display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 3 }}>
-            {["١","٢","٣","٤","٥","٦","٧","٨","٩","⌫","٠","✓"].map((k, i) => (
+            {["٢","٣","٤","٥","٦","٧","٨","٩","⌫","٠","✓"].map((k, i) => (
               <div key={i} style={{ background: k === "✓" ? "rgba(200,164,92,0.18)" : "rgba(255,255,255,0.06)", borderRadius: 5, height: 18, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${k === "✓" ? "rgba(200,164,92,0.3)" : "transparent"}` }}>
                 <span style={{ color: k === "✓" ? "#C8A45C" : "rgba(255,255,255,0.45)", fontSize: 8 }}>{k}</span>
               </div>
@@ -297,6 +298,7 @@ const SLIDES = [
     subtitle: "لا توقف في العمل. تستمر الفواتير ثم تتزامن تلقائياً عند الاتصال.",
     accent: "#C8A45C",
   },
+
 ];
 
 const FEATURES = [
