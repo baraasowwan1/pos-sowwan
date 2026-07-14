@@ -1579,31 +1579,43 @@ ${filtered.length > 0 ? `
               {vm === "grid" ? <List size={15} className="text-muted-foreground" /> : <Grid3X3 size={15} className="text-muted-foreground" />}
             </button>
           </div>
-          {/* Tabs + categories */}
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+          {/* Tabs + categories — single scrollable row */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+            {/* View tabs */}
             {(["all","fav","recent"] as const).map((t, i) => {
-              const labels = ["الكل","المفضلة","الأخيرة"];
+              const labels = ["الكل","★ مفضلة","⏱ أخيرة"];
               return (
                 <button key={t} onClick={() => setPosTab(t)}
-                  className="flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0"
-                  style={posTab === t ? {background:"#173A34",color:"white"} : {background:"#f3f4f6",color:"#6b7280"}}>
+                  className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0"
+                  style={posTab === t ? {background:"#173A34",color:"white"} : {background:"#f0f0f0",color:"#666"}}>
                   {labels[i]}
                 </button>
               );
             })}
-            <div className="w-px h-5 bg-border shrink-0" />
+            {cats.length > 0 && <div className="w-px h-4 bg-border/60 shrink-0 mx-0.5" />}
+            {/* Category chips */}
             {cats.map(c => (
-              <button key={c} onClick={() => setCat(c)}
-                className="px-3 h-8 rounded-lg text-xs font-bold whitespace-nowrap transition-all shrink-0"
-                style={cat === c ? {background:"#C8A45C",color:"#173A34"} : {background:"#f3f4f6",color:"#6b7280"}}>
+              <button key={c} onClick={() => setCat(cat === c ? "" : c)}
+                className="px-2.5 h-7 rounded-lg text-xs font-bold whitespace-nowrap transition-all shrink-0"
+                style={cat === c
+                  ? {background:"#C8A45C",color:"#173A34",fontWeight:800}
+                  : {background:"#f0f0f0",color:"#555"}}>
                 {c}
               </button>
             ))}
+            {cat && (
+              <button onClick={() => setCat("")}
+                className="h-7 w-7 flex items-center justify-center rounded-lg shrink-0 hover:bg-red-50 transition-all"
+                style={{background:"#fee2e2",color:"#ef4444"}}
+                title="مسح الفلتر">
+                <X size={11} />
+              </button>
+            )}
           </div>
         </div>
 
         {/* Products grid */}
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex-1 overflow-y-auto p-2.5">
           {prods.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-16">
               <Package size={40} className="text-muted-foreground/30 mb-3" />
@@ -1611,7 +1623,7 @@ ${filtered.length > 0 ? `
               {q && <button onClick={() => setQ("")} className="mt-2 text-xs text-primary hover:underline">مسح البحث</button>}
             </div>
           ) : vm === "grid" ? (
-            <div className="grid gap-2" style={{gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))"}}>
+            <div className="grid gap-2" style={{gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))"}}>
               {displayedProds.map(p => {
                 const inCart = cart.find(i => i.product.id === p.id);
                 const outOfStock = p.stock <= 0;
@@ -1619,23 +1631,49 @@ ${filtered.length > 0 ? `
                 return (
                   <div key={p.id} className="relative group">
                     <button onClick={() => add(p)} disabled={outOfStock}
-                      className="w-full flex flex-col rounded-2xl border-2 transition-all text-right overflow-hidden"
-                      style={outOfStock ? {opacity:0.5,cursor:"not-allowed",borderColor:"#e5e7eb",background:"white"}
-                        : inCart ? {borderColor:"#173A34",background:"white",boxShadow:"0 2px 8px rgba(23,58,52,0.12)"}
-                        : {borderColor:"#e5e7eb",background:"white"}}>
-                      <div className="w-full aspect-square flex items-center justify-center relative overflow-hidden" style={{background:"#F0EEE9"}}>
-                        <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display="none"; }} />
-                        {outOfStock && <div className="absolute inset-0 flex items-center justify-center" style={{background:"rgba(0,0,0,0.45)"}}><span className="text-xs font-black text-white">نفد</span></div>}
-                        {low && !outOfStock && <span className="absolute top-1.5 right-1.5 text-[9px] font-black px-1.5 py-0.5 rounded-md bg-amber-400 text-white">{p.stock}</span>}
-                        {inCart && <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-black" style={{background:"#173A34",color:"white"}}>{inCart.qty}</span>}
+                      className="w-full flex flex-col rounded-xl border-2 transition-all text-right overflow-hidden active:scale-95"
+                      style={outOfStock
+                        ? {opacity:0.55,cursor:"not-allowed",borderColor:"#e5e7eb",background:"#fafafa"}
+                        : inCart
+                        ? {borderColor:"#173A34",background:"#f0f7f5",boxShadow:"0 0 0 3px rgba(23,58,52,0.08)"}
+                        : {borderColor:"#e8e8e8",background:"white"}}>
+                      {/* Image — fixed 68px height, letter fallback when no image */}
+                      <div className="w-full relative overflow-hidden shrink-0"
+                        style={{height:68, background: inCart ? "#d6ede7" : "#eeece8"}}>
+                        <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover"
+                          style={{display: p.image ? undefined : "none"}}
+                          onError={e => { (e.target as HTMLImageElement).style.display="none"; }} />
+                        {!p.image && (
+                          <span className="absolute inset-0 flex items-center justify-center text-3xl font-black select-none"
+                            style={{color:"#173A34",opacity:0.18}}>{p.nameAr?.charAt(0)||"؟"}</span>
+                        )}
+                        {outOfStock && (
+                          <div className="absolute inset-0 flex items-center justify-center" style={{background:"rgba(0,0,0,0.52)"}}>
+                            <span className="text-xs font-black text-white px-2 py-0.5 rounded-full bg-black/60">نفد</span>
+                          </div>
+                        )}
+                        {inCart && (
+                          <span className="absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shadow"
+                            style={{background:"#173A34",color:"#C8A45C"}}>{inCart.qty}</span>
+                        )}
+                        {low && !outOfStock && !inCart && (
+                          <span className="absolute top-1 left-1 text-[9px] font-black px-1 py-0.5 rounded shadow"
+                            style={{background:"#F59E0B",color:"white"}}>{p.stock}</span>
+                        )}
                       </div>
-                      <div className="p-2">
-                        <p className="text-xs font-bold leading-snug line-clamp-2">{p.nameAr}</p>
-                        <p className="text-xs font-black mt-1" style={{color:"#173A34"}}>{p.sellPrice.toFixed(3)} <span className="font-normal text-muted-foreground" style={{fontSize:9}}>JOD</span></p>
+                      {/* Name + price — always readable */}
+                      <div className="px-2 pt-1.5 pb-2">
+                        <p className="text-xs font-bold leading-tight line-clamp-2 text-foreground" style={{minHeight:"2.3em"}}>
+                          {p.nameAr}
+                        </p>
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span className="text-sm font-black" style={{color:"#173A34"}}>{p.sellPrice.toFixed(3)}</span>
+                          <span className="text-[9px] font-medium" style={{color:"#aaa"}}>JOD</span>
+                        </div>
                       </div>
                     </button>
                     <button onClick={e => { e.stopPropagation(); toggleFav(p.id); }}
-                      className="absolute bottom-2 left-2 text-sm leading-none transition-all opacity-0 group-hover:opacity-100"
+                      className="absolute top-1 right-1 text-sm leading-none transition-all opacity-0 group-hover:opacity-100 drop-shadow"
                       style={favorites.includes(p.id) ? {opacity:1} : {}}>
                       {favorites.includes(p.id) ? "⭐" : "☆"}
                     </button>
@@ -1644,29 +1682,45 @@ ${filtered.length > 0 ? `
               })}
             </div>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               {displayedProds.map(p => {
                 const inCart = cart.find(i => i.product.id === p.id);
                 const outOfStock = p.stock <= 0;
                 const lowStock = !outOfStock && p.stock <= p.minStock;
                 return (
                   <button key={p.id} onClick={() => add(p)} disabled={outOfStock}
-                    className="w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-all text-right"
-                    style={outOfStock ? {opacity:0.5,cursor:"not-allowed",borderColor:"#e5e7eb",background:"white"}
-                      : inCart ? {borderColor:"#173A34",background:"white"}
-                      : {borderColor:"#e5e7eb",background:"white"}}>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden" style={{background:"#F0EEE9"}}>
-                      <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display="none"; }} />
+                    className="w-full flex items-center gap-2.5 rounded-xl border px-3 py-2 transition-all text-right active:scale-[0.99]"
+                    style={outOfStock
+                      ? {opacity:0.55,cursor:"not-allowed",borderColor:"#e5e7eb",background:"#fafafa"}
+                      : inCart
+                      ? {borderColor:"#173A34",background:"#f0f7f5"}
+                      : {borderColor:"#e8e8e8",background:"white"}}>
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden text-xl font-black"
+                      style={{background: inCart ? "#d6ede7" : "#eeece8", color:"#173A34"}}>
+                      {p.image
+                        ? <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display="none"; }} />
+                        : <span style={{opacity:0.28}}>{p.nameAr?.charAt(0)||"؟"}</span>
+                      }
                     </div>
                     <div className="flex-1 text-right min-w-0">
-                      <p className="text-sm font-bold truncate">{p.nameAr}</p>
-                      <p className="text-xs text-muted-foreground">{p.category} · مخزون: <span className={outOfStock ? "text-red-500" : lowStock ? "text-amber-500 font-bold" : "text-emerald-600"}>{p.stock}</span></p>
+                      <p className="text-sm font-bold truncate text-foreground">{p.nameAr}</p>
+                      <p className="text-xs" style={{color:"#9ca3af"}}>
+                        {p.category}{p.category ? " · " : ""}
+                        <span className={outOfStock ? "text-red-500 font-bold" : lowStock ? "text-amber-500 font-bold" : "text-emerald-600 font-medium"}>
+                          {outOfStock ? "نفد المخزون" : `${p.stock} ${p.unit||"قطعة"}`}
+                        </span>
+                      </p>
                     </div>
-                    <div className="text-left shrink-0">
-                      <p className="text-sm font-black" style={{color:"#173A34"}}>{p.sellPrice.toFixed(3)}</p>
-                      <p className="text-xs text-muted-foreground">JOD</p>
+                    <div className="shrink-0 flex items-center gap-1.5">
+                      <div className="text-left">
+                        <p className="text-sm font-black" style={{color:"#173A34"}}>{p.sellPrice.toFixed(3)}</p>
+                        <p className="text-[10px]" style={{color:"#aaa"}}>JOD</p>
+                      </div>
+                      {inCart && (
+                        <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black"
+                          style={{background:"#173A34",color:"#C8A45C"}}>{inCart.qty}</span>
+                      )}
                     </div>
-                    {inCart && <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0" style={{background:"#173A34",color:"white"}}>{inCart.qty}</span>}
                   </button>
                 );
               })}
