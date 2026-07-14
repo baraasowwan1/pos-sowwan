@@ -988,7 +988,7 @@ function POSTerm({ store }: { store: StoreData }) {
       const sale = {
         localId, invoiceNo: offlineInvNo, storeId: sid,
         items: saleItems, subtotal: sub, discountAmt: da, taxAmt: ta, total,
-        payMethod: pay as "cash" | "cliq" | "card",
+        payMethod: pay as "cash" | "cliq" | "card" | "credit",
         cashIn:     pay === "cash" ? parseFloat(cash || "0") : undefined,
         change:     pay === "cash" ? Math.max(0, parseFloat(cash || "0") - total) : undefined,
         cliqRef:    pay === "cliq" ? cliqRef : undefined,
