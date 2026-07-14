@@ -17,6 +17,9 @@ export async function apiFetch(path: string, opts: RequestInit = {}, token?: str
   let data: unknown = {};
   try { data = await res.json(); } catch { data = {}; }
   if (!res.ok) throw data || { error: `خطأ ${res.status}` };
+  // Unwrap standardized backend envelope { success: true, data: ... }
+  const d = data as Record<string, unknown>;
+  if (d && d["success"] === true && "data" in d) return d["data"];
   return data;
 }
 
