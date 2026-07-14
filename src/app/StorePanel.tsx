@@ -969,12 +969,34 @@ function POSTerm({ store }: { store: StoreData }) {
   const hold = () => { if (cart.length) { setHolds(h => [...h, cart]); setCart([]); } };
   const resume = (i: number) => { setCart(holds[i]); setHolds(h => h.filter((_, idx) => idx !== i)); };
 
+  // Build per-tax-rate breakdown for receipt and UI
+  const taxBreakdown = useMemo(() => {
+    const map: Record<number, number> = {};
+    for (const i of cart) {
+      const rate = i.product.taxRate !== undefined ? i.product.taxRate : TAX * 100;
+      const lineNet = i.product.sellPrice * i.qty * (1 - i.discount / 100) * (1 - disc / 100);
+      map[rate] = (map[rate] || 0) + lineNet * (rate / 100);
+    }
+    return Object.entries(map)
+      .map(([rate, amt]) => ({ rate: Number(rate), amt }))
+      .filter(x => x.rate > 0)
+      .sort((a, b) => b.rate - a.rate);
+  }, [cart, disc, TAX]);
+
+  const hasMultiTax = taxBreakdown.length > 1;
+
   const doPrint = () => printReceipt({
     invNo,
     storeName: store.nameAr || 'متجري',
     storePhone: store.phone || '',
-    items: cart.map(i => ({ name: i.product.nameAr, qty: i.qty, price: i.product.sellPrice, discount: i.discount })),
-    subtotal: sub, discountAmt: da, taxAmt: ta, taxRate: TAX, total,
+    items: cart.map(i => ({
+      name: i.product.nameAr, qty: i.qty, price: i.product.sellPrice, discount: i.discount,
+      taxRate: i.product.taxRate !== undefined ? i.product.taxRate : TAX * 100,
+    })),
+    subtotal: sub, discountAmt: da, taxAmt: ta,
+    taxRate: hasMultiTax ? undefined : (taxBreakdown[0]?.rate ?? TAX * 100),
+    taxBreakdown: hasMultiTax ? taxBreakdown : undefined,
+    total,
     payMethod: pay === "cash" ? "نقدي" : pay === "cliq" ? "كليك" : pay === "card" ? "بطاقة ائتمانية" : "ذمة",
     change: change > 0 ? change : undefined,
     cashIn: pay === "cash" ? parseFloat(cash || "0") : undefined,
@@ -983,14 +1005,20 @@ function POSTerm({ store }: { store: StoreData }) {
   }, paper);
 
   const doPay = async () => {
-    const saleItems = cart.map(i => ({
-      productId: i.product.id,
-      nameAr:    i.product.nameAr,
-      qty:       i.qty,
-      unitPrice: i.product.sellPrice,
-      discount:  i.discount,
-      total:     i.product.sellPrice * i.qty * (1 - i.discount / 100),
-    }));
+    const saleItems = cart.map(i => {
+      const lineTotal = i.product.sellPrice * i.qty * (1 - i.discount / 100);
+      const itemTaxRate = i.product.taxRate !== undefined ? i.product.taxRate : TAX * 100;
+      return {
+        productId: i.product.id,
+        nameAr:    i.product.nameAr,
+        qty:       i.qty,
+        unitPrice: i.product.sellPrice,
+        discount:  i.discount,
+        taxRate:   itemTaxRate,
+        taxAmt:    lineTotal * (1 - disc / 100) * (itemTaxRate / 100),
+        total:     lineTotal,
+      };
+    });
     const salePayload = {
       invoiceNo:    invNo,
       items:        saleItems,
@@ -1494,10 +1522,19 @@ ${filtered.length > 0 ? `
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between text-muted-foreground"><span>المجموع الفرعي</span><span className="font-bold">{sub.toFixed(3)} JOD</span></div>
             {disc > 0 && <div className="flex justify-between text-emerald-600"><span>خصم {disc}%</span><span>-{da.toFixed(3)} JOD</span></div>}
-            <div className="flex justify-between text-muted-foreground">
-              <span>{cart.some(i => (i.product.taxRate ?? 0) > 0) ? "ضريبة المبيعات (متنوعة)" : `ضريبة المبيعات ${(TAX * 100).toFixed(0)}%`}</span>
-              <span>{ta.toFixed(3)} JOD</span>
-            </div>
+            {hasMultiTax ? (
+              taxBreakdown.map(({ rate, amt }) => (
+                <div key={rate} className="flex justify-between text-muted-foreground">
+                  <span>ضريبة {rate}%</span>
+                  <span>{amt.toFixed(3)} JOD</span>
+                </div>
+              ))
+            ) : (
+              <div className="flex justify-between text-muted-foreground">
+                <span>ضريبة المبيعات {taxBreakdown[0] ? `${taxBreakdown[0].rate}%` : `${(TAX*100).toFixed(0)}%`}</span>
+                <span>{ta.toFixed(3)} JOD</span>
+              </div>
+            )}
             <div className="flex justify-between items-center font-black border-t border-border pt-1.5">
               <span className="text-sm">الإجمالي</span><span className="text-xl text-primary">{total.toFixed(3)} JOD</span>
             </div>
