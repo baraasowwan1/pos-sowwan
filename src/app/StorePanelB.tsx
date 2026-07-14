@@ -67,8 +67,23 @@ function SalesScreen({ store }: { store: StoreData }) {
   const [toDate, setToDate] = useState("");
   const [payFilter, setPayFilter] = useState("الكل");
   const [viewSale, setViewSale] = useState<SaleRecord | null>(null);
+  const [voidConfirm, setVoidConfirm] = useState<SaleRecord | null>(null);
+  const [voiding, setVoiding] = useState(false);
 
   useEffect(() => { setSales(normList<SaleRecord>(salesRaw)); }, [salesRaw]);
+
+  const doVoid = async (s: SaleRecord) => {
+    setVoiding(true);
+    try {
+      await storeApi.patch(`/sales/${s.id}/void`, { reason: "إلغاء من الإدارة" });
+      await refresh();
+      showToast(`تم إلغاء الفاتورة ${s.invoiceNo} ✅`, "warning");
+      setVoidConfirm(null);
+      setViewSale(null);
+    } catch (e) {
+      showToast((e as {error?:string}).error || "فشل إلغاء الفاتورة", "error");
+    } finally { setVoiding(false); }
+  };
 
   const PAY_OPTS = ["الكل", "نقدي", "بطاقة", "كليك", "مختلط"];
 
@@ -184,6 +199,8 @@ function SalesScreen({ store }: { store: StoreData }) {
                       <div className="flex gap-1">
                         <Btn v="ghost" s="xs" icon={<Eye size={10} />} onClick={() => setViewSale(s)}>عرض</Btn>
                         <Btn v="secondary" s="xs" icon={<Printer size={10} />} onClick={() => reprintSale(s)}>طباعة</Btn>
+                        {s.status !== "voided" && <Btn v="danger" s="xs" onClick={() => setVoidConfirm(s)}>إلغاء</Btn>}
+                        {s.status === "voided" && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">ملغاة</span>}
                       </div>
                     </td>
                   </tr>
@@ -223,7 +240,34 @@ function SalesScreen({ store }: { store: StoreData }) {
                 <div key={l} className="flex justify-between text-sm"><span className="text-muted-foreground">{l}</span><span className="font-bold">{v}</span></div>
               ))}
             </div>
-            <Btn full icon={<Printer size={14} />} onClick={() => { reprintSale(viewSale); setViewSale(null); }}>إعادة طباعة الفاتورة</Btn>
+            <div className="flex gap-3">
+              <Btn full icon={<Printer size={14} />} onClick={() => { reprintSale(viewSale); setViewSale(null); }}>إعادة طباعة الفاتورة</Btn>
+              {viewSale.status !== "voided" && (
+                <Btn v="danger" full onClick={() => { setVoidConfirm(viewSale); }}>إلغاء الفاتورة</Btn>
+              )}
+            </div>
+            {viewSale.status === "voided" && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-2 text-center text-sm font-bold text-red-700">⚠ هذه الفاتورة ملغاة</div>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {voidConfirm && (
+        <Modal title="تأكيد إلغاء الفاتورة" onClose={() => setVoidConfirm(null)} size="sm">
+          <div className="space-y-4">
+            <div className="rounded-xl bg-red-50 border border-red-200 p-4">
+              <p className="font-bold text-red-800 mb-1">هل أنت متأكد من إلغاء الفاتورة؟</p>
+              <p className="text-sm text-red-700">رقم الفاتورة: <span className="font-black">{voidConfirm.invoiceNo}</span></p>
+              <p className="text-sm text-red-700">الإجمالي: <span className="font-black">{(voidConfirm.total || 0).toFixed(3)} JOD</span></p>
+              <p className="text-xs text-red-600 mt-2">⚠ لا يمكن التراجع عن هذه العملية. سيتم وضع علامة ملغاة على الفاتورة.</p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Btn v="secondary" onClick={() => setVoidConfirm(null)} disabled={voiding}>إلغاء</Btn>
+              <Btn v="danger" onClick={() => doVoid(voidConfirm)} disabled={voiding}>
+                {voiding ? "جاري الإلغاء..." : "تأكيد الإلغاء ✓"}
+              </Btn>
+            </div>
           </div>
         </Modal>
       )}
