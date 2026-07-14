@@ -757,16 +757,36 @@ export function LoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store
         setEntering(true);
         setTimeout(() => onLogin("superadmin"), 600);
       } else {
-        const res = await apiLoginStore(email.trim(), pass) as { token: string; storeId: string; store?: StoreData; branding?: object };
+        const res = await apiLoginStore(email.trim(), pass) as {
+          token: string; storeId?: string;
+          user?: { id: string; name: string; email: string; role: string };
+          store?: StoreData & { id?: string; _id?: string };
+          branding?: object;
+        };
         setToken(res.token);
         if (rememberMe) { try { localStorage.setItem("sowwanjo_remember_email", email.trim()); } catch {} }
         else { try { localStorage.removeItem("sowwanjo_remember_email"); } catch {} }
+
+        // استخرج storeId من الـ store object أو من الـ response مباشرة
+        const sid = res.storeId || (res.store as {id?:string;_id?:string})?.id || String((res.store as {id?:string;_id?:string})?._id || "");
+
+        // احفظ بيانات المتجر في localStorage
         if (res.store) {
-          try { localStorage.setItem(`sowwanjo_storeinfo_${res.storeId}`, JSON.stringify(res.store)); } catch {}
+          try { localStorage.setItem(`sowwanjo_storeinfo_${sid}`, JSON.stringify({ ...res.store, id: sid })); } catch {}
         }
+
+        // ← احفظ role واسم الموظف — هذا هو سبب مشكلة الصلاحيات
+        if (res.user) {
+          try {
+            localStorage.setItem(`sowwanjo_user_role_${sid}`, res.user.role || "owner");
+            localStorage.setItem(`sowwanjo_user_name_${sid}`, res.user.name || "");
+            localStorage.setItem(`sowwanjo_user_id_${sid}`,   res.user.id   || "");
+          } catch {}
+        }
+
         if (res.branding) applyBranding(res.branding as { primaryColor?: string; appName?: string; logoUrl?: string });
         setEntering(true);
-        setTimeout(() => onLogin("store", res.storeId), 600);
+        setTimeout(() => onLogin("store", sid), 600);
       }
     } catch (e) {
       const msg = (e as {error?:string}).error || "بيانات غير صحيحة";
