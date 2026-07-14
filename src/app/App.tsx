@@ -624,93 +624,92 @@ function LuxuryLoginScreen({ onLogin }: { onLogin: (type: "superadmin" | "store"
   // ── DESKTOP + TABLET Layout ───────────────────────────────────────────────
   return (
     <div dir="rtl" className="fixed inset-0 overflow-hidden" style={{ fontFamily: "'Cairo',sans-serif" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "60% 40%", height: "100dvh", direction: "ltr" }}>
 
-        {/* ── Left: Hero Section ──────────────────────────────────────────── */}
-        <div dir="rtl" className="relative flex flex-col overflow-hidden" style={{ background: "#173A34" }}>
-          {/* Subtle grid texture */}
-          <div className="absolute inset-0 pointer-events-none opacity-[0.04]" style={{ backgroundImage: "linear-gradient(rgba(200,164,92,1) 1px,transparent 1px),linear-gradient(90deg,rgba(200,164,92,1) 1px,transparent 1px)", backgroundSize: "56px 56px" }} />
+      {/* ── Full-screen green background ───────────────────────────────────── */}
+      <div className="absolute inset-0 flex flex-col overflow-hidden" style={{ background: "linear-gradient(160deg,#0d2620 0%,#173A34 55%,#1a4840 100%)" }}>
+        {/* Subtle grid texture */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.04]"
+          style={{ backgroundImage: "linear-gradient(rgba(200,164,92,1) 1px,transparent 1px),linear-gradient(90deg,rgba(200,164,92,1) 1px,transparent 1px)", backgroundSize: "56px 56px" }} />
+        {/* Radial glow center-left */}
+        <div className="absolute pointer-events-none" style={{ top: "20%", right: "40%", width: 520, height: 520, background: "radial-gradient(circle,rgba(200,164,92,0.07) 0%,transparent 70%)" }} />
 
-          {/* Top brand bar */}
-          <div className="relative z-10 flex items-center gap-3 px-10 pt-8">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(200,164,92,0.12)", border: "1px solid rgba(200,164,92,0.25)" }}>
-              <Store size={18} color="#C8A45C" />
-            </div>
-            <span className="font-black text-base tracking-tight" style={{ color: "#fff" }}>{platformName}</span>
-            <div className="mr-auto flex items-center gap-1.5 rounded-full px-3 py-1" style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)" }}>
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ animation: "pulse 2s ease-in-out infinite" }} />
-              <span className="text-xs font-semibold" style={{ color: "rgba(74,222,128,0.85)" }}>متصل</span>
-            </div>
+        {/* Top brand bar */}
+        <div className="relative z-10 flex items-center gap-3 px-10 pt-8">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(200,164,92,0.12)", border: "1px solid rgba(200,164,92,0.25)" }}>
+            <Store size={18} color="#C8A45C" />
           </div>
-
-          {/* Hero text */}
-          <div className="relative z-10 px-10 mt-10">
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-              className="font-black leading-tight mb-4"
-              style={{ color: "#fff", fontSize: "clamp(26px,2.8vw,36px)", lineHeight: 1.3 }}>
-              تحكم بأعمالك<br />
-              <span style={{ color: "#C8A45C" }}>بذكاء واحتراف</span>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.4 }}
-              className="text-sm leading-relaxed max-w-sm"
-              style={{ color: "rgba(255,255,255,0.5)" }}>
-              منصة سحابية متكاملة لإدارة المبيعات، المخزون، العملاء، الفروع، والتقارير من أي مكان.
-            </motion.p>
-          </div>
-
-          {/* Business Scene — takes remaining space */}
-          <div className="relative flex-1 min-h-0">
-            <BusinessScene />
-          </div>
-
-          {/* Feature badges */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-            className="relative z-10 px-10 pb-8">
-            <div className="flex flex-wrap gap-2">
-              {FEATURES.map(({ Icon, label }, i) => (
-                <motion.div key={i}
-                  initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.4, delay: 0.7 + i * 0.05 }}
-                  className="flex items-center gap-1.5 rounded-full px-3 py-1.5"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <Icon size={11} color="rgba(200,164,92,0.75)" />
-                  <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.65)" }}>{label}</span>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-
-        {/* ── Right: Login Section ─────────────────────────────────────────── */}
-        <div dir="rtl" className="flex flex-col items-center justify-between py-10 px-8 overflow-y-auto"
-          style={{ background: "#F7F5F2" }}>
-          {/* Top spacer / subtle top branding */}
-          <div className="flex items-center gap-2 self-start mb-4 opacity-50">
-            <Store size={14} color="#173A34" />
-            <span className="text-xs font-semibold" style={{ color: "#173A34" }}>{platformName}</span>
-          </div>
-
-          {/* Floating card */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-sm rounded-3xl p-8"
-            style={{ background: "#fff", boxShadow: "0 24px 80px rgba(0,0,0,0.09),0 0 0 1px rgba(0,0,0,0.04)" }}>
-            {LoginCardContent}
-          </motion.div>
-
-          {/* Bottom tagline */}
-          <div className="flex items-center gap-1.5 mt-4">
-            <Shield size={12} color="#ccc" />
-            <span className="text-xs" style={{ color: "#bbb" }}>تشفير كامل · SSL · بيانات آمنة</span>
+          <span className="font-black text-base tracking-tight" style={{ color: "#fff" }}>{platformName}</span>
+          <div className="mr-auto flex items-center gap-1.5 rounded-full px-3 py-1" style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)" }}>
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ animation: "pulse 2s ease-in-out infinite" }} />
+            <span className="text-xs font-semibold" style={{ color: "rgba(74,222,128,0.85)" }}>متصل</span>
           </div>
         </div>
+
+        {/* Hero text — right half stays free for the card */}
+        <div className="relative z-10 px-10 mt-10" style={{ maxWidth: "58%" }}>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.2 }}
+            className="font-black leading-tight mb-4"
+            style={{ color: "#fff", fontSize: "clamp(26px,2.8vw,38px)", lineHeight: 1.3 }}>
+            تحكم بأعمالك<br />
+            <span style={{ color: "#C8A45C" }}>بذكاء واحتراف</span>
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.4 }}
+            className="text-sm leading-relaxed"
+            style={{ color: "rgba(255,255,255,0.5)", maxWidth: 380 }}>
+            منصة سحابية متكاملة لإدارة المبيعات، المخزون، العملاء، الفروع، والتقارير من أي مكان.
+          </motion.p>
+        </div>
+
+        {/* Business Scene */}
+        <div className="relative flex-1 min-h-0" style={{ maxWidth: "62%" }}>
+          <BusinessScene />
+        </div>
+
+        {/* Feature badges */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="relative z-10 px-10 pb-8"
+          style={{ maxWidth: "62%" }}>
+          <div className="flex flex-wrap gap-2">
+            {FEATURES.map(({ Icon, label }, i) => (
+              <motion.div key={i}
+                initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4, delay: 0.7 + i * 0.05 }}
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <Icon size={11} color="rgba(200,164,92,0.75)" />
+                <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.65)" }}>{label}</span>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+
+      {/* ── Login card — floating over the left side (RTL: visually right) ─── */}
+      <div className="absolute inset-y-0 left-0 flex items-center justify-center"
+        style={{ width: "42%", padding: "2rem", zIndex: 20 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 28, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full rounded-3xl overflow-y-auto"
+          style={{
+            background: "#fff",
+            maxWidth: 400,
+            maxHeight: "calc(100dvh - 4rem)",
+            boxShadow: "0 32px 96px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06)",
+            padding: "2rem",
+          }}>
+          {LoginCardContent}
+          <div className="flex items-center justify-center gap-1.5 mt-5 pt-4" style={{ borderTop: "1px solid #F0EEEA" }}>
+            <Shield size={11} color="#ccc" />
+            <span className="text-xs" style={{ color: "#ccc" }}>تشفير كامل · SSL · بيانات آمنة</span>
+          </div>
+        </motion.div>
       </div>
 
       <style>{`
