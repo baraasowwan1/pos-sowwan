@@ -705,8 +705,13 @@ interface CashSession { id?: string; openedAt: string; openingBalance: number; c
 function POSTerm({ store }: { store: StoreData }) {
   const sid = useStoreId();
   const { isOnline, queueOffline } = useOffline();
-  // Cash session state
-  const [session, setSession] = useLS<CashSession | null>(sk(sid, "pos_session"), null);
+  // Per-user identity for role-based permissions and per-user sessions
+  const posUserId = (() => { try { return localStorage.getItem(`sowwanjo_user_id_${sid}`) || "default"; } catch { return "default"; } })();
+  const posRole   = (() => { try { return localStorage.getItem(`sowwanjo_user_role_${sid}`) || "owner"; } catch { return "owner"; } })();
+  const posUserName = (() => { try { return localStorage.getItem(`sowwanjo_user_name_${sid}`) || ""; } catch { return ""; } })();
+  const isOwnerOrMgr = posRole === "owner" || posRole === "manager";
+  // Cash session — per-user so each cashier has their own shift
+  const [session, setSession] = useLS<CashSession | null>(sk(sid, `pos_session_${posUserId}`), null);
   const [showOpenSession, setShowOpenSession] = useState(false);
   const [showCloseSession, setShowCloseSession] = useState(false);
   const [openingBal, setOpeningBal] = useState("0");
@@ -745,6 +750,19 @@ function POSTerm({ store }: { store: StoreData }) {
       });
     }
   }, [prodsApiRaw, sid]);
+
+  // عروض وخصومات نشطة — تُطبَّق تلقائياً على السلة
+  type ActivePromo = { id: string; name: string; type: "percentage"|"fixed"; discountValue: number; appliesTo: "all"|"specific"; active: boolean; startDate: string; endDate: string; categories?: string[] };
+  const { data: rawPromos } = useApiCached<ActivePromo[]>("/promotions", []);
+  const activePromos = useMemo(() => {
+    const now = Date.now();
+    return normList<ActivePromo>(rawPromos).filter(p =>
+      p.active &&
+      new Date(p.startDate).getTime() <= now &&
+      new Date(p.endDate).getTime() + 86400000 >= now // include end date itself
+    );
+  }, [rawPromos]);
+
   // عملاء POS
   type POSCust = {id:string;name:string;phone:string;email?:string;loyaltyPoints?:number;debt?:number};
   const { data: custsApiRaw, refresh: refreshCusts } = useApi<unknown[]>("/customers", []);
@@ -948,14 +966,31 @@ function POSTerm({ store }: { store: StoreData }) {
 
   const add = (p: Product) => {
     if (p.stock <= 0) { showToast(`"${p.nameAr}" نفد من المخزون`, "error"); return; }
+    // Find best active promo for this product
+    const bestPromo = activePromos.find(pr =>
+      pr.appliesTo === "all" ||
+      (pr.appliesTo === "specific" && (
+        pr.categories?.includes(p.category || "") ||
+        (pr as ActivePromo & { productIds?: string[] }).productIds?.includes(p.id)
+      ))
+    );
+    let promoDiscount = 0;
+    if (bestPromo) {
+      if (bestPromo.type === "percentage") {
+        promoDiscount = bestPromo.discountValue;
+      } else if (bestPromo.type === "fixed" && p.sellPrice > 0) {
+        promoDiscount = Math.min(100, Math.round((bestPromo.discountValue / p.sellPrice) * 10000) / 100);
+      }
+    }
     setCart(prev => {
       const ex = prev.find(i => i.product.id === p.id);
       if (ex) {
         if (ex.qty >= p.stock) { showToast(`الكمية المتاحة فقط ${p.stock} وحدة`, "warning"); return prev; }
         return prev.map(i => i.product.id === p.id ? { ...i, qty: i.qty + 1 } : i);
       }
-      return [...prev, { product: p, qty: 1, discount: 0 }];
+      return [...prev, { product: p, qty: 1, discount: promoDiscount, promoApplied: bestPromo?.name }];
     });
+    if (bestPromo && promoDiscount > 0) showToast(`تم تطبيق عرض "${bestPromo.name}" — خصم ${bestPromo.discountValue}${bestPromo.type === "percentage" ? "%" : " JOD"}`, "success");
     setRecentIds(prev => [p.id, ...prev.filter(id=>id!==p.id)].slice(0,20));
   };
   const upd = (id: string, d: number) => setCart(prev => prev.map(i => {
@@ -1039,6 +1074,8 @@ function POSTerm({ store }: { store: StoreData }) {
       customerPhone:selectedCustomer?.phone,
       loyaltyPointsEarned:   pointsEarned || undefined,
       loyaltyPointsRedeemed: pointsToRedeem || undefined,
+      cashierName:  posUserName || undefined,
+      cashierId:    posUserId !== "default" ? posUserId : undefined,
       status: "completed",
     };
 
@@ -1237,8 +1274,7 @@ ${filtered.length > 0 ? `
   };
 
   const printShiftReport = (salesList: ShiftSale[], closingBalance?: number) => {
-    const cashierName = (() => { try { return JSON.parse(localStorage.getItem(`sowwanjo_storeinfo_${sid}`) || "{}").cashierName || ""; } catch { return ""; } })();
-    const html = buildShiftHtml(salesList, closingBalance, cashierName);
+    const html = buildShiftHtml(salesList, closingBalance, posUserName || posRole);
     const w = window.open("", "_blank", "width=500,height=700");
     if (w) { w.document.write(html); w.document.close(); setTimeout(() => { w.focus(); w.print(); }, 400); }
   };
@@ -1259,9 +1295,22 @@ ${filtered.length > 0 ? `
 
   // If no session, show session open screen
   if (!session) {
+    const ROLE_AR_MAP: Record<string,string> = { owner:"مالك", manager:"مدير", cashier:"كاشير", inventory:"مسؤول مخزون", accountant:"محاسب" };
     return (
       <div className="flex h-full items-center justify-center p-6 bg-background">
         <div className="bg-card rounded-2xl border border-border shadow-md p-8 max-w-md w-full text-center">
+          {/* Employee identity badge */}
+          {posUserName && (
+            <div className="flex items-center justify-center gap-2 mb-5 px-3 py-2 rounded-xl bg-primary/8 border border-primary/20">
+              <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                <span className="text-primary font-black text-xs">{posUserName.charAt(0)}</span>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-black text-foreground">{posUserName}</p>
+                <p className="text-[10px] text-muted-foreground">{ROLE_AR_MAP[posRole] || posRole} · {store.nameAr}</p>
+              </div>
+            </div>
+          )}
           <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
             <Wallet size={36} className="text-primary" />
           </div>
@@ -1280,7 +1329,6 @@ ${filtered.length > 0 ? `
           <Btn full s="lg" onClick={openSession} icon={<Power size={16} />}>فتح الجلسة</Btn>
           <p className="text-xs text-muted-foreground mt-4">{new Date().toLocaleString("ar-JO")}</p>
         </div>
-        {showOpenSession && null}
       </div>
     );
   }
@@ -1492,11 +1540,20 @@ ${filtered.length > 0 ? `
                     </div>
                     <span className="text-sm font-black">{(item.product.sellPrice * item.qty * (1 - item.discount / 100)).toFixed(3)}</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-muted-foreground shrink-0">خصم:</span>
-                    <input type="number" value={item.discount} min={0} max={100} onChange={e => updd(item.product.id, Number(e.target.value))} className="w-14 h-7 rounded-lg border border-border bg-input-background text-xs text-center focus:outline-none" />
-                    <span className="text-xs text-muted-foreground">%</span>
-                  </div>
+                  {isOwnerOrMgr ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground shrink-0">خصم:</span>
+                      <input type="number" value={item.discount} min={0} max={100} onChange={e => updd(item.product.id, Number(e.target.value))} className="w-14 h-7 rounded-lg border border-border bg-input-background text-xs text-center focus:outline-none" />
+                      <span className="text-xs text-muted-foreground">%</span>
+                      {item.promoApplied && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">{item.promoApplied}</span>}
+                    </div>
+                  ) : item.discount > 0 ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                        {item.promoApplied || `خصم ${item.discount}%`}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -1504,10 +1561,12 @@ ${filtered.length > 0 ? `
         </div>
         <div className="border-t border-border p-3 space-y-3 shrink-0">
           <div className="flex items-end gap-2">
-            <div className="flex-1 space-y-1">
-              <label className="text-xs font-bold text-muted-foreground">خصم الفاتورة %</label>
-              <input type="number" value={disc} min={0} max={100} onChange={e => setDisc(Number(e.target.value))} className="w-full h-8 rounded-xl border border-border bg-input-background text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-ring/25" />
-            </div>
+            {isOwnerOrMgr && (
+              <div className="flex-1 space-y-1">
+                <label className="text-xs font-bold text-muted-foreground">خصم الفاتورة %</label>
+                <input type="number" value={disc} min={0} max={100} onChange={e => setDisc(Number(e.target.value))} className="w-full h-8 rounded-xl border border-border bg-input-background text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-ring/25" />
+              </div>
+            )}
             <div className="space-y-1">
               <label className="text-xs font-bold text-muted-foreground">الدفع</label>
               <div className="flex gap-1">
@@ -1854,7 +1913,7 @@ ${filtered.length > 0 ? `
         }
         const shiftProducts = Object.values(shiftProdMap).sort((a,b) => b.qty - a.qty);
         return (
-          <Modal title="مبيعات الشفت الحالي" sub={session ? `فُتح: ${new Date(session.openedAt).toLocaleString("ar-JO")}` : ""} onClose={() => setShowShift(false)} size="xl">
+          <Modal title="مبيعات الشفت الحالي" sub={session ? `${posUserName ? posUserName + " · " : ""}فُتح: ${new Date(session.openedAt).toLocaleString("ar-JO")}` : ""} onClose={() => setShowShift(false)} size="xl">
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-card border border-border rounded-xl p-3 text-center"><p className="text-xs text-muted-foreground mb-1">فواتير</p><p className="font-black text-xl text-foreground">{shiftTotals.count}</p></div>
