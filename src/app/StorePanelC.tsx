@@ -1659,4 +1659,152 @@ function DebtScreen() {
   );
 }
 
-export { StoreReports, EmpScreen, BranchScreen, LoyaltyScreen, DebtScreen, PrintJobsScreen, PrintMatsScreen, PrintPricesScreen, StoreSetts };
+// ─────────────────────────────────────────────────────────────────────────────
+// GIFT CARDS SCREEN — بطاقات الهدايا
+// ─────────────────────────────────────────────────────────────────────────────
+function GiftCardsScreen() {
+  const sid = useStoreId();
+  type GC = { _id:string; code:string; balance:number; originalBalance:number; isActive:boolean; expiresAt?:string; notes?:string; createdBy?:string; createdAt:string };
+  const { data: rawCards, refresh: refreshCards } = useApi<GC[]>("/gift-cards", []);
+  const cards = normList<GC>(rawCards);
+  const [showCreate, setShowCreate] = useState(false);
+  const [balance, setBalance] = useState("");
+  const [notes, setNotes] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all"|"active"|"used">("all");
+
+  const filtered = cards.filter(c =>
+    (filterStatus === "all" || (filterStatus === "active" ? c.isActive : !c.isActive)) &&
+    (!search || c.code.includes(search.toUpperCase()) || (c.notes||"").includes(search))
+  );
+
+  const totalActive = cards.filter(c => c.isActive).length;
+  const totalBalance = cards.filter(c => c.isActive).reduce((a, c) => a + c.balance, 0);
+  const totalUsed = cards.filter(c => !c.isActive).length;
+
+  const createCard = async () => {
+    if (!balance || parseFloat(balance) <= 0) { showToast("أدخل رصيد صحيح", "error"); return; }
+    setSaving(true);
+    try {
+      await storeApi.post("/gift-cards", { balance: parseFloat(balance), notes, expiresAt: expiresAt || undefined, storeId: sid });
+      showToast("تم إنشاء بطاقة الهدية", "success");
+      setShowCreate(false); setBalance(""); setNotes(""); setExpiresAt("");
+      refreshCards();
+    } catch (e) { showToast((e as {error?:string}).error || "فشل إنشاء البطاقة", "error"); }
+    finally { setSaving(false); }
+  };
+
+  const deactivate = async (id: string) => {
+    try {
+      await storeApi.patch(`/gift-cards/${id}/deactivate`, {});
+      showToast("تم تعطيل البطاقة", "success");
+      refreshCards();
+    } catch { showToast("فشل التعطيل", "error"); }
+  };
+
+  const deleteCard = async (id: string) => {
+    if (!confirm("حذف البطاقة نهائياً؟")) return;
+    try {
+      await storeApi.delete(`/gift-cards/${id}`);
+      showToast("تم الحذف", "success");
+      refreshCards();
+    } catch { showToast("فشل الحذف", "error"); }
+  };
+
+  return (
+    <div className="p-3 sm:p-6 space-y-5">
+      <Hdr title="بطاقات الهدايا" sub={`${totalActive} بطاقة نشطة`}
+        action={<Btn icon={<Plus size={14} />} onClick={() => setShowCreate(true)}>بطاقة جديدة</Btn>} />
+
+      {/* KPIs */}
+      <div className="grid grid-cols-3 gap-3">
+        <KPI icon={<Star size={16} />} label="نشطة" value={String(totalActive)} color="#10B981" />
+        <KPI icon={<DollarSign size={16} />} label="رصيد نشط" value={`${totalBalance.toFixed(3)} JOD`} color="#6366F1" />
+        <KPI icon={<Check size={16} />} label="مستخدمة" value={String(totalUsed)} color="#F59E0B" />
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[160px]">
+          <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث بالكود أو الملاحظة..."
+            className="w-full h-10 rounded-xl border border-border bg-background text-sm pr-9 pl-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+        </div>
+        {(["all","active","used"] as const).map(s => (
+          <button key={s} onClick={() => setFilterStatus(s)}
+            className={`px-4 h-10 rounded-xl text-xs font-bold border transition-all ${filterStatus === s ? "bg-primary text-white border-primary" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>
+            {s === "all" ? "الكل" : s === "active" ? "نشطة" : "مستخدمة"}
+          </button>
+        ))}
+      </div>
+
+      {/* Cards list */}
+      <div className="space-y-2">
+        {filtered.map(c => (
+          <div key={c._id} className={`bg-card rounded-2xl border p-4 flex items-center gap-4 ${c.isActive ? "border-emerald-200" : "border-border opacity-70"}`}>
+            <div className="text-2xl shrink-0">🎁</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-black text-sm font-mono tracking-widest">{c.code}</p>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${c.isActive ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground border-border"}`}>
+                  {c.isActive ? "نشطة" : "مستخدمة"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                رصيد: <span className="font-bold text-foreground">{c.balance.toFixed(3)} JOD</span>
+                {" / "} أصلي: {c.originalBalance.toFixed(3)} JOD
+                {c.notes && <> · {c.notes}</>}
+                {c.expiresAt && <> · ينتهي: {new Date(c.expiresAt).toLocaleDateString("ar-JO")}</>}
+              </p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              {c.isActive && (
+                <button onClick={() => deactivate(c._id)} title="تعطيل"
+                  className="w-8 h-8 flex items-center justify-center rounded-xl border border-amber-200 text-amber-600 hover:bg-amber-50">
+                  <Lock size={14} />
+                </button>
+              )}
+              <button onClick={() => deleteCard(c._id)} title="حذف"
+                className="w-8 h-8 flex items-center justify-center rounded-xl border border-red-200 text-red-400 hover:bg-red-50">
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+        ))}
+        {filtered.length === 0 && <Empty icon={<Star size={24} />} title="لا توجد بطاقات هدايا" desc="أنشئ أول بطاقة هدية باستخدام زر «بطاقة جديدة»" />}
+      </div>
+
+      {/* Create Modal */}
+      {showCreate && (
+        <Modal title="بطاقة هدية جديدة" onClose={() => setShowCreate(false)}>
+          <div className="space-y-4">
+            <F label="الرصيد (JOD) *">
+              <TInput value={balance} onChange={setBalance} type="number" placeholder="0.000" icon={<DollarSign size={13} />} />
+            </F>
+            <div className="grid grid-cols-4 gap-1.5">
+              {[5, 10, 20, 50].map(v => (
+                <button key={v} onClick={() => setBalance(String(v))}
+                  className="h-9 rounded-xl text-xs font-bold border border-border bg-muted hover:bg-primary hover:text-white">{v} JOD</button>
+              ))}
+            </div>
+            <F label="تاريخ الانتهاء (اختياري)">
+              <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)}
+                className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/25" />
+            </F>
+            <F label="ملاحظات (اختياري)">
+              <TInput value={notes} onChange={setNotes} placeholder="مثال: هدية عيد ميلاد" />
+            </F>
+            <div className="flex gap-3">
+              <Btn v="secondary" onClick={() => setShowCreate(false)} cls="flex-1">إلغاء</Btn>
+              <Btn onClick={createCard} disabled={saving || !balance} cls="flex-1" icon={<Plus size={14} />}>إنشاء البطاقة</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+export { StoreReports, EmpScreen, BranchScreen, LoyaltyScreen, DebtScreen, GiftCardsScreen, PrintJobsScreen, PrintMatsScreen, PrintPricesScreen, StoreSetts };
