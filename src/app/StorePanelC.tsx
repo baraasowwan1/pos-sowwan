@@ -1,5 +1,5 @@
 // StorePanelC — Reports, Employees, Branches, Loyalty, Print Shop, Settings
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -482,6 +482,13 @@ function EmpScreen() {
   const sid = useStoreId();
   const { data: empsRaw, refresh: refreshEmps } = useApi<unknown[]>("/users", []);
   const [emps, setEmps] = useState<EmpRecord[]>([]);
+  const { data: branchesRaw } = useApi<unknown[]>("/branches", []);
+  const branchOpts = useMemo(() => {
+    const list = normList<{id:string;name:string}>(branchesRaw);
+    const opts = list.map(b => ({ value: b.name, label: b.name }));
+    if (!opts.find(o => o.value === "الفرع الرئيسي")) opts.unshift({ value:"الفرع الرئيسي", label:"الفرع الرئيسي" });
+    return opts;
+  }, [branchesRaw]);
   useEffect(() => { setEmps(normList<EmpRecord>(empsRaw)); }, [empsRaw]);
   const [showNew, setShowNew] = useState(false);
   const [editEmp, setEditEmp] = useState<EmpRecord|null>(null);
@@ -503,7 +510,7 @@ function EmpScreen() {
   const addEmp = async () => {
     if (!nf.name || !nf.phone || !nf.email) return;
     try {
-      const body: Record<string,string> = { name: nf.name, phone: nf.phone, role: nf.role, email: nf.email, shift: nf.shift, shiftStart: nf.shiftStart, shiftEnd: nf.shiftEnd };
+      const body: Record<string,string> = { name: nf.name, phone: nf.phone, role: nf.role, email: nf.email, shift: nf.shift, shiftStart: nf.shiftStart, shiftEnd: nf.shiftEnd, branch: nf.branch };
       if (!nf.autoPass && nf.password) body["password"] = nf.password;
       const res = await storeApi.post("/users", body) as { generatedPassword?: string };
       await refreshEmps();
@@ -517,7 +524,7 @@ function EmpScreen() {
     if (!editEmp) return;
     const enRole = ROLE_AR_TO_EN[editEmp.role] || editEmp.role;
     const enStatus = STATUS_AR_TO_EN[editEmp.status] || editEmp.status;
-    const body: Record<string,string> = { name: editEmp.name, phone: editEmp.phone || '', role: enRole, status: enStatus, shift: editEmp.shift || 'flexible', shiftStart: editEmp.shiftStart || '', shiftEnd: editEmp.shiftEnd || '' };
+    const body: Record<string,string> = { name: editEmp.name, phone: editEmp.phone || '', role: enRole, status: enStatus, shift: editEmp.shift || 'flexible', shiftStart: editEmp.shiftStart || '', shiftEnd: editEmp.shiftEnd || '', branch: editEmp.branch || '' };
     if (editPass.trim()) body["password"] = editPass.trim();
     await storeApi.put(`/users/${editEmp.id}`, body);
     await refreshEmps(); showToast("تم حفظ تعديلات الموظف"); setEditEmp(null); setEditPass('');
@@ -616,7 +623,7 @@ function EmpScreen() {
                 <F label="نهاية الشفت"><TInput value={nf.shiftEnd} onChange={v=>setNf({...nf,shiftEnd:v})} placeholder="16:00" /></F>
               </div>
             )}
-            <F label="الفرع"><SInput value={nf.branch} onChange={v=>setNf({...nf,branch:v})} options={["الفرع الرئيسي","فرع مرج الحمام","فرع الزرقاء"].map(b=>({value:b,label:b}))} /></F>
+            <F label="الفرع"><SInput value={nf.branch} onChange={v=>setNf({...nf,branch:v})} options={branchOpts} /></F>
             <div>
               <label className="flex items-center gap-2 cursor-pointer mb-3 select-none">
                 <div onClick={()=>setNf({...nf,autoPass:!nf.autoPass})} className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 ${nf.autoPass?"bg-primary":"bg-muted-foreground/30"}`}>
@@ -648,6 +655,7 @@ function EmpScreen() {
             <F label="رقم الهاتف"><TInput value={editEmp.phone} onChange={v=>setEditEmp({...editEmp,phone:v})} /></F>
             <F label="الدور الوظيفي"><SInput value={editEmp.role} onChange={v=>setEditEmp({...editEmp,role:v})} options={ROLE_OPTS} /></F>
             <F label="الحالة"><SInput value={editEmp.status} onChange={v=>setEditEmp({...editEmp,status:v})} options={STATUS_OPTS} /></F>
+            <F label="الفرع"><SInput value={editEmp.branch || "الفرع الرئيسي"} onChange={v=>setEditEmp({...editEmp,branch:v})} options={branchOpts} /></F>
             <F label="شفت الدوام"><SInput value={editEmp.shift || "flexible"} onChange={v=>setEditEmp({...editEmp,shift:v})} options={SHIFT_OPTS} /></F>
             {(editEmp.shift || "flexible") !== "flexible" && (
               <div className="grid grid-cols-2 gap-3">
