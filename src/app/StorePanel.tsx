@@ -22,7 +22,7 @@ import { storeApi, useApi, useApiCached, useLS, norm, normList, dateAr, timeAr, 
 import { SyncCenter, SyncStatusBadge } from "./SyncCenter";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
 import { SalesScreen, ProductsMgr, InvScreen, CustScreen, SuppScreen, PurchScreen, ExpScreen, ReturnScreen, PurchaseOrdersScreen, PromotionsScreen } from "./StorePanelB";
-import { StoreReports, EmpScreen, BranchScreen, LoyaltyScreen, DebtScreen, PrintJobsScreen, PrintMatsScreen, PrintPricesScreen, StoreSetts } from "./StorePanelC";
+import { StoreReports, EmpScreen, BranchScreen, LoyaltyScreen, DebtScreen, GiftCardsScreen, PrintJobsScreen, PrintMatsScreen, PrintPricesScreen, StoreSetts } from "./StorePanelC";
 import { FlowerOrdersScreen, BouquetBuilderScreen, DeliveryMgmtScreen } from "./StorePanelD";
 
 // Offline context — lets deep components (POSTerm) know network state
@@ -59,6 +59,7 @@ const STORE_NAV = [
   { id: "branches",       label: "الفروع والأجهزة",      icon: <Building2 size={15} />,      sfKey: "branches" },
   { id: "loyalty",        label: "الولاء",                icon: <Star size={15} />,           sfKey: "loyalty" },
   { id: "debts",          label: "الذمم",                 icon: <Landmark size={15} />,       sfKey: "customers" },
+  { id: "giftcards",      label: "بطاقات الهدايا",       icon: <Gift size={15} />,           sfKey: null },
   { id: "print_jobs",     label: "طلبات الطباعة",        icon: <Printer size={15} />,        sfKey: null },
   { id: "print_mats",     label: "مواد الطباعة",          icon: <Ruler size={15} />,          sfKey: null },
   { id: "print_prices",   label: "أسعار الطباعة",        icon: <Hash size={15} />,           sfKey: null },
@@ -486,6 +487,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
               {screen === "branches"  && <BranchScreen />}
               {screen === "loyalty"       && <LoyaltyScreen />}
               {screen === "debts"         && <DebtScreen />}
+              {screen === "giftcards"     && <GiftCardsScreen />}
               {screen === "print_jobs"    && <PrintJobsScreen store={store} />}
               {screen === "print_mats"   && <PrintMatsScreen />}
               {screen === "print_prices" && <PrintPricesScreen />}
@@ -781,6 +783,46 @@ function POSTerm({ store }: { store: StoreData }) {
   const [cliqRef, setCliqRef] = useState("");
   const [cliqSender, setCliqSender] = useState("");
   const [cardRef, setCardRef] = useState("");
+  // Split payment
+  type SplitRow = { method: "cash"|"cliq"|"card"; amount: string };
+  const [splitMode, setSplitMode] = useState(false);
+  const [splitRows, setSplitRows] = useState<SplitRow[]>([{method:"cash",amount:""},{method:"cliq",amount:""}]);
+  const splitTotal = splitRows.reduce((a,r) => a + (parseFloat(r.amount)||0), 0);
+  // Gift card
+  const [giftCode, setGiftCode] = useState("");
+  const [giftCard, setGiftCard] = useState<{code:string;balance:number}|null>(null);
+  const [giftChecking, setGiftChecking] = useState(false);
+  const giftDiscount = giftCard ? Math.min(giftCard.balance, (total||0)) : 0;
+  const checkGiftCard = async () => {
+    if (!giftCode.trim()) return;
+    setGiftChecking(true);
+    try {
+      const res = await storeApi.get(`/gift-cards/check/${giftCode.trim().toUpperCase()}`) as {code:string;balance:number};
+      setGiftCard(res);
+      showToast(`بطاقة هدية صالحة — الرصيد: ${res.balance.toFixed(3)} JOD`, "success");
+    } catch (e) { showToast((e as {error?:string}).error || "كود غير صحيح", "error"); setGiftCard(null); }
+    finally { setGiftChecking(false); }
+  };
+  // Coupon
+  const [couponCode, setCouponCode] = useState("");
+  const [coupon, setCoupon] = useState<{id:string;code:string;type:"نسبة"|"مبلغ";value:number;desc?:string}|null>(null);
+  const [couponChecking, setCouponChecking] = useState(false);
+  const couponDiscount = coupon ? (coupon.type === "نسبة" ? Math.min(total * (coupon.value / 100), total) : Math.min(coupon.value, total)) : 0;
+  const checkCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponChecking(true);
+    try {
+      const res = await storeApi.get(`/coupons/check/${couponCode.trim().toUpperCase()}`) as {id:string;code:string;type:"نسبة"|"مبلغ";value:number;desc?:string};
+      setCoupon(res);
+      showToast(`كوبون صالح — خصم ${res.type === "نسبة" ? res.value+"%" : res.value.toFixed(3)+" JOD"}`, "success");
+    } catch (e) { showToast((e as {error?:string}).error || "كود غير صحيح", "error"); setCoupon(null); }
+    finally { setCouponChecking(false); }
+  };
+  // Favorites + Recent
+  const [favorites, setFavorites] = useLS<string[]>(sk(sid,"pos_favorites"), []);
+  const [recentIds, setRecentIds] = useLS<string[]>(sk(sid,"pos_recent"), []);
+  const toggleFav = (id: string) => setFavorites(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [id,...prev].slice(0,50));
+  const [posTab, setPosTab] = useLS<"all"|"fav"|"recent">(sk(sid,"pos_tab"), "all");
   const [showPay, setShowPay] = useState(false);
   const [ok, setOk] = useState(false);
   // Customer selection
@@ -795,8 +837,9 @@ function POSTerm({ store }: { store: StoreData }) {
   const [redeemPoints, setRedeemPoints] = useState(false);
   const customerPoints = selectedCustomer?.loyaltyPoints || 0;
   const maxRedeemable = Math.floor(customerPoints);
-  const pointsDiscount = redeemPoints ? Math.min(maxRedeemable * loyaltyPV, total * 0.5) : 0; // max 50% discount via points
-  const finalTotal = Math.max(0, total - pointsDiscount);
+  const pointsDiscount = redeemPoints ? Math.min(maxRedeemable * loyaltyPV, total * 0.5) : 0;
+  const finalTotal = Math.max(0, total - pointsDiscount - giftDiscount - couponDiscount);
+  const splitRemaining = Math.max(0, finalTotal - splitTotal);
   const pointsToRedeem = redeemPoints ? Math.ceil(pointsDiscount / loyaltyPV) : 0;
   const pointsEarned = selectedCustomer && pay !== "credit" ? Math.floor(finalTotal * loyaltyPPJ) : 0;
   // Calculator
@@ -851,15 +894,21 @@ function POSTerm({ store }: { store: StoreData }) {
     return ["الكل", ...sorted];
   }, [allProds]);
 
-  // Filtered products (memoized)
-  const prods = useMemo(() =>
-    sortedProds.filter(p =>
+  // Filtered products (memoized) — includes posTab filter (all/fav/recent)
+  const prods = useMemo(() => {
+    const tabFiltered = posTab === "fav"
+      ? sortedProds.filter(p => favorites.includes(p.id))
+      : posTab === "recent"
+        ? recentIds.map(id => sortedProds.find(p => p.id === id)).filter(Boolean) as Product[]
+        : sortedProds;
+    return tabFiltered.filter(p =>
       (!q || p.nameAr.includes(q) || (p.barcode || "").includes(q) || (p.sku || "").toLowerCase().includes(q.toLowerCase())) &&
       (cat === "الكل" || p.category === cat)
-    ), [sortedProds, q, cat]);
+    );
+  }, [sortedProds, q, cat, posTab, favorites, recentIds]);
 
   // Reset display count when filter changes
-  useEffect(() => setDisplayCount(DISPLAY_LIMIT), [q, cat]);
+  useEffect(() => setDisplayCount(DISPLAY_LIMIT), [q, cat, posTab]);
 
   // Infinite scroll: load more when sentinel enters viewport
   useEffect(() => {
@@ -905,6 +954,7 @@ function POSTerm({ store }: { store: StoreData }) {
       }
       return [...prev, { product: p, qty: 1, discount: 0 }];
     });
+    setRecentIds(prev => [p.id, ...prev.filter(id=>id!==p.id)].slice(0,20));
   };
   const upd = (id: string, d: number) => setCart(prev => prev.map(i => {
     if (i.product.id !== id) return i;
@@ -942,13 +992,18 @@ function POSTerm({ store }: { store: StoreData }) {
     const salePayload = {
       invoiceNo:    invNo,
       items:        saleItems,
-      subtotal: sub, discountAmt: da + pointsDiscount, taxAmt: ta, total: finalTotal,
-      payMethod: pay,
-      cashIn:     pay === "cash" ? parseFloat(cash || "0") : undefined,
-      change:     pay === "cash" ? Math.max(0, parseFloat(cash || "0") - finalTotal) : undefined,
-      cliqRef:    pay === "cliq" ? cliqRef : undefined,
-      cliqSender: pay === "cliq" ? cliqSender : undefined,
-      cardRef:    pay === "card" ? cardRef : undefined,
+      subtotal: sub, discountAmt: da + pointsDiscount + giftDiscount + couponDiscount, taxAmt: ta, total: finalTotal,
+      payMethod: splitMode ? "cash" : pay, // split: store primary method as cash for now
+      splitPayments: splitMode ? splitRows.filter(r => parseFloat(r.amount||"0") > 0).map(r => ({ method: r.method, amount: parseFloat(r.amount) })) : undefined,
+      cashIn:     !splitMode && pay === "cash" ? parseFloat(cash || "0") : undefined,
+      change:     !splitMode && pay === "cash" ? Math.max(0, parseFloat(cash || "0") - finalTotal) : undefined,
+      cliqRef:    !splitMode && pay === "cliq" ? cliqRef : undefined,
+      cliqSender: !splitMode && pay === "cliq" ? cliqSender : undefined,
+      cardRef:    !splitMode && pay === "card" ? cardRef : undefined,
+      giftCardCode: giftCard ? giftCard.code : undefined,
+      giftCardDiscount: giftDiscount > 0 ? giftDiscount : undefined,
+      couponCode: coupon ? coupon.code : undefined,
+      couponDiscount: couponDiscount > 0 ? couponDiscount : undefined,
       customerId:   selectedCustomer?.id,
       customerName: selectedCustomer?.name || "عميل نقدي",
       customerPhone:selectedCustomer?.phone,
@@ -956,6 +1011,15 @@ function POSTerm({ store }: { store: StoreData }) {
       loyaltyPointsRedeemed: pointsToRedeem || undefined,
       status: "completed",
     };
+
+    // Redeem gift card if applied
+    if (giftCard && giftDiscount > 0 && isOnline) {
+      try { await storeApi.post("/gift-cards/redeem", { code: giftCard.code, amount: giftDiscount }); } catch { /* non-critical */ }
+    }
+    // Increment coupon use counter
+    if (coupon && couponDiscount > 0 && isOnline) {
+      try { await storeApi.patch(`/coupons/${coupon.id}/use`, {}); } catch { /* non-critical */ }
+    }
 
     if (isOnline) {
       try {
@@ -974,8 +1038,12 @@ function POSTerm({ store }: { store: StoreData }) {
 
     setOk(true);
     setRedeemPoints(false);
+    setSplitMode(false);
+    setSplitRows([{method:"cash",amount:""},{method:"cliq",amount:""}]);
+    setGiftCard(null); setGiftCode("");
+    setCoupon(null); setCouponCode("");
     invNoRef.current = `INV-${new Date().getFullYear()}${String(Date.now()).slice(-6)}`;
-    if (drawerAuto && pay === "cash") openDrawer();
+    if (drawerAuto && (pay === "cash" || (splitMode && splitRows.some(r => r.method === "cash")))) openDrawer();
   };
 
   const saveOfflineSale = async (saleItems: { productId: string; nameAr: string; qty: number; unitPrice: number; discount: number; total: number }[]) => {
@@ -1039,6 +1107,9 @@ function POSTerm({ store }: { store: StoreData }) {
     setOk(false); setCart([]); setShowPay(false);
     setCash(""); setDisc(0); setCliqRef(""); setCliqSender(""); setCardRef("");
     setSelectedCustomer(null); setCustomerQ(""); setRedeemPoints(false);
+    setSplitMode(false); setSplitRows([{method:"cash",amount:""},{method:"cliq",amount:""}]);
+    setGiftCard(null); setGiftCode("");
+    setCoupon(null); setCouponCode("");
   };
 
   const openSession = () => {
@@ -1219,6 +1290,18 @@ ${filtered.length > 0 ? `
               {vm === "grid" ? <List size={18} /> : <Grid3X3 size={18} />}
             </button>
           </div>
+          {/* Tab filters: All / Favorites / Recent */}
+          <div className="flex gap-1.5 border-b border-border pb-2">
+            {([["all","الكل",""],["fav","المفضلة","⭐"],["recent","الأخيرة","🕐"]] as const).map(([tab,label,icon]) => (
+              <button key={tab} onClick={() => setPosTab(tab)}
+                className={`flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-bold transition-all border ${posTab === tab ? "bg-primary text-white border-primary" : "border-border text-muted-foreground hover:border-primary hover:text-primary bg-transparent"}`}>
+                {icon && <span>{icon}</span>}
+                {label}
+                {tab === "fav" && favorites.length > 0 && <span className={`text-[10px] font-normal ${posTab === tab ? "opacity-80" : "opacity-50"}`}>({favorites.length})</span>}
+                {tab === "recent" && recentIds.length > 0 && <span className={`text-[10px] font-normal ${posTab === tab ? "opacity-80" : "opacity-50"}`}>({recentIds.length})</span>}
+              </button>
+            ))}
+          </div>
           <div className="flex gap-1.5 overflow-x-auto pb-0.5">
             {cats.map(c => {
               const count = c === "الكل" ? allProds.length : allProds.filter(p => p.category === c).length;
@@ -1245,21 +1328,26 @@ ${filtered.length > 0 ? `
                 const outOfStock = p.stock <= 0;
                 const low = !outOfStock && p.stock <= p.minStock;
                 return (
-                  <button key={p.id} onClick={() => add(p)} disabled={outOfStock}
-                    className={`bg-card rounded-2xl border-2 p-2.5 sm:p-3 text-right transition-all ${outOfStock ? "opacity-50 cursor-not-allowed border-border" : inCart ? "border-primary shadow-md bg-primary/2 active:scale-95 hover:shadow-md" : "border-border hover:-translate-y-0.5 hover:shadow-md active:scale-95"}`}>
-                    <div className="aspect-square rounded-xl bg-muted/40 mb-2 overflow-hidden relative">
-                      <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                      {outOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl"><span className="text-white text-xs font-black">نفد</span></div>}
-                      {low && !outOfStock && <div className="absolute top-1 left-1 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">منخفض</div>}
-                      {inCart && <div className="absolute top-1 right-1 w-5 h-5 bg-primary text-white text-xs font-black rounded-full flex items-center justify-center">{inCart.qty}</div>}
-                    </div>
-                    <p className="text-xs font-bold leading-tight line-clamp-2 mb-1.5">{p.nameAr}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-black text-primary">{p.sellPrice.toFixed(3)}</span>
-                      <span className={`text-xs font-semibold ${outOfStock ? "text-red-500" : low ? "text-amber-500" : "text-emerald-600"}`}>{outOfStock ? "نفد" : p.stock}</span>
-                    </div>
-                    {inCart && <div className="mt-1.5 bg-primary/10 text-primary rounded-xl text-xs font-black text-center py-1">✓ في السلة</div>}
-                  </button>
+                  <div key={p.id} className="relative">
+                    <button onClick={() => add(p)} disabled={outOfStock}
+                      className={`w-full bg-card rounded-2xl border-2 p-2.5 sm:p-3 text-right transition-all ${outOfStock ? "opacity-50 cursor-not-allowed border-border" : inCart ? "border-primary shadow-md bg-primary/2 active:scale-95 hover:shadow-md" : "border-border hover:-translate-y-0.5 hover:shadow-md active:scale-95"}`}>
+                      <div className="aspect-square rounded-xl bg-muted/40 mb-2 overflow-hidden relative">
+                        <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        {outOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl"><span className="text-white text-xs font-black">نفد</span></div>}
+                        {low && !outOfStock && <div className="absolute top-1 left-1 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">منخفض</div>}
+                        {inCart && <div className="absolute top-1 right-1 w-5 h-5 bg-primary text-white text-xs font-black rounded-full flex items-center justify-center">{inCart.qty}</div>}
+                      </div>
+                      <p className="text-xs font-bold leading-tight line-clamp-2 mb-1.5">{p.nameAr}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-black text-primary">{p.sellPrice.toFixed(3)}</span>
+                        <span className={`text-xs font-semibold ${outOfStock ? "text-red-500" : low ? "text-amber-500" : "text-emerald-600"}`}>{outOfStock ? "نفد" : p.stock}</span>
+                      </div>
+                      {inCart && <div className="mt-1.5 bg-primary/10 text-primary rounded-xl text-xs font-black text-center py-1">✓ في السلة</div>}
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); toggleFav(p.id); }}
+                      className={`absolute bottom-2.5 left-2.5 text-sm leading-none transition-transform hover:scale-125 ${favorites.includes(p.id) ? "opacity-100" : "opacity-30 hover:opacity-70"}`}
+                      title={favorites.includes(p.id) ? "إزالة من المفضلة" : "إضافة للمفضلة"}>⭐</button>
+                  </div>
                 );
               })}
             </div>
@@ -1289,7 +1377,7 @@ ${filtered.length > 0 ? `
               </button>
             </div>
           )}
-          {prods.length === 0 && <Empty icon={<Package size={24} />} title="لا توجد منتجات" desc={q ? `لا نتائج لـ "${q}" — جرب الباركود أو اضغط Enter مباشرة` : "جرب البحث بالاسم أو اختر فئة"} />}
+          {prods.length === 0 && <Empty icon={<Package size={24} />} title={posTab === "fav" ? "لا توجد مفضلات" : posTab === "recent" ? "لا يوجد سجل حديث" : "لا توجد منتجات"} desc={posTab === "fav" ? "اضغط على ⭐ في أي منتج لإضافته للمفضلة" : posTab === "recent" ? "ستظهر المنتجات التي أضفتها للسلة مؤخراً" : q ? `لا نتائج لـ "${q}" — جرب الباركود أو اضغط Enter مباشرة` : "جرب البحث بالاسم أو اختر فئة"} />}
         </div>
         {holds.length > 0 && (
           <div className="border-t border-border bg-muted/40 p-2.5 shrink-0">
@@ -1430,6 +1518,8 @@ ${filtered.length > 0 ? `
               <p className="text-5xl font-black text-white">{finalTotal.toFixed(3)}</p>
               <p className="text-white/60 font-bold mt-1">دينار أردني</p>
               {pointsDiscount > 0 && <p className="text-emerald-300 text-xs mt-1 font-bold">خصم نقاط: -{pointsDiscount.toFixed(3)} JOD</p>}
+              {giftDiscount > 0 && <p className="text-yellow-300 text-xs font-bold">بطاقة هدية: -{giftDiscount.toFixed(3)} JOD</p>}
+              {couponDiscount > 0 && <p className="text-pink-300 text-xs font-bold">كوبون {coupon?.code}: -{couponDiscount.toFixed(3)} JOD</p>}
               {selectedCustomer && <p className="text-white/50 text-xs mt-2">العميل: {selectedCustomer.name}</p>}
             </div>
             {selectedCustomer && customerPoints > 0 && pay !== "credit" && (
@@ -1446,6 +1536,81 @@ ${filtered.length > 0 ? `
             {selectedCustomer && pay !== "credit" && pointsEarned > 0 && (
               <p className="text-xs text-emerald-600 text-center font-bold">🎁 سيكسب العميل {pointsEarned} نقطة من هذه الفاتورة</p>
             )}
+
+            {/* Gift Card Section */}
+            <div className="border border-border rounded-xl overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2.5 bg-muted/40 border-b border-border">
+                <span className="text-base">🎁</span>
+                <p className="text-sm font-bold flex-1">بطاقة هدية</p>
+                {giftCard && <span className="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">-{giftDiscount.toFixed(3)} JOD</span>}
+              </div>
+              <div className="p-3 space-y-2">
+                {giftCard ? (
+                  <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                    <div>
+                      <p className="text-sm font-black text-emerald-800">{giftCard.code}</p>
+                      <p className="text-xs text-emerald-600">رصيد البطاقة: {giftCard.balance.toFixed(3)} JOD</p>
+                    </div>
+                    <button onClick={() => { setGiftCard(null); setGiftCode(""); }} className="text-xs text-red-500 hover:text-red-700 font-bold">إزالة</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input value={giftCode} onChange={e => setGiftCode(e.target.value.toUpperCase())}
+                      placeholder="أدخل كود البطاقة..."
+                      className="flex-1 h-9 text-sm rounded-xl border border-border bg-background px-3 focus:outline-none focus:ring-2 focus:ring-ring/25"
+                      onKeyDown={e => e.key === "Enter" && checkGiftCard()} />
+                    <button onClick={checkGiftCard} disabled={giftChecking || !giftCode.trim()}
+                      className="px-3 h-9 rounded-xl bg-primary text-white text-xs font-black disabled:opacity-50 hover:bg-primary/90 transition-all">
+                      {giftChecking ? "..." : "تحقق"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Coupon Section */}
+            <div className="border border-border rounded-xl overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2.5 bg-muted/40 border-b border-border">
+                <span className="text-base">🏷️</span>
+                <p className="text-sm font-bold flex-1">كوبون خصم</p>
+                {coupon && <span className="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">-{couponDiscount.toFixed(3)} JOD</span>}
+              </div>
+              <div className="p-3">
+                {coupon ? (
+                  <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                    <div>
+                      <p className="text-sm font-black text-emerald-800">{coupon.code}</p>
+                      <p className="text-xs text-emerald-600">{coupon.type === "نسبة" ? `${coupon.value}% خصم` : `${coupon.value.toFixed(3)} JOD خصم`}{coupon.desc ? ` · ${coupon.desc}` : ""}</p>
+                    </div>
+                    <button onClick={() => { setCoupon(null); setCouponCode(""); }} className="text-xs text-red-500 hover:text-red-700 font-bold">إزالة</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder="أدخل كود الكوبون..."
+                      className="flex-1 h-9 text-sm rounded-xl border border-border bg-background px-3 focus:outline-none focus:ring-2 focus:ring-ring/25"
+                      onKeyDown={e => e.key === "Enter" && checkCoupon()} />
+                    <button onClick={checkCoupon} disabled={couponChecking || !couponCode.trim()}
+                      className="px-3 h-9 rounded-xl bg-primary text-white text-xs font-black disabled:opacity-50 hover:bg-primary/90 transition-all">
+                      {couponChecking ? "..." : "تطبيق"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Split Payment Toggle */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold text-foreground">طريقة الدفع</p>
+              {!splitMode && (
+                <button onClick={() => setSplitMode(true)} className="text-xs font-bold text-primary hover:underline">دفع مختلط ✦</button>
+              )}
+              {splitMode && (
+                <button onClick={() => { setSplitMode(false); setSplitRows([{method:"cash",amount:""},{method:"cliq",amount:""}]); }}
+                  className="text-xs font-bold text-muted-foreground hover:text-foreground hover:underline">إلغاء الدفع المختلط</button>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-2">
               {([
                 { id: "cash",   label: "💵 نقدي" },
@@ -1520,10 +1685,55 @@ ${filtered.length > 0 ? `
               </div>
             )}
 
+            {/* Split Payment Rows */}
+            {splitMode && (
+              <div className="border border-border rounded-xl overflow-hidden">
+                <div className="px-3 py-2.5 bg-muted/40 border-b border-border flex items-center justify-between">
+                  <p className="text-sm font-bold">الدفع المختلط</p>
+                  <span className={`text-xs font-black px-2 py-0.5 rounded-full ${splitRemaining <= 0 ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : "bg-amber-100 text-amber-700 border border-amber-200"}`}>
+                    {splitRemaining <= 0 ? "✓ مغطى" : `متبقي: ${splitRemaining.toFixed(3)} JOD`}
+                  </span>
+                </div>
+                <div className="p-3 space-y-2">
+                  {splitRows.map((row, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <select value={row.method} onChange={e => setSplitRows(prev => prev.map((r,j) => j===i ? {...r, method: e.target.value as SplitRow["method"]} : r))}
+                        className="h-9 rounded-xl border border-border bg-background text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring/25 shrink-0 w-24">
+                        <option value="cash">نقدي</option>
+                        <option value="cliq">كليك</option>
+                        <option value="card">بطاقة</option>
+                      </select>
+                      <input type="number" value={row.amount} onChange={e => setSplitRows(prev => prev.map((r,j) => j===i ? {...r, amount: e.target.value} : r))}
+                        placeholder="0.000" className="flex-1 h-9 text-sm rounded-xl border border-border bg-background px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+                      {splitRows.length > 2 && (
+                        <button onClick={() => setSplitRows(prev => prev.filter((_,j)=>j!==i))} className="w-9 h-9 flex items-center justify-center rounded-xl text-red-400 hover:text-red-600 hover:bg-red-50 border border-border transition-all">✕</button>
+                      )}
+                    </div>
+                  ))}
+                  {splitRows.length < 4 && (
+                    <button onClick={() => setSplitRows(prev => [...prev, {method:"cash",amount:""}])}
+                      className="w-full h-8 border border-dashed border-border rounded-xl text-xs font-bold text-muted-foreground hover:border-primary hover:text-primary transition-all">
+                      + إضافة طريقة دفع
+                    </button>
+                  )}
+                  {splitRemaining > 0.005 && (
+                    <button onClick={() => setSplitRows(prev => { const cp = [...prev]; cp[0] = {...cp[0], amount: (parseFloat(cp[0].amount||"0") + splitRemaining).toFixed(3)}; return cp; })}
+                      className="w-full h-8 bg-primary/10 text-primary rounded-xl text-xs font-bold hover:bg-primary/20 transition-all">
+                      إضافة المتبقي ({splitRemaining.toFixed(3)} JOD) للأول
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <Btn v="secondary" onClick={() => setShowPay(false)} cls="flex-1">إلغاء</Btn>
               <Btn onClick={() => { doPay(); setShowPay(false); }} cls="flex-1" v="success" icon={<CheckCircle size={15} />}
-                disabled={(pay === "cash" && parseFloat(cash || "0") < finalTotal) || (pay === "credit" && !selectedCustomer)}>
+                disabled={
+                  (!splitMode && pay === "cash" && parseFloat(cash || "0") < finalTotal) ||
+                  (!splitMode && pay === "credit" && !selectedCustomer) ||
+                  (splitMode && splitRemaining > 0.005)
+                }>
                 تأكيد الدفع
               </Btn>
             </div>
