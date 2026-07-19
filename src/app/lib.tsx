@@ -43,7 +43,7 @@ export const apiCreateStore = (data: object) => apiFetch("/stores", { method:"PO
 export const apiGetStores   = () => apiFetch("/stores", {}, getToken());
 export const apiUpdateStore = (id: string, data: object) => apiFetch(`/stores/${id}`, { method:"PUT", body: JSON.stringify(data) }, getToken());
 export const apiDeleteStore = (id: string) => apiFetch(`/stores/${id}`, { method:"DELETE" }, getToken());
-export const apiResetPass   = (id: string, password: string) => apiFetch(`/stores/${id}/reset-password`, { method:"POST", body: JSON.stringify({ password }) }, getToken());
+export const apiResetPass   = (id: string, password: string) => apiFetch(`/stores/${id}/reset-password`, { method:"POST", body: JSON.stringify({ newPassword: password }) }, getToken());
 export const apiResetEmployeePass = (storeId: string, userId: string, password: string) => apiFetch(`/stores/${storeId}/users/${userId}/reset-password`, { method:"POST", body: JSON.stringify({ password }) }, getToken());
 
 // ─────────────────────────────────────────────────────────────────────────────
