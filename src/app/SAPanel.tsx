@@ -732,29 +732,26 @@ function SAStores() {
     showToast(`تم حذف متجر "${store?.nameAr}"`, "warning");
   };
 
-  // إنشاء متجر — يُحفظ في MongoDB أولاً ثم localStorage
+  // إنشاء متجر — يُحفظ في MongoDB فقط
+  const [createError, setCreateError] = useState("");
   const create = async () => {
     setCreating(true);
+    setCreateError("");
     try {
-      // محاولة الحفظ في Backend
       const res = await apiCreateStore(nf);
-      const newStore: StoreData = { ...(res.store as StoreData), id: (res.store as StoreData & {_id?:string})._id || (res.store as StoreData).id };
+      const storeData = (res as { store?: StoreData & { _id?: string }; generatedPassword?: string });
+      if (!storeData.store) throw new Error("استجابة غير متوقعة من الخادم");
+      const newStore: StoreData = { ...storeData.store, id: storeData.store._id || storeData.store.id };
       setStores(p => [newStore, ...p]);
       setShowNew(false);
-      setCreds({ email: nf.email, pass: res.generatedPassword });
+      setCreateError("");
+      setCreds({ email: nf.email, pass: storeData.generatedPassword || "" });
       setNf({ nameAr: "", nameEn: "", category: "supermarket", owner: "", email: "", phone: "", city: "", plan: "الاحترافي", taxNo: "", sidebarFeatures: { ...DEFAULT_SIDEBAR } });
       showToast(`تم إنشاء متجر "${nf.nameAr}" وحفظه في قاعدة البيانات ✅`);
-    } catch {
-      // Fallback: حفظ محلي إذا Backend غير متوفر
-      const pw = `Store@${Math.floor(Math.random() * 90000) + 10000}!`;
-      const sid = `s${Date.now()}`;
-      const ns: StoreData = { id: sid, ...nf, status: "trial", users: 1, products: 0, sales: 0, revenue: 0, createdAt: new Date().toISOString().split("T")[0], expiresAt: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0], branches: 1 };
-      try { localStorage.setItem(`sowwanjo_pass_${sid}`, pw); } catch {}
-      setStores(p => [ns, ...p]);
-      setShowNew(false);
-      setCreds({ email: nf.email, pass: pw });
-      setNf({ nameAr: "", nameEn: "", category: "supermarket", owner: "", email: "", phone: "", city: "", plan: "الاحترافي", taxNo: "", sidebarFeatures: { ...DEFAULT_SIDEBAR } });
-      showToast("تم الحفظ محلياً (Backend غير متوفر حالياً)", "warning");
+    } catch (err) {
+      const msg = (err as { error?: string })?.error || (err instanceof Error ? err.message : "فشل الاتصال بالخادم — تأكد من تشغيل الـ Backend وأعد المحاولة");
+      setCreateError(msg);
+      showToast(msg, "error");
     } finally {
       setCreating(false);
     }
@@ -1028,8 +1025,14 @@ function SAStores() {
             <p>• فترة تجريبية مجانية 14 يوماً</p>
             <p>• تفعيل الأقسام المختارة أعلاه فقط</p>
           </div>
-          <div className="flex gap-3 mt-5 justify-end">
-            <Btn v="secondary" onClick={() => setShowNew(false)}>إلغاء</Btn>
+          {createError && (
+            <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
+              <AlertCircle size={14} className="shrink-0 mt-0.5" />
+              <span>{createError}</span>
+            </div>
+          )}
+          <div className="flex gap-3 mt-4 justify-end">
+            <Btn v="secondary" onClick={() => { setShowNew(false); setCreateError(""); }}>إلغاء</Btn>
             <Btn icon={creating ? <RefreshCw size={14} className="animate-spin" /> : <Plus size={14} />} onClick={create} disabled={!nf.nameAr || !nf.email || !nf.owner || creating}>{creating ? "جاري الإنشاء..." : "إنشاء المتجر"}</Btn>
           </div>
         </Modal>
