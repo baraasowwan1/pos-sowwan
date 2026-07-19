@@ -1092,10 +1092,18 @@ function POSTerm({ store }: { store: StoreData }) {
       try {
         await storeApi.post("/sales", salePayload);
         setTimeout(() => refreshPosProds(), 500);
-      } catch {
-        // Online but server error — save offline as fallback
-        await saveOfflineSale(saleItems);
-        queueOffline("/sales", salePayload);
+      } catch (err) {
+        const e = err as { error?: string; message?: string; code?: string };
+        const isNetworkError = !e.code && !e.error;
+        if (isNetworkError) {
+          // True network failure — save offline
+          await saveOfflineSale(saleItems);
+          queueOffline("/sales", salePayload);
+        } else {
+          // Server returned an error — show it, do NOT silently save offline
+          showToast(e.error || e.message || "فشل حفظ الفاتورة", "error");
+          return;
+        }
       }
     } else {
       // Fully offline — save to IndexedDB + localStorage queue
