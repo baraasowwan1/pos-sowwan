@@ -735,8 +735,8 @@ function ProductsMgr() {
             <F label="الفئة"><TInput value={editProd.category} onChange={v => setEditProd({...editProd, category: v})} /></F>
             <F label="سعر التكلفة (JOD)"><TInput value={String(editProd.costPrice)} onChange={v => setEditProd({...editProd, costPrice: parseFloat(v)||0})} type="number" /></F>
             <F label="سعر البيع (JOD)"><TInput value={String(editProd.sellPrice)} onChange={v => setEditProd({...editProd, sellPrice: parseFloat(v)||0})} type="number" /></F>
-            <F label="المخزون الحالي"><TInput value={String(editProd.stock)} onChange={v => setEditProd({...editProd, stock: parseInt(v)||0})} type="number" /></F>
-            <F label="الحد الأدنى للتنبيه"><TInput value={String(editProd.minStock)} onChange={v => setEditProd({...editProd, minStock: parseInt(v)||0})} type="number" /></F>
+            <F label="المخزون الحالي"><TInput value={String(editProd.stock)} onChange={v => { const n = parseInt(v); setEditProd({...editProd, stock: v === "" ? editProd.stock : (isNaN(n) || n < 0 ? editProd.stock : n)}); }} type="number" /></F>
+            <F label="الحد الأدنى للتنبيه"><TInput value={String(editProd.minStock)} onChange={v => { const n = parseInt(v); setEditProd({...editProd, minStock: v === "" ? editProd.minStock : (isNaN(n) || n < 0 ? editProd.minStock : n)}); }} type="number" /></F>
             <F label="نسبة الضريبة %"><SInput value={String(editProd.taxRate ?? 0)} onChange={v => setEditProd({...editProd, taxRate: parseInt(v)||0})} options={[{value:"0",label:"0% — معفى"},{value:"2",label:"2%"},{value:"4",label:"4%"},{value:"8",label:"8%"},{value:"16",label:"16%"}]} /></F>
           </div>
           <div className="flex gap-3 mt-5 justify-end">
