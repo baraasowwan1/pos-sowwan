@@ -706,3 +706,37 @@
   .pos-terminal .pos-catalog-grid { grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
   .pos-terminal .pos-product-card { height:108px !important; padding:7px !important; }
 }
+
+
+/* POS checkout-first redesign v2 */
+.pos-terminal{--pos-navy:#111d3b;--pos-blue:#2764e7;--pos-blue-strong:#1747b8;--pos-ice:#f2f6fd;--pos-line:#dce5f2;--pos-ink:#17243d;background:var(--pos-ice)!important;color:var(--pos-ink)!important}
+.pos-terminal .pos-command-bar{min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:12px 22px;color:#fff;background:linear-gradient(110deg,#111d3b 0%,#172d56 70%,#1e4383 100%);border-bottom:3px solid #3978f6;box-shadow:0 5px 18px #111d3b20}
+.pos-terminal .pos-brand-lockup,.pos-terminal .pos-command-meta{display:flex;align-items:center;gap:12px;min-width:0}
+.pos-terminal .pos-brand-mark{width:46px;height:46px;display:grid;place-items:center;border-radius:14px;background:#2d6be9;color:#fff;box-shadow:inset 0 0 0 1px #ffffff30}
+.pos-terminal .pos-brand-lockup h1{font-size:17px;font-weight:900;line-height:1.3;color:#fff;margin:0}
+.pos-terminal .pos-brand-lockup p{font-size:11px;color:#bdcce5;margin:4px 0 0;font-weight:600}
+.pos-terminal .pos-brand-lockup p span{color:#67a0ff;padding:0 4px}
+.pos-terminal .pos-command-meta{gap:9px}
+.pos-terminal .pos-connection-pill,.pos-terminal .pos-product-count,.pos-terminal .pos-new-search{display:inline-flex;align-items:center;gap:8px;min-height:37px;padding:0 12px;border-radius:11px;font-size:11px;font-weight:800;white-space:nowrap;border:1px solid #ffffff25;color:#eef4ff;background:#ffffff0d}
+.pos-terminal .pos-connection-pill i{width:7px;height:7px;border-radius:50%;background:#42dcaa;box-shadow:0 0 0 4px #42dcaa20}
+.pos-terminal .pos-connection-pill.is-offline i{background:#ffbd69;box-shadow:0 0 0 4px #ffbd6920}
+.pos-terminal .pos-product-count svg{color:#8fb6ff}
+.pos-terminal .pos-new-search{background:#fff;color:#172d56;border-color:#fff;cursor:pointer;transition:.18s}
+.pos-terminal .pos-new-search:hover{background:#eaf1ff;transform:translateY(-1px)}
+.pos-terminal .pos-new-search kbd{font-size:10px;color:#7183a3;border:1px solid #d9e2f0;border-radius:5px;padding:1px 5px}
+.pos-terminal .pos-workspace.pos-checkout-first{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(340px,390px) 228px;grid-template-areas:"catalog cart actions";gap:12px;padding:14px!important;align-items:stretch}
+.pos-terminal .pos-products-panel{grid-area:catalog;border:1px solid var(--pos-line);border-radius:18px;background:#fff;box-shadow:0 4px 18px #182d5010}
+.pos-terminal .pos-cart-panel{grid-area:cart;border:1px solid #cbd8eb;border-radius:18px;box-shadow:0 8px 24px #18335b14}
+.pos-terminal .pos-actions-panel{grid-area:actions;border:1px solid var(--pos-line);border-radius:18px;background:#fff!important;box-shadow:0 4px 18px #182d5010}
+.pos-terminal .pos-cart-panel>div:first-child,.pos-terminal .pos-actions-panel>div:first-child{background:var(--pos-navy)!important}
+.pos-terminal .pos-cart-panel .text-xl{font-size:25px!important;letter-spacing:-.5px}
+.pos-terminal .pos-cart-panel button[title="تعليق الطلب"],.pos-terminal .pos-cart-panel button[title="طباعة"],.pos-terminal .pos-cart-panel button[title="مسح"]{background:#fff;color:#536681}
+.pos-terminal .pos-cart-panel button[title="تعليق الطلب"]:hover,.pos-terminal .pos-cart-panel button[title="طباعة"]:hover{border-color:#8aacee!important;background:#edf4ff}
+.pos-terminal .pos-cart-panel button.flex-1.h-10{background:var(--pos-blue)!important;color:#fff!important;box-shadow:0 5px 12px #2764e72b}
+.pos-terminal .pos-cart-panel button.flex-1.h-10:hover{background:var(--pos-blue-strong)!important}
+.pos-terminal .pos-products-panel input:focus{--tw-ring-color:#2764e755!important;border-color:#7da5f5!important}
+.pos-terminal .pos-product-card{border-radius:15px!important;box-shadow:0 2px 8px #172d5608}
+.pos-terminal .pos-product-card:hover{border-color:#8aacee!important;box-shadow:0 8px 18px #1c43801a!important}
+.pos-terminal .pos-actions-panel button{border-radius:10px}
+@media(max-width:1250px){.pos-terminal .pos-workspace.pos-checkout-first{grid-template-columns:minmax(0,1fr) minmax(315px,36%)!important;grid-template-areas:"catalog cart" "actions actions";grid-template-rows:minmax(0,1fr) auto}.pos-terminal .pos-actions-panel{width:auto!important;min-width:0!important;max-height:150px;grid-area:actions}}
+@media(max-width:760px){.pos-terminal .pos-command-bar{padding:10px 12px;min-height:unset;align-items:flex-start;flex-direction:column;gap:10px}.pos-terminal .pos-command-meta{width:100%;flex-wrap:wrap;gap:6px}.pos-terminal .pos-connection-pill,.pos-terminal .pos-product-count,.pos-terminal .pos-new-search{min-height:33px;padding:0 9px;font-size:10px}.pos-terminal .pos-workspace.pos-checkout-first{display:flex!important;flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;padding:9px!important;gap:10px!important}.pos-terminal .pos-cart-panel{order:0!important;width:100%!important;min-width:0!important;min-height:330px;max-height:none}.pos-terminal .pos-products-panel{order:1!important;width:100%!important;min-height:390px;flex:0 0 390px!important}.pos-terminal .pos-actions-panel{order:2!important;width:100%!important;min-width:0!important;max-height:220px}.pos-terminal .pos-catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
