@@ -57,9 +57,10 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
   const loadNotifications = useCallback(async () => {
     setNotifLoading(true);
     try {
-      const [stores, tickets] = await Promise.all([
+      const [stores, tickets, subscriptionRequests] = await Promise.all([
         apiFetch("/stores", {}, getToken()).catch(() => []),
         apiFetch("/tickets", {}, getToken()).catch(() => []),
+        apiFetch("/subscription-requests", {}, getToken()).catch(() => []),
       ]);
 
       const list: SANotif[] = [];
@@ -86,6 +87,20 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
             text: `متجر ${s.nameAr || "متجر"} موقوف`,
             sub: "موقوف من قِبل المدير العام",
             color: "bg-orange-500",
+            screen: "stores",
+          }));
+      }
+
+      // Pending subscription renewal/upgrade requests
+      if (Array.isArray(subscriptionRequests)) {
+        (subscriptionRequests as { id?: string; _id?: string; storeName?: string; requesterEmail?: string; requestType?: string; status?: string; createdAt?: string }[])
+          .filter(r => r.status === "pending")
+          .slice(0, 5)
+          .forEach(r => list.push({
+            id: "subscription-" + (r.id || r._id),
+            text: (r.requestType === "upgrade" ? "طلب ترقية: " : "طلب تجديد: ") + (r.storeName || "متجر غير معروف"),
+            sub: (r.requesterEmail || "حساب المتجر") + " • " + (r.createdAt ? new Date(r.createdAt).toLocaleDateString("ar-JO") : ""),
+            color: "bg-amber-500",
             screen: "stores",
           }));
       }
