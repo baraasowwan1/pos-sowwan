@@ -52,8 +52,12 @@ export const apiResetEmployeePass = (storeId: string, userId: string, password: 
 
 // Simple cache for useApiCached
 const _cache: Record<string, { data: unknown; ts: number }> = {};
-export function getCacheAge(path: string): number { const c = _cache[path]; return c ? Date.now() - c.ts : Infinity; }
-export function invalidateCache(path: string) { delete _cache[path]; }
+const cacheKeyFor = (path: string, token = getToken()) => `${path}::${token || "anonymous"}`;
+export function getCacheAge(path: string): number { const c = _cache[cacheKeyFor(path)]; return c ? Date.now() - c.ts : Infinity; }
+export function invalidateCache(path: string) {
+  // Invalidate every session-specific copy of this endpoint, not just one store's cache.
+  for (const key of Object.keys(_cache)) if (key === path || key.startsWith(`${path}::`)) delete _cache[key];
+}
 
 export function useApi<T>(path: string, initial: T): { data: T; loading: boolean; error: string; refresh: () => void } {
   const [data, setData]       = useState<T>(initial);
@@ -77,27 +81,38 @@ export function useApi<T>(path: string, initial: T): { data: T; loading: boolean
   return { data, loading, error, refresh: load };
 }
 
-export function useApiCached<T>(path: string, initial: T, ttlMs = 60_000): { data: T; loading: boolean; error: string; refresh: () => void } {
-  const [data, setData]       = useState<T>(() => (_cache[path]?.data as T) ?? initial);
-  const [loading, setLoading] = useState(!_cache[path]);
-  const [error, setError]     = useState("");
+export function useApiCached<T>(path: string, initial: T, ttlMs = 60_000): { data: T; loading: boolean; error: string; refresh: () => Promise<void> } {
+  const token = getToken();
+  const key = cacheKeyFor(path, token);
+  const [data, setData] = useState<T>(() => (_cache[key]?.data as T) ?? initial);
+  const [loading, setLoading] = useState(!_cache[key]);
+  const [error, setError] = useState("");
 
-  const load = useCallback(async (force = false) => {
-    const cached = _cache[path];
-    if (!force && cached && Date.now() - cached.ts < ttlMs) { setData(cached.data as T); setLoading(false); return; }
-    setLoading(true); setError("");
+  const load = useCallback(async (force = false): Promise<void> => {
+    const cached = _cache[key];
+    if (!force && cached && Date.now() - cached.ts < ttlMs) {
+      setData(cached.data as T);
+      setLoading(false);
+      setError("");
+      return;
+    }
+    setLoading(true);
+    setError("");
     try {
-      const res = await apiFetch(path, {}, getToken());
-      _cache[path] = { data: res, ts: Date.now() };
+      // The API scopes records using the authenticated JWT; each session gets its own cache.
+      const res = await apiFetch(path, {}, token);
+      _cache[key] = { data: res, ts: Date.now() };
       setData(res as T);
     } catch (e) {
-      setError((e as {error?:string}).error || "خطأ في الاتصال");
-    } finally { setLoading(false); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, ttlMs]);
+      setError((e as {error?:string}).error || "تعذّر تحميل البيانات من الخادم");
+    } finally {
+      setLoading(false);
+    }
+  }, [path, key, token, ttlMs]);
 
-  useEffect(() => { load(); }, [load]);
-  return { data, loading, error, refresh: () => load(true) };
+  useEffect(() => { void load(); }, [load]);
+  const refresh = useCallback(() => load(true), [load]);
+  return { data, loading, error, refresh };
 }
 
 export function useLS<T>(key: string, initial: T): [T, (v: T | ((prev: T) => T)) => void] {

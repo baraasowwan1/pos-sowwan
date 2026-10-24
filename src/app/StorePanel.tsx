@@ -300,7 +300,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
 
   return (
     <OfflineCtx.Provider value={{ isOnline, queueOffline }}>
-    <div className="flex flex-col h-screen overflow-hidden bg-background" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
+    <div className="pos-shell flex flex-col h-screen overflow-hidden bg-background" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
 
       {/* ── Offline Banner ───────────────────────────────────────────────────── */}
       {!isOnline && (
@@ -328,7 +328,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
 
       {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
       <aside
-        className={`hidden md:flex shrink-0 flex-col transition-all duration-200 border-l border-sidebar-border md:w-14 ${col ? "lg:w-14" : "lg:w-52"}`}
+        className={`pos-sidebar hidden md:flex shrink-0 flex-col transition-all duration-200 border-l border-sidebar-border md:w-[72px] ${col ? "lg:w-[72px]" : "lg:w-64"}`}
         style={{ background: "var(--sidebar)" }}>
 
         {/* Logo / Store name */}
@@ -353,7 +353,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
               <div key={gi} className={gi > 0 ? "pt-1.5 mt-1.5 border-t border-sidebar-border" : ""}>
                 {groupItems.map(n => (
                   <button key={n.id} onClick={() => navTo(n.id)} title={n.label}
-                    className={`w-full flex items-center gap-2.5 h-8 rounded-lg text-xs font-medium transition-all mb-0.5 relative
+                    className={`w-full flex items-center gap-3 h-10 rounded-xl text-sm font-medium transition-all mb-1 relative
                       justify-center md:justify-center ${col ? "lg:justify-center" : "lg:justify-start lg:px-2.5"} px-2
                       ${screen === n.id
                         ? "bg-sidebar-primary/20 text-sidebar-primary font-semibold"
@@ -456,7 +456,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* ── Top header ─────────────────────────────────────────────────────── */}
-        <header className="h-13 bg-card border-b border-border flex items-center justify-between px-3 sm:px-4 shrink-0 gap-2" style={{ height: 52, paddingTop: "env(safe-area-inset-top)" }}>
+        <header className="pos-topbar bg-card border-b border-border flex items-center justify-between px-3 sm:px-6 shrink-0 gap-3" style={{ height: 68, paddingTop: "env(safe-area-inset-top)" }}>
           <div className="flex items-center gap-2 min-w-0">
             <button onClick={() => setStoreMobileMenu(true)} className="md:hidden w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground"><Menu size={16} /></button>
             <button onClick={() => setCol(!col)} className="hidden md:flex w-8 h-8 items-center justify-center rounded-md hover:bg-muted text-muted-foreground"><Menu size={15} /></button>
@@ -605,8 +605,8 @@ function StoreDash({ store }: { store: StoreData }) {
   const hourChartData = (hourChartRaw && hourChartRaw.length > 0) ? hourChartRaw : defaultHour;
 
   return (
-    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto h-full">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="store-dashboard p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 overflow-y-auto h-full">
+      <section className="dashboard-welcome flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-4 sm:px-5 sm:py-5">\n        <div className="min-w-0">\n          <p className="text-xs font-bold text-primary mb-1">مساحة العمل</p>\n          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">نظرة عامة على المتجر</h1>\n          <p className="text-sm text-muted-foreground mt-1">{store.nameAr || "متجرك"} · ملخص الأداء والنشاط</p>\n        </div>\n        <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-muted-foreground rounded-xl bg-muted/60 border border-border px-3 py-2.5 self-start sm:self-auto">\n          <Clock size={15} />\n          {new Date().toLocaleDateString("ar-JO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}\n        </div>\n      </section>\n      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI icon={<ShoppingCart size={16} />} label="مبيعات اليوم"
           value={sumLoading ? "..." : `${(summary.today?.total || 0).toFixed(3)} JOD`}
           sub={`${summary.today?.count || 0} فاتورة`} color="#2563EB" />
@@ -1421,7 +1421,7 @@ ${filtered.length > 0 ? `
 
   /* ─── MAIN 3-COLUMN POS LAYOUT ───────────────────────────────────────────── */
   return (
-    <div dir="rtl" className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-800" style={{colorScheme:"light",fontFamily:"'Cairo','Inter',sans-serif",background:"#F4F6FB",color:"#24352f"}}>
+    <div dir="rtl" className="pos-terminal flex h-full min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-800" style={{colorScheme:"light",fontFamily:"'Cairo','Inter',sans-serif",background:"#F4F6FB",color:"#24352f"}}>
       <header className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-950 text-white shadow-sm"><ShoppingCart size={21}/></div>
@@ -1433,10 +1433,10 @@ ${filtered.length > 0 ? `
           <button onClick={() => { setQ(""); setCat("الكل"); setPosTab("all"); searchRef.current?.focus(); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"><Search size={13} className="ml-1 inline"/> بحث جديد</button>
         </div>
       </header>
-      <main dir="rtl" className="flex min-h-0 flex-1 overflow-hidden gap-3 p-3 sm:gap-4 sm:p-4" style={{background:"#F4F6FB",fontFamily:"'Cairo','Inter',sans-serif"}} aria-label="نقطة البيع">
+      <main dir="rtl" className="pos-workspace flex min-h-0 flex-1 overflow-hidden gap-3 p-3 sm:gap-4 sm:p-4" style={{background:"#F4F6FB",fontFamily:"'Cairo','Inter',sans-serif"}} aria-label="نقطة البيع">
 
       {/* ══ LEFT PANEL — Cart ══════════════════════════════════════════════════ */}
-      <div className="order-2 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md shrink-0" style={{width:340,minWidth:300,background:"#FFFFFF",color:"#24352f"}}>
+      <div className="pos-cart-panel order-2 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md shrink-0" style={{width:340,minWidth:300,background:"#FFFFFF",color:"#24352f"}}>
 
         {/* Cart header */}
         <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b !border-slate-200" style={{background:"#29356F"}}>
@@ -1626,7 +1626,7 @@ ${filtered.length > 0 ? `
       </div>
 
       {/* ══ CENTER PANEL — Products ════════════════════════════════════════════ */}
-      <div className="order-1 flex-1 min-w-0 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md" style={{background:"#FFFFFF",color:"#24352f"}}>
+      <div className="pos-products-panel order-1 flex-1 min-w-0 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md" style={{background:"#FFFFFF",color:"#24352f"}}>
         {/* Toolbar */}
         <div className="shrink-0 px-4 py-3 border-b border-[#E1E5EF] space-y-3" style={{background:"#FFFFFF"}}>
           <div className="flex items-center justify-between gap-3">
