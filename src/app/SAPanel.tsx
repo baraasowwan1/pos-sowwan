@@ -1450,7 +1450,7 @@ function SAPlans() {
   const loadPlans = () => {
     setLoading(true);
     apiFetch("/plans", {}, getToken())
-      .then(d => { if (Array.isArray(d)) setPlans((d as object[]).map(x => norm(x as Plan & { _id?: string }))); })
+      .then(d => { if (Array.isArray(d)) setPlans((d as object[]).length ? (d as object[]).map(x => norm(x as Plan & { _id?: string })) : PLANS); })
       .catch(() => {})
       .finally(() => setLoading(false));
   };
