@@ -21,7 +21,6 @@ import {
 import { storeApi, useApi, useApiCached, useLS, norm, normList, invalidateCache, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules, useDarkMode } from "./lib";
 import { SyncCenter, SyncStatusBadge } from "./SyncCenter";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
-import "../styles/pos-redesign.css";
 import { SalesScreen, ProductsMgr, InvScreen, CustScreen, SuppScreen, PurchScreen, ExpScreen, ReturnScreen, PurchaseOrdersScreen, PromotionsScreen } from "./StorePanelB";
 import { StoreReports, EmpScreen, BranchScreen, LoyaltyScreen, DebtScreen, GiftCardsScreen, PrintJobsScreen, PrintMatsScreen, PrintPricesScreen, StoreSetts } from "./StorePanelC";
 import { FlowerOrdersScreen, BouquetBuilderScreen, DeliveryMgmtScreen } from "./StorePanelD";
