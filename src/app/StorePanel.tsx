@@ -94,8 +94,18 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
   useEffect(() => {
     void refreshStoreFromServer();
     const onStoreUpdated = () => { void refreshStoreFromServer(); };
+    const onWindowFocus = () => { void refreshStoreFromServer(); };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refreshStoreFromServer();
+    };
     window.addEventListener("sowwan:store-updated", onStoreUpdated);
-    return () => window.removeEventListener("sowwan:store-updated", onStoreUpdated);
+    window.addEventListener("focus", onWindowFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("sowwan:store-updated", onStoreUpdated);
+      window.removeEventListener("focus", onWindowFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [refreshStoreFromServer]);
   const rawStore = { ...(storeFromLS || {}), ...(serverStore || {}) } as Partial<StoreData>;
   // تطبيع بيانات المتجر — تضمن عدم وجود قيم null تسبب crash
