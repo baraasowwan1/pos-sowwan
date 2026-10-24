@@ -2078,15 +2078,70 @@ ${filtered.length > 0 ? `
       {showCalc && (() => {
         const calcPress = (v: string) => {
           if (v === "C") { setCalcDisplay("0"); setCalcExpr(""); return; }
-          if (v === "⌫") { setCalcDisplay(d => d.length > 1 ? d.slice(0,-1) : "0"); return; }
+          if (v === "⌫") { setCalcDisplay(d => d.length > 1 ? d.slice(0, -1) : "0"); return; }
           if (v === "=") {
-            try { const r = Function('"use strict"; return (' + calcExpr + ')')(); setCalcDisplay(String(parseFloat(r.toFixed(6)))); setCalcExpr(""); }
-            catch { setCalcDisplay("خطأ"); }
+            try {
+              // Never use Function/eval: they can be blocked by browser CSP.
+              // Append the currently displayed operand before evaluating.
+              const expression = (calcExpr + calcDisplay).replace(/×/g, "*").replace(/÷/g, "/").replace(/\s+/g, "");
+              const tokens = expression.match(/(?:\d+(?:\.\d*)?|\.\d+)|[()+\-*/]/g);
+              if (!tokens || tokens.join("") !== expression) throw new Error("Invalid expression");
+              let pos = 0;
+              const primary = (): number => {
+                const token = tokens[pos++];
+                if (token === "+") return primary();
+                if (token === "-") return -primary();
+                if (token === "(") {
+                  const value = addSub();
+                  if (tokens[pos++] !== ")") throw new Error("Missing )");
+                  return value;
+                }
+                const n = Number(token);
+                if (token === undefined || token === "" || !Number.isFinite(n)) throw new Error("Invalid number");
+                return n;
+              };
+              const mulDiv = (): number => {
+                let value = primary();
+                while (tokens[pos] === "*" || tokens[pos] === "/") {
+                  const op = tokens[pos++];
+                  const rhs = primary();
+                  if (op === "/" && rhs === 0) throw new Error("Division by zero");
+                  value = op === "*" ? value * rhs : value / rhs;
+                }
+                return value;
+              };
+              const addSub = (): number => {
+                let value = mulDiv();
+                while (tokens[pos] === "+" || tokens[pos] === "-") {
+                  const op = tokens[pos++];
+                  const rhs = mulDiv();
+                  value = op === "+" ? value + rhs : value - rhs;
+                }
+                return value;
+              };
+              const result = addSub();
+              if (pos !== tokens.length || !Number.isFinite(result)) throw new Error("Invalid result");
+              setCalcDisplay(String(Number(result.toFixed(6))));
+              setCalcExpr("");
+            } catch {
+              setCalcDisplay("خطأ");
+              setCalcExpr("");
+            }
             return;
           }
-          const ops = ["+","-","×","÷","."];
-          if (ops.includes(v)) { const op = v === "×" ? "*" : v === "÷" ? "/" : v; setCalcExpr(e => e + (calcDisplay === "0" ? "" : calcDisplay) + op); setCalcDisplay("0"); return; }
-          setCalcDisplay(d => d === "0" ? v : d + v);
+          if (["+", "-", "×", "÷"].includes(v)) {
+            const operand = calcDisplay === "خطأ" ? "0" : calcDisplay;
+            setCalcExpr(e => e + operand + v);
+            setCalcDisplay("0");
+            return;
+          }
+          if (v === ".") {
+            if (calcDisplay === "خطأ") { setCalcDisplay("0."); return; }
+            if (calcDisplay.includes(".")) return;
+            setCalcDisplay(d => d + ".");
+            return;
+          }
+          setCalcDisplay(d => d === "0" || d === "خطأ" ? v : d + v);
         };
         const keys = ["7","8","9","÷","4","5","6","×","1","2","3","-","0",".","⌫","+","C","","","="];
         return (
