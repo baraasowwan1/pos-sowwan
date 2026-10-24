@@ -283,11 +283,13 @@ export async function runSync(storeId: string, opts: { silent?: boolean } = {}):
       .sortBy("localCreatedAt");
 
     let failed = 0;
+    let firstError: string | null = null;
     for (const item of pending) {
       try {
         await processItem(item);
-      } catch {
+      } catch (err: unknown) {
         failed++;
+        if (!firstError) firstError = err instanceof Error ? err.message : String(err);
       }
     }
 
@@ -308,7 +310,7 @@ export async function runSync(storeId: string, opts: { silent?: boolean } = {}):
       pending: pendingCount,
       failed: failedCount,
       lastSyncAt: now,
-      lastError: failed > 0 ? `${failed} عملية لم تُزامن` : null,
+      lastError: failed > 0 ? (firstError || `${failed} عملية لم تُزامن`) : null,
     });
 
     return failed === 0;
