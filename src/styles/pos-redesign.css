@@ -1,0 +1,77 @@
+/* Responsive application-shell redesign — preserves existing screen logic and API wiring. */
+.pos-shell,
+.sa-shell {
+  --shell-surface: var(--card);
+  --shell-line: color-mix(in srgb, var(--border) 82%, transparent);
+  background: var(--background);
+}
+.pos-shell > .flex,
+.sa-shell > .flex {
+  min-width: 0;
+}
+.pos-shell .pos-sidebar,
+.sa-shell .sa-sidebar {
+  position: relative;
+  z-index: 35;
+  box-shadow: -8px 0 28px rgba(15, 23, 42, 0.045);
+}
+.pos-shell .pos-sidebar nav button,
+.sa-shell .sa-sidebar nav button {
+  min-height: 42px;
+  border-radius: 12px;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+.pos-shell .pos-sidebar nav button:active,
+.sa-shell .sa-sidebar nav button:active {
+  transform: scale(0.985);
+}
+.pos-shell .pos-topbar,
+.sa-shell .sa-topbar {
+  position: relative;
+  z-index: 30;
+  min-height: 64px;
+  box-shadow: 0 1px 0 var(--shell-line), 0 5px 18px rgba(15, 23, 42, 0.025);
+}
+.pos-shell main,
+.sa-shell main {
+  min-width: 0;
+}
+.pos-shell input,
+.pos-shell select,
+.pos-shell textarea,
+.sa-shell input,
+.sa-shell select,
+.sa-shell textarea {
+  min-height: 40px;
+}
+@media (max-width: 767px) {
+  .pos-shell,
+  .sa-shell {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+  .pos-shell .pos-topbar,
+  .sa-shell .sa-topbar {
+    min-height: 60px;
+    height: auto !important;
+    padding-inline: 12px;
+  }
+  .pos-shell main,
+  .sa-shell main {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .pos-shell button,
+  .sa-shell button {
+    touch-action: manipulation;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pos-shell *,
+  .sa-shell * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
