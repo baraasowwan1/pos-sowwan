@@ -1655,7 +1655,7 @@ ${filtered.length > 0 ? `
           <div className="flex gap-2">
             <div className="flex-1 relative">
               {scannerMode ? (
-                <div className="w-full h-10 rounded-xl border-2 border-dashed flex items-center gap-2 px-3" style={{borderColor:"#F28C45",background:"#FFF5ED"}}>
+                <div className="pos-barcode-scanner w-full h-10 rounded-xl border-2 border-dashed flex items-center gap-2 px-3" style={{borderColor:"#F28C45",background:"#FFF5ED"}}>
                   <Scan size={14} style={{color:"#F28C45"}} className="shrink-0 animate-pulse" />
                   <input ref={searchRef} type="text" value={q} onChange={e => { setQ(e.target.value); setShowCatalog(true); }} onKeyDown={handleSearchKey}
                     className="flex-1 bg-transparent outline-none text-sm font-bold" placeholder="امسح الباركود..." autoFocus style={{color:"#29356F"}} />
