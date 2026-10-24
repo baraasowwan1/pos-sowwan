@@ -1680,6 +1680,16 @@ ${filtered.length > 0 ? `
               {vm === "grid" ? <List size={15} className="!text-slate-500" /> : <Grid3X3 size={15} className="!text-slate-500" />}
             </button>
           </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => { setManualEntry({ barcode: "" }); setManualForm({ nameAr: "", sellPrice: "", qty: "1" }); }}
+              className="h-9 px-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all hover:bg-indigo-50"
+              style={{ borderColor: "#D9DFF0", background: "#FFFFFF", color: "#29356F" }}
+            >
+              <Plus size={14} /> إضافة منتج يدوي
+            </button>
+          </div>
           {/* Quick filters remain visible for fast cashier access. */}
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
             {/* View tabs */}
@@ -2317,11 +2327,11 @@ ${filtered.length > 0 ? `
 
       {/* ── Manual Product Entry Modal — shown when barcode not in system ── */}
       {manualEntry && (
-        <Modal title="منتج غير مُعرَّف في النظام" sub={`باركود: ${manualEntry.barcode} — أدخل التفاصيل للبيع المؤقت`} onClose={() => setManualEntry(null)} size="sm">
+        <Modal title={manualEntry.barcode ? "منتج غير مُعرَّف في النظام" : "إضافة منتج يدوي"} sub={manualEntry.barcode ? `باركود: ${manualEntry.barcode} — أدخل التفاصيل للبيع المؤقت` : "أدخل اسم المنتج وسعره والكمية، حتى لو لم يكن مسجلاً ضمن المنتجات"} onClose={() => setManualEntry(null)} size="sm">
           <div className="space-y-4">
             <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl text-xs text-orange-700 flex gap-2">
               <AlertCircle size={13} className="shrink-0 mt-0.5"/>
-              <span>الباركود غير مسجل. أدخل الاسم والسعر، ثم اختر الإضافة المؤقتة أو الحفظ الدائم.</span>
+              <span>{manualEntry.barcode ? "الباركود غير مسجل. أدخل الاسم والسعر، ثم اختر الإضافة المؤقتة أو الحفظ الدائم." : "يمكنك إضافة أي صنف يدويًا للفاتورة فقط، أو حفظه ضمن المنتجات لاستخدامه لاحقًا."}</span>
             </div>
             <F label="اسم المنتج" req><TInput value={manualForm.nameAr} onChange={v => setManualForm(f => ({...f, nameAr: v}))} placeholder="اسم المنتج..." autoFocus /></F>
             <F label="سعر البيع (JOD)" req><TInput value={manualForm.sellPrice} onChange={v => setManualForm(f => ({...f, sellPrice: v}))} type="number" placeholder="0.000" /></F>
