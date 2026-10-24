@@ -1499,13 +1499,19 @@ function SAPlans() {
 
   const doAssign = async () => {
     if (!assignStore || !assignForm.plan) { showToast("اختر الخطة أولاً", "error"); return; }
+    const months = Number.parseInt(assignForm.months, 10);
+    if (!plans.some(p => p.nameAr === assignForm.plan)) { showToast("الخطة المختارة غير متاحة؛ حدّث قائمة الخطط ثم حاول مجدداً", "error"); loadPlans(); return; }
+    if (![1, 3, 6, 12].includes(months)) { showToast("مدة التجديد غير صحيحة", "error"); return; }
     setAssigning(true);
     try {
-      await apiFetch(`/stores/${assignStore.id}/assign-plan`, { method: "PATCH", body: JSON.stringify({ plan: assignForm.plan, months: parseInt(assignForm.months) }) }, getToken());
-      showToast(`تم تجديد اشتراك ${assignStore.nameAr} بنجاح ✓`, "success");
-      setSubs(prev => prev.map(s => s.id === assignStore.id ? { ...s, plan: assignForm.plan, status: "active" } : s));
+      const result = await apiFetch(`/stores/${assignStore.id}/assign-plan`, { method: "PATCH", body: JSON.stringify({ plan: assignForm.plan, months }) }, getToken()) as { store?: StoreData & { _id?: string; id?: string } };
+      const saved = result?.store;
+      const updated = { ...assignStore, ...(saved || {}), id: assignStore.id, plan: assignForm.plan, status: "active" as const };
+      showToast(`تم تجديد اشتراك ${assignStore.nameAr} على خطة ${assignForm.plan} بنجاح ✓`, "success");
+      setSubs(prev => prev.map(s => s.id === assignStore.id ? { ...s, ...updated } : s));
       setAssignStore(null);
-    } catch { showToast("فشل تعيين الخطة", "error"); }
+      apiFetch("/stores", {}, getToken()).then(d => { if (Array.isArray(d)) setSubs((d as (StoreData & {_id?:string})[]).map(x => ({ ...x, id: x._id || x.id || "" }))); }).catch(() => {});
+    } catch (e) { showToast((e as { error?: string })?.error || "فشل تعيين الخطة؛ لم يتم تغيير الاشتراك", "error"); }
     finally { setAssigning(false); }
   };
 
@@ -1566,7 +1572,7 @@ function SAPlans() {
               <SBadge status={s.status} />
               <div className="hidden md:block text-xs text-muted-foreground">انتهاء: {s.expiresAt || "—"}</div>
               <div className="flex gap-1.5">
-                <Btn v="secondary" s="xs" onClick={() => { setAssignStore(s); setAssignForm({ plan: s.plan || (plans[0]?.nameAr || ""), months: "1" }); }}>تجديد / تغيير</Btn>
+                <Btn v="secondary" s="xs" onClick={() => { loadPlans(); setAssignStore(s); setAssignForm({ plan: plans.some(p => p.nameAr === s.plan) ? s.plan : (plans[0]?.nameAr || ""), months: "1" }); }}>تجديد / تغيير</Btn>
               </div>
             </div>
           ))}
@@ -1579,7 +1585,7 @@ function SAPlans() {
             <F label="الخطة">
               <select value={assignForm.plan} onChange={e => setAssignForm(f => ({ ...f, plan: e.target.value }))} className="w-full rounded-xl border border-border bg-input-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/25">
                 <option value="">اختر خطة</option>
-                {plans.map(p => <option key={p.id} value={p.nameAr}>{p.nameAr} — {p.price} JOD/شهر</option>)}
+                {plans.map(p => <option key={p.id || p.nameAr} value={p.nameAr}>{p.nameAr} — {p.price} د.أ/شهر</option>)}
               </select>
             </F>
             <F label="مدة التجديد (بالأشهر)">
