@@ -1623,7 +1623,7 @@ ${filtered.length > 0 ? `
         </div>
 
         {/* Products grid — hidden until the cashier searches or scans */}
-        {q.trim() ? (<div className="flex-1 overflow-y-auto p-2.5">
+        {true ? (<div className="flex-1 overflow-y-auto p-2.5">
           {prods.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-16">
               <Package size={40} className="text-muted-foreground/30 mb-3" />
@@ -1738,9 +1738,8 @@ ${filtered.length > 0 ? `
         </div>) : (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center" style={{background:"#fafaf8"}}>
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{background:"#e8f0ed",color:"#173A34"}}><Scan size={30} /></div>
-            <p className="font-black text-base" style={{color:"#173A34"}}>جاهز لاستقبال المنتجات</p>
-            <p className="text-sm text-muted-foreground mt-2 max-w-xs">امسح الباركود لإضافة المنتج إلى الفاتورة، أو اكتب اسم المنتج في خانة البحث لعرض النتائج.</p>
-            <button onClick={() => { setScannerMode(true); setQ(""); setTimeout(() => searchRef.current?.focus(), 50); }} className="mt-4 px-4 h-10 rounded-xl text-sm font-black flex items-center gap-2" style={{background:"#173A34",color:"#C8A45C"}}><Scan size={15}/>بدء المسح</button>
+            <p className="font-black text-base" style={{color:"#173A34"}}>لا توجد منتجات مطابقة</p>
+            <p className="text-sm text-muted-foreground mt-2 max-w-xs">جرّب البحث باسم المنتج أو امسح الباركود، أو غيّر التصنيف المحدد.</p>
           </div>
         )}
       </div>
