@@ -1576,9 +1576,9 @@ ${filtered.length > 0 ? `
                         className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border !border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-500">
                         {item.qty <= 1 ? <Trash2 size={11} /> : <Minus size={11} />}
                       </button>
-                      <input type="number" min="0.001" step="any" inputMode="decimal"
-                        aria-label={`كمية ${item.product.nameAr}`} value={item.qty}
-                        onChange={e => setQty(item.product.id, e.target.value)}
+                      <input key={`${item.product.id}-qty-${item.qty}`} type="number" min="0.001" step="any" inputMode="decimal"
+                        aria-label={`كمية ${item.product.nameAr}`} defaultValue={item.qty}
+                        onBlur={e => setQty(item.product.id, e.target.value)}
                         className="w-14 h-8 text-center text-sm font-black rounded-lg border !border-slate-200 !bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300/60"
                         title="أدخل كمية صحيحة أو كسرية مثل 0.25 أو 1.5" />
                       <button onClick={() => upd(item.product.id, 1)}
@@ -1588,9 +1588,9 @@ ${filtered.length > 0 ? `
                     </div>
                     <div className="text-right shrink-0 w-20">
                       {item.product.category === "يدوي" ? (
-                        <input type="number" min="0" step="0.001" inputMode="decimal"
-                          aria-label={`سعر ${item.product.nameAr}`} value={item.product.sellPrice}
-                          onChange={e => setItemPrice(item.product.id, e.target.value)}
+                        <input key={`${item.product.id}-price-${item.product.sellPrice}`} type="number" min="0" step="0.001" inputMode="decimal"
+                          aria-label={`سعر ${item.product.nameAr}`} defaultValue={item.product.sellPrice}
+                          onBlur={e => setItemPrice(item.product.id, e.target.value)}
                           className="w-full h-7 text-left text-sm font-black rounded-md border !border-slate-200 !bg-white px-1 focus:outline-none focus:ring-2 focus:ring-indigo-300/60"
                           title="تعديل سعر الصنف اليدوي" />
                       ) : (
