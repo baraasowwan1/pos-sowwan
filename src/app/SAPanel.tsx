@@ -1213,7 +1213,7 @@ function SAStores() {
               <SInput value={renewMonths} onChange={setRenewMonths} options={[{ value: "1", label: "شهر واحد" }, { value: "3", label: "3 أشهر (وفر 5%)" }, { value: "6", label: "6 أشهر (وفر 10%)" }, { value: "12", label: "سنة كاملة (وفر 32%)" }]} />
             </F>
             <div className="p-4 bg-card border border-border rounded-xl">
-              <div className="flex justify-between text-sm mb-1"><span className="text-muted-foreground">انتهاء الاشتراك الجديد:</span><span className="font-black text-primary">{new Date(Date.now() + parseInt(renewMonths) * 30 * 86400000).toISOString().split("T")[0]}</span></div>
+              <div className="flex justify-between text-sm mb-1"><span className="text-muted-foreground">انتهاء الاشتراك الجديد:</span><span className="font-black text-primary">{new Date(Date.now() + (Number.parseInt(renewMonths, 10) || 1) * 30 * 86400000).toISOString().split("T")[0]}</span></div>
               <div className="flex justify-between text-sm"><span className="text-muted-foreground">المبلغ المستحق:</span>
                 <span className="font-black text-foreground">{((apiPlans.find(p => p.nameAr === renewStore.plan)?.price) || 0) * parseInt(renewMonths)} د.أ</span>
               </div>
