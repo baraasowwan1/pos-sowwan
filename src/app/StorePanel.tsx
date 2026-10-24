@@ -1397,13 +1397,25 @@ ${filtered.length > 0 ? `
 
   /* ─── MAIN 3-COLUMN POS LAYOUT ───────────────────────────────────────────── */
   return (
-    <main dir="rtl" className="flex h-full min-h-0 overflow-hidden gap-2 p-2" style={{background:"#E9EEEB",fontFamily:"'Cairo','Inter',sans-serif"}} aria-label="نقطة البيع">
+    <div dir="rtl" className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-800" style={{colorScheme:"light",fontFamily:"'Cairo','Inter',sans-serif",background:"#F4F7F5",color:"#24352f"}}>
+      <header className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-900 text-white shadow-sm"><ShoppingCart size={21}/></div>
+          <div><h1 className="text-lg font-black text-slate-900">{store.nameAr || "نقطة البيع"}</h1><p className="text-xs font-medium text-slate-500">نقطة البيع · فاتورة جديدة</p></div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold ${isOnline ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}><span className={`h-2 w-2 rounded-full ${isOnline ? "bg-emerald-500" : "bg-amber-500"}`}/>{isOnline ? "متصل بالنظام" : "وضع دون اتصال"}</span>
+          <span className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600"><Package size={13} className="ml-1 inline"/> {prods.length} منتج</span>
+          <button onClick={() => { setQ(""); setCat("الكل"); setPosTab("all"); searchRef.current?.focus(); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"><Search size={13} className="ml-1 inline"/> بحث جديد</button>
+        </div>
+      </header>
+      <main dir="rtl" className="flex min-h-0 flex-1 overflow-hidden gap-3 p-3 sm:gap-4 sm:p-4" style={{background:"#F4F7F5",fontFamily:"'Cairo','Inter',sans-serif"}} aria-label="نقطة البيع">
 
       {/* ══ LEFT PANEL — Cart ══════════════════════════════════════════════════ */}
-      <div className="flex flex-col overflow-hidden rounded-2xl border border-[#dbe4df] shadow-sm shrink-0" style={{width:320,minWidth:280,background:"#FFFFFF"}}>
+      <div className="order-2 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md shrink-0" style={{width:340,minWidth:300,background:"#FFFFFF",color:"#24352f"}}>
 
         {/* Cart header */}
-        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border" style={{background:"#173A34"}}>
+        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b !border-slate-200" style={{background:"#173A34"}}>
           <div className="flex items-center gap-2">
             <ShoppingCart size={16} className="text-white" />
             <span className="font-black text-white text-sm">الفاتورة</span>
@@ -1421,7 +1433,7 @@ ${filtered.length > 0 ? `
         </div>
 
         {/* Customer selector */}
-        <div className="shrink-0 px-3 py-2.5 border-b border-border/60 relative">
+        <div className="shrink-0 px-3 py-2.5 border-b !border-slate-200/60 relative">
           <div className="flex gap-1.5">
             <div className="flex-1 relative">
               <input
@@ -1430,32 +1442,32 @@ ${filtered.length > 0 ? `
                 value={selectedCustomer ? selectedCustomer.name : customerQ}
                 onChange={e => { setCustomerQ(e.target.value); setShowCustSearch(true); setSelectedCustomer(null); }}
                 onFocus={() => setShowCustSearch(true)}
-                className="w-full h-9 rounded-xl border border-border bg-background text-sm px-3 pr-8 focus:outline-none focus:ring-2 focus:ring-ring/25"
+                className="w-full h-9 rounded-xl border !border-slate-200 !bg-white text-sm px-3 pr-8 focus:outline-none focus:ring-2 focus:ring-ring/25"
               />
-              <Users size={13} className="absolute right-2.5 top-2.5 text-muted-foreground pointer-events-none" />
+              <Users size={13} className="absolute right-2.5 top-2.5 !text-slate-500 pointer-events-none" />
               {selectedCustomer && (
-                <button onClick={() => { setSelectedCustomer(null); setCustomerQ(""); }} className="absolute left-2.5 top-2.5 text-muted-foreground hover:text-foreground"><X size={13} /></button>
+                <button onClick={() => { setSelectedCustomer(null); setCustomerQ(""); }} className="absolute left-2.5 top-2.5 !text-slate-500 hover:!text-slate-800"><X size={13} /></button>
               )}
             </div>
-            <button onClick={() => setShowAddCust(true)} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center hover:bg-muted/50 transition-all shrink-0">
-              <Plus size={14} className="text-muted-foreground" />
+            <button onClick={() => setShowAddCust(true)} className="w-9 h-9 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all shrink-0">
+              <Plus size={14} className="!text-slate-500" />
             </button>
           </div>
           {showCustSearch && customerQ && (
-            <div className="absolute right-3 left-3 top-full mt-1 bg-card border border-border rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
+            <div className="absolute right-3 left-3 top-full mt-1 bg-card border !border-slate-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
               {posCustomers.filter(c => c.name.includes(customerQ) || (c.phone||"").includes(customerQ)).slice(0,8).map(c => (
-                <button key={c.id} className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-muted/50 transition-all text-right"
+                <button key={c.id} className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 transition-all text-right"
                   onClick={() => { setSelectedCustomer(c); setCustomerQ(""); setShowCustSearch(false); }}>
                   <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-black" style={{background:"#173A34",color:"white"}}>{c.name.charAt(0)}</div>
                   <div className="text-right flex-1">
-                    <p className="text-sm font-bold text-foreground">{c.name}</p>
-                    <p className="text-xs text-muted-foreground">{c.phone}</p>
+                    <p className="text-sm font-bold !text-slate-800">{c.name}</p>
+                    <p className="text-xs !text-slate-500">{c.phone}</p>
                   </div>
                   {(c.loyaltyPoints||0) > 0 && <span className="text-xs font-black" style={{color:"#C8A45C"}}>{c.loyaltyPoints} نقطة</span>}
                 </button>
               ))}
               {posCustomers.filter(c => c.name.includes(customerQ) || (c.phone||"").includes(customerQ)).length === 0 && (
-                <p className="text-center py-3 text-sm text-muted-foreground">لا نتائج — <button className="text-primary font-bold" onClick={()=>{setShowCustSearch(false);setShowAddCust(true);}}>إضافة عميل جديد</button></p>
+                <p className="text-center py-3 text-sm !text-slate-500">لا نتائج — <button className="text-emerald-900 font-bold" onClick={()=>{setShowCustSearch(false);setShowAddCust(true);}}>إضافة عميل جديد</button></p>
               )}
             </div>
           )}
@@ -1482,31 +1494,31 @@ ${filtered.length > 0 ? `
               <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3" style={{background:"#F0EEE9"}}>
                 <ShoppingCart size={28} style={{color:"#C8A45C"}} />
               </div>
-              <p className="text-sm font-bold text-muted-foreground">السلة فارغة</p>
-              <p className="text-xs text-muted-foreground mt-1">اضغط على منتج لإضافته</p>
+              <p className="text-sm font-bold !text-slate-500">السلة فارغة</p>
+              <p className="text-xs !text-slate-500 mt-1">اضغط على منتج لإضافته</p>
             </div>
           ) : (
-            <div className="divide-y divide-border/50">
+            <div className="divide-y divide-slate-100">
               {cart.map((item) => (
-                <div key={item.product.id} className="px-3 py-2.5 hover:bg-muted/30 transition-all">
+                <div key={item.product.id} className="px-3 py-2.5 hover:bg-slate-50 transition-all">
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-foreground truncate leading-tight">{item.product.nameAr}</p>
+                      <p className="text-sm font-bold !text-slate-800 truncate leading-tight">{item.product.nameAr}</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-xs font-black" style={{color:"#173A34"}}>{(item.product.sellPrice * (1 - item.discount/100)).toFixed(3)}</span>
-                        <span className="text-xs text-muted-foreground">JOD</span>
-                        {item.discount > 0 && <span className="text-xs line-through text-muted-foreground">{item.product.sellPrice.toFixed(3)}</span>}
+                        <span className="text-xs !text-slate-500">JOD</span>
+                        {item.discount > 0 && <span className="text-xs line-through !text-slate-500">{item.product.sellPrice.toFixed(3)}</span>}
                         {item.promoApplied && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{background:"#173A34",color:"#C8A45C"}}>{item.promoApplied}</span>}
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button onClick={() => item.qty === 1 ? rm(item.product.id) : upd(item.product.id, -1)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border border-border hover:bg-red-50 hover:border-red-200 hover:text-red-500">
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border !border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-500">
                         {item.qty === 1 ? <Trash2 size={11} /> : <Minus size={11} />}
                       </button>
                       <span className="w-7 text-center text-sm font-black">{item.qty}</span>
                       <button onClick={() => upd(item.product.id, 1)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border border-border hover:border-primary hover:text-primary">
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border !border-slate-200 hover:border-primary hover:text-emerald-900">
                         <Plus size={11} />
                       </button>
                     </div>
@@ -1516,7 +1528,7 @@ ${filtered.length > 0 ? `
                   </div>
                   {isOwnerOrMgr && (
                     <div className="flex items-center gap-2 mt-1.5">
-                      <Percent size={10} className="text-muted-foreground shrink-0" />
+                      <Percent size={10} className="!text-slate-500 shrink-0" />
                       <input type="range" min={0} max={50} step={1} value={item.discount}
                         onChange={e => updd(item.product.id, parseFloat(e.target.value))}
                         className="flex-1 h-1 accent-primary cursor-pointer" />
@@ -1531,7 +1543,7 @@ ${filtered.length > 0 ? `
 
         {/* Held orders */}
         {holds.length > 0 && (
-          <div className="shrink-0 border-t border-border/60 px-3 py-2" style={{background:"#FFFBF0"}}>
+          <div className="shrink-0 border-t !border-slate-200/60 px-3 py-2" style={{background:"#FFFBF0"}}>
             <p className="text-xs font-bold text-amber-700 mb-1.5 flex items-center gap-1"><Archive size={11} /> طلبات معلقة ({holds.length})</p>
             <div className="flex gap-1.5 flex-wrap">
               {holds.map((h, i) => (
@@ -1546,38 +1558,38 @@ ${filtered.length > 0 ? `
 
         {/* Cart totals + checkout */}
         {cart.length > 0 && (
-          <div className="shrink-0 border-t border-border" style={{background:"#F7F5F2"}}>
+          <div className="shrink-0 border-t !border-slate-200" style={{background:"#F7F5F2"}}>
             <div className="px-4 py-3 space-y-1.5">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">المجموع الفرعي</span>
+                <span className="!text-slate-500">المجموع الفرعي</span>
                 <span className="font-bold">{sub.toFixed(3)} JOD</span>
               </div>
               {isOwnerOrMgr && (
                 <div className="flex items-center gap-2 py-0.5">
-                  <span className="text-xs text-muted-foreground shrink-0">خصم الفاتورة</span>
+                  <span className="text-xs !text-slate-500 shrink-0">خصم الفاتورة</span>
                   <input type="range" min={0} max={50} step={1} value={disc} onChange={e => setDisc(parseFloat(e.target.value))} className="flex-1 h-1 accent-primary cursor-pointer" />
                   <span className="text-xs font-black w-8 text-left" style={{color: disc > 0 ? "#173A34" : undefined}}>{disc}%</span>
                 </div>
               )}
               {da > 0 && <div className="flex justify-between text-sm"><span className="text-red-500">خصم</span><span className="font-bold text-red-500">-{da.toFixed(3)} JOD</span></div>}
-              {ta > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">ضريبة</span><span className="font-bold">+{ta.toFixed(3)} JOD</span></div>}
+              {ta > 0 && <div className="flex justify-between text-sm"><span className="!text-slate-500">ضريبة</span><span className="font-bold">+{ta.toFixed(3)} JOD</span></div>}
               {pointsDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-amber-500">نقاط الولاء</span><span className="font-bold text-amber-600">-{pointsDiscount.toFixed(3)} JOD</span></div>}
               {giftDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-emerald-500">بطاقة هدية</span><span className="font-bold text-emerald-600">-{giftDiscount.toFixed(3)} JOD</span></div>}
               {couponDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-blue-500">كوبون</span><span className="font-bold text-blue-600">-{couponDiscount.toFixed(3)} JOD</span></div>}
-              <div className="flex justify-between pt-1.5 border-t border-border">
+              <div className="flex justify-between pt-1.5 border-t !border-slate-200">
                 <span className="font-black text-base">الإجمالي</span>
                 <span className="font-black text-xl" style={{color:"#173A34"}}>{finalTotal.toFixed(3)} JOD</span>
               </div>
             </div>
             <div className="flex gap-1.5 px-3 pb-3">
-              <button onClick={hold} title="تعليق الطلب" className="w-10 h-10 rounded-xl border border-border flex items-center justify-center hover:bg-amber-50 hover:border-amber-200 transition-all shrink-0">
-                <Archive size={15} className="text-muted-foreground" />
+              <button onClick={hold} title="تعليق الطلب" className="w-10 h-10 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-amber-50 hover:border-amber-200 transition-all shrink-0">
+                <Archive size={15} className="!text-slate-500" />
               </button>
-              <button onClick={doPrint} title="طباعة" className="w-10 h-10 rounded-xl border border-border flex items-center justify-center hover:bg-muted/50 transition-all shrink-0">
-                <Printer size={15} className="text-muted-foreground" />
+              <button onClick={doPrint} title="طباعة" className="w-10 h-10 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all shrink-0">
+                <Printer size={15} className="!text-slate-500" />
               </button>
-              <button onClick={() => setCart([])} title="مسح" className="w-10 h-10 rounded-xl border border-border flex items-center justify-center hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all shrink-0">
-                <X size={15} className="text-muted-foreground" />
+              <button onClick={() => setCart([])} title="مسح" className="w-10 h-10 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all shrink-0">
+                <X size={15} className="!text-slate-500" />
               </button>
               <button onClick={() => setShowPay(true)}
                 className="flex-1 h-10 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90"
@@ -1590,11 +1602,11 @@ ${filtered.length > 0 ? `
       </div>
 
       {/* ══ CENTER PANEL — Products ════════════════════════════════════════════ */}
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden rounded-2xl border border-[#dbe4df] shadow-sm" style={{background:"#FFFFFF"}}>
+      <div className="order-1 flex-1 min-w-0 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md" style={{background:"#FFFFFF",color:"#24352f"}}>
         {/* Toolbar */}
         <div className="shrink-0 px-4 py-3 border-b border-[#e2e9e5] space-y-3" style={{background:"#FFFFFF"}}>
           <div className="flex items-center justify-between gap-3">
-            <div><h2 className="text-base font-black" style={{color:"#173A34"}}>المنتجات</h2><p className="text-xs mt-0.5 text-muted-foreground">اختَر المنتج لإضافته إلى الفاتورة</p></div>
+            <div><h2 className="text-base font-black" style={{color:"#173A34"}}>المنتجات</h2><p className="text-xs mt-0.5 !text-slate-500">اختَر المنتج لإضافته إلى الفاتورة</p></div>
             <div className="hidden sm:flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1.5" style={{background:"#edf5f1",color:"#23634f"}}><span className="w-2 h-2 rounded-full" style={{background:isOnline?"#2f9e68":"#d97706"}} />{isOnline ? "متصل" : "دون اتصال"} · {prods.length} منتج</div>
           </div>
           {!isOnline && (
@@ -1612,11 +1624,11 @@ ${filtered.length > 0 ? `
                 </div>
               ) : (
                 <div className="relative">
-                  <Search size={14} className="absolute right-3 top-3 text-muted-foreground pointer-events-none" />
+                  <Search size={14} className="absolute right-3 top-3 !text-slate-500 pointer-events-none" />
                   <input ref={searchRef} type="text" value={q} onChange={e => setQ(e.target.value)} onKeyDown={handleSearchKey}
                     placeholder="ابحث بالاسم، الباركود، SKU..."
-                    className="w-full h-10 rounded-xl border border-border bg-background text-sm pr-9 pl-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
-                  {q && <button onClick={() => setQ("")} className="absolute left-3 top-3 text-muted-foreground hover:text-foreground"><X size={12} /></button>}
+                    className="w-full h-10 rounded-xl border !border-slate-200 !bg-white text-sm pr-9 pl-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+                  {q && <button onClick={() => setQ("")} className="absolute left-3 top-3 !text-slate-500 hover:!text-slate-800"><X size={12} /></button>}
                 </div>
               )}
             </div>
@@ -1626,8 +1638,8 @@ ${filtered.length > 0 ? `
               <Scan size={15} />
             </button>
             <button onClick={() => setVm(v => v === "grid" ? "list" : "grid")}
-              className="w-10 h-10 rounded-xl border border-border bg-white flex items-center justify-center shrink-0 hover:bg-muted/50 transition-all">
-              {vm === "grid" ? <List size={15} className="text-muted-foreground" /> : <Grid3X3 size={15} className="text-muted-foreground" />}
+              className="w-10 h-10 rounded-xl border !border-slate-200 bg-white flex items-center justify-center shrink-0 hover:bg-slate-50 transition-all">
+              {vm === "grid" ? <List size={15} className="!text-slate-500" /> : <Grid3X3 size={15} className="!text-slate-500" />}
             </button>
           </div>
           {/* Quick filters remain visible for fast cashier access. */}
@@ -1669,9 +1681,9 @@ ${filtered.length > 0 ? `
         {true ? (<div className="flex-1 min-h-0 overflow-y-auto p-3" style={{background:"#F5F8F6"}}>
           {prods.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-16">
-              <Package size={40} className="text-muted-foreground/30 mb-3" />
-              <p className="text-muted-foreground text-sm font-bold">{posTab === "fav" ? "لا توجد مفضلات" : posTab === "recent" ? "لا يوجد سجل حديث" : "لا توجد منتجات"}</p>
-              {q && <button onClick={() => setQ("")} className="mt-2 text-xs text-primary hover:underline">مسح البحث</button>}
+              <Package size={40} className="!text-slate-500/30 mb-3" />
+              <p className="!text-slate-500 text-sm font-bold">{posTab === "fav" ? "لا توجد مفضلات" : posTab === "recent" ? "لا يوجد سجل حديث" : "لا توجد منتجات"}</p>
+              {q && <button onClick={() => setQ("")} className="mt-2 text-xs text-emerald-900 hover:underline">مسح البحث</button>}
             </div>
           ) : vm === "grid" ? (
             <div className="grid gap-3 p-1" style={{gridTemplateColumns:"repeat(auto-fill,minmax(155px,1fr))"}}>
@@ -1714,7 +1726,7 @@ ${filtered.length > 0 ? `
                       </div>
                       {/* Name + price — always readable */}
                       <div className="px-2 pt-1.5 pb-2">
-                        <p className="text-xs font-bold leading-tight line-clamp-2 text-foreground" style={{minHeight:"2.3em"}}>
+                        <p className="text-xs font-bold leading-tight line-clamp-2 !text-slate-800" style={{minHeight:"2.3em"}}>
                           {p.nameAr}
                         </p>
                         <div className="flex items-baseline gap-1 mt-1">
@@ -1754,7 +1766,7 @@ ${filtered.length > 0 ? `
                       }
                     </div>
                     <div className="flex-1 text-right min-w-0">
-                      <p className="text-sm font-bold truncate text-foreground">{p.nameAr}</p>
+                      <p className="text-sm font-bold truncate !text-slate-800">{p.nameAr}</p>
                       <p className="text-xs" style={{color:"#9ca3af"}}>
                         {p.category}{p.category ? " · " : ""}
                         <span className={outOfStock ? "text-red-500 font-bold" : lowStock ? "text-amber-500 font-bold" : "text-emerald-600 font-medium"}>
@@ -1782,16 +1794,16 @@ ${filtered.length > 0 ? `
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center" style={{background:"#fafaf8"}}>
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{background:"#e8f0ed",color:"#173A34"}}><Scan size={30} /></div>
             <p className="font-black text-base" style={{color:"#173A34"}}>لا توجد منتجات مطابقة</p>
-            <p className="text-sm text-muted-foreground mt-2 max-w-xs">جرّب البحث باسم المنتج أو امسح الباركود، أو غيّر التصنيف المحدد.</p>
+            <p className="text-sm !text-slate-500 mt-2 max-w-xs">جرّب البحث باسم المنتج أو امسح الباركود، أو غيّر التصنيف المحدد.</p>
           </div>
         )}
       </div>
 
       {/* ══ RIGHT PANEL — Quick Actions ═══════════════════════════════════════ */}
-      <div className="flex flex-col overflow-hidden border-r border-border" style={{width:268,minWidth:268,background:"white"}}>
+      <div className="flex flex-col overflow-hidden border-r !border-slate-200" style={{width:268,minWidth:268,background:"white"}}>
 
         {/* Header */}
-        <div className="shrink-0 px-4 py-3 border-b border-border" style={{background:"#173A34"}}>
+        <div className="shrink-0 px-4 py-3 border-b !border-slate-200" style={{background:"#173A34"}}>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm shrink-0" style={{background:"#C8A45C",color:"#173A34"}}>
               {posUserName ? posUserName.charAt(0) : "P"}
@@ -1809,7 +1821,7 @@ ${filtered.length > 0 ? `
         <div className="flex-1 overflow-y-auto">
           {/* Payment method */}
           <div className="px-3 pt-3 pb-2">
-            <p className="text-[10px] font-black text-muted-foreground mb-2 uppercase tracking-wider">طريقة الدفع</p>
+            <p className="text-[10px] font-black !text-slate-500 mb-2 uppercase tracking-wider">طريقة الدفع</p>
             <div className="grid grid-cols-2 gap-1.5">
               {([
                 {id:"cash" as const,  label:"نقدي",  icon:<Banknote size={15}/>,   color:"#22C55E"},
@@ -1831,23 +1843,23 @@ ${filtered.length > 0 ? `
           {/* Extra fields for cliq/card */}
           {pay === "cliq" && (
             <div className="px-3 pb-2 space-y-1.5">
-              <input type="text" value={cliqRef} onChange={e => setCliqRef(e.target.value)} placeholder="رقم مرجع كليك (اختياري)" className="w-full h-9 rounded-xl border border-border bg-background text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
-              <input type="text" value={cliqSender} onChange={e => setCliqSender(e.target.value)} placeholder="اسم المُرسِل (اختياري)" className="w-full h-9 rounded-xl border border-border bg-background text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+              <input type="text" value={cliqRef} onChange={e => setCliqRef(e.target.value)} placeholder="رقم مرجع كليك (اختياري)" className="w-full h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+              <input type="text" value={cliqSender} onChange={e => setCliqSender(e.target.value)} placeholder="اسم المُرسِل (اختياري)" className="w-full h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
             </div>
           )}
           {pay === "card" && (
             <div className="px-3 pb-2">
-              <input type="text" value={cardRef} onChange={e => setCardRef(e.target.value)} placeholder="رقم مرجع البطاقة (اختياري)" className="w-full h-9 rounded-xl border border-border bg-background text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+              <input type="text" value={cardRef} onChange={e => setCardRef(e.target.value)} placeholder="رقم مرجع البطاقة (اختياري)" className="w-full h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
             </div>
           )}
 
           {/* Gift card + Coupon + Loyalty */}
           <div className="px-3 pb-2 space-y-1.5">
             <div className="flex gap-1.5">
-              <input type="text" value={giftCode} onChange={e => setGiftCode(e.target.value.toUpperCase())} placeholder="كود بطاقة هدية..." className="flex-1 h-9 rounded-xl border border-border bg-background text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+              <input type="text" value={giftCode} onChange={e => setGiftCode(e.target.value.toUpperCase())} placeholder="كود بطاقة هدية..." className="flex-1 h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
               <button onClick={checkGiftCard} disabled={!giftCode.trim() || giftChecking}
-                className="w-9 h-9 rounded-xl border border-border flex items-center justify-center hover:bg-muted/50 transition-all shrink-0 disabled:opacity-40">
-                <Gift size={13} className="text-muted-foreground" />
+                className="w-9 h-9 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all shrink-0 disabled:opacity-40">
+                <Gift size={13} className="!text-slate-500" />
               </button>
             </div>
             {giftCard && (
@@ -1858,10 +1870,10 @@ ${filtered.length > 0 ? `
               </div>
             )}
             <div className="flex gap-1.5">
-              <input type="text" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="كود كوبون خصم..." className="flex-1 h-9 rounded-xl border border-border bg-background text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+              <input type="text" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="كود كوبون خصم..." className="flex-1 h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
               <button onClick={checkCoupon} disabled={!couponCode.trim() || couponChecking}
-                className="w-9 h-9 rounded-xl border border-border flex items-center justify-center hover:bg-muted/50 transition-all shrink-0 disabled:opacity-40">
-                <Tag size={13} className="text-muted-foreground" />
+                className="w-9 h-9 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all shrink-0 disabled:opacity-40">
+                <Tag size={13} className="!text-slate-500" />
               </button>
             </div>
             {coupon && (
@@ -1892,34 +1904,34 @@ ${filtered.length > 0 ? `
           </div>
 
           {/* Quick actions */}
-          <div className="px-3 pb-3 border-t border-border/60 pt-3 space-y-1.5">
-            <p className="text-[10px] font-black text-muted-foreground mb-2 uppercase tracking-wider">إجراءات سريعة</p>
+          <div className="px-3 pb-3 border-t !border-slate-200/60 pt-3 space-y-1.5">
+            <p className="text-[10px] font-black !text-slate-500 mb-2 uppercase tracking-wider">إجراءات سريعة</p>
             <div className="grid grid-cols-2 gap-1.5">
               <button onClick={hold} disabled={cart.length===0}
-                className="flex items-center justify-center gap-1.5 h-10 rounded-xl border border-border text-xs font-bold hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-all disabled:opacity-40">
+                className="flex items-center justify-center gap-1.5 h-10 rounded-xl border !border-slate-200 text-xs font-bold hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-all disabled:opacity-40">
                 <Archive size={13} />تعليق
               </button>
               <button onClick={() => setShowCalc(true)}
-                className="flex items-center justify-center gap-1.5 h-10 rounded-xl border border-border text-xs font-bold hover:bg-muted/50 transition-all">
+                className="flex items-center justify-center gap-1.5 h-10 rounded-xl border !border-slate-200 text-xs font-bold hover:bg-slate-50 transition-all">
                 <Calculator size={13} />حاسبة
               </button>
             </div>
             <button onClick={openDrawer} disabled={drawerOpening}
-              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border border-border text-xs font-bold hover:bg-muted/50 transition-all disabled:opacity-40">
-              <Banknote size={13} className="text-muted-foreground" />{drawerOpening ? "جاري الفتح..." : "فتح الدرج النقدي"}
+              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border !border-slate-200 text-xs font-bold hover:bg-slate-50 transition-all disabled:opacity-40">
+              <Banknote size={13} className="!text-slate-500" />{drawerOpening ? "جاري الفتح..." : "فتح الدرج النقدي"}
             </button>
-            <div className="flex items-center justify-between px-3 py-2 rounded-xl border border-border/60 bg-muted/30">
-              <span className="text-xs text-muted-foreground">فتح الدرج تلقائياً</span>
+            <div className="flex items-center justify-between px-3 py-2 rounded-xl border !border-slate-200/60 bg-slate-50">
+              <span className="text-xs !text-slate-500">فتح الدرج تلقائياً</span>
               <Toggle value={drawerAuto} onChange={setDrawerAuto} />
             </div>
           </div>
         </div>
 
         {/* Bottom shift controls */}
-        <div className="shrink-0 border-t border-border px-3 py-2.5 space-y-1.5">
+        <div className="shrink-0 border-t !border-slate-200 px-3 py-2.5 space-y-1.5">
           <button onClick={() => { refreshShift(); setShowShift(true); }}
-            className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border border-border text-xs font-bold hover:bg-muted/50 transition-all">
-            <Activity size={13} className="text-muted-foreground" />تقرير الشفت
+            className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border !border-slate-200 text-xs font-bold hover:bg-slate-50 transition-all">
+            <Activity size={13} className="!text-slate-500" />تقرير الشفت
           </button>
           <button onClick={() => { setClosingBal(""); setShowCloseSession(true); }}
             className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border-2 text-xs font-bold transition-all hover:opacity-80"
@@ -1947,7 +1959,7 @@ ${filtered.length > 0 ? `
                 </button>
               ))}
             </div>
-            <div className="flex items-center justify-between px-3 py-2 rounded-xl border border-border bg-muted/30">
+            <div className="flex items-center justify-between px-3 py-2 rounded-xl border !border-slate-200 bg-slate-50">
               <span className="text-sm font-bold">دفع مختلط (أكثر من وسيلة)</span>
               <Toggle value={splitMode} onChange={setSplitMode} />
             </div>
@@ -1959,7 +1971,7 @@ ${filtered.length > 0 ? `
                 <div className="grid grid-cols-4 gap-1.5">
                   {[finalTotal, Math.ceil(finalTotal), Math.ceil(finalTotal/5)*5, Math.ceil(finalTotal/10)*10].filter((v,i,a) => a.indexOf(v)===i).map(v => (
                     <button key={v} onClick={() => setCash(v.toFixed(3))}
-                      className="h-9 rounded-xl border border-border text-xs font-bold hover:bg-primary hover:text-white hover:border-primary transition-all">
+                      className="h-9 rounded-xl border !border-slate-200 text-xs font-bold hover:bg-primary hover:text-white hover:border-primary transition-all">
                       {v.toFixed(3)}
                     </button>
                   ))}
@@ -1973,17 +1985,17 @@ ${filtered.length > 0 ? `
               </div>
             )}
             {pay === "cliq" && (
-              <div className="space-y-3 p-4 bg-muted/40 border border-border rounded-xl">
-                <div className="flex items-center gap-2 mb-1"><CreditCard size={20} className="text-primary" /><p className="font-bold">دفع عبر كليك</p></div>
+              <div className="space-y-3 p-4 bg-muted/40 border !border-slate-200 rounded-xl">
+                <div className="flex items-center gap-2 mb-1"><CreditCard size={20} className="text-emerald-900" /><p className="font-bold">دفع عبر كليك</p></div>
                 <F label="رقم مرجع المعاملة (اختياري)"><TInput value={cliqRef} onChange={setCliqRef} placeholder="مثال: TX-123456" /></F>
                 <F label="اسم المُرسِل (اختياري)"><TInput value={cliqSender} onChange={setCliqSender} placeholder="اسم العميل المُرسِل" /></F>
               </div>
             )}
             {pay === "card" && (
-              <div className="space-y-3 p-4 bg-muted/40 border border-border rounded-xl">
-                <div className="flex items-center gap-2 mb-1"><CreditCard size={20} className="text-primary" /><p className="font-bold">دفع بالبطاقة</p></div>
+              <div className="space-y-3 p-4 bg-muted/40 border !border-slate-200 rounded-xl">
+                <div className="flex items-center gap-2 mb-1"><CreditCard size={20} className="text-emerald-900" /><p className="font-bold">دفع بالبطاقة</p></div>
                 <F label="رقم المرجع / التفويض (اختياري)"><TInput value={cardRef} onChange={setCardRef} placeholder="مثال: AUTH-789012" /></F>
-                <p className="text-xs text-muted-foreground">أدخل البطاقة في القارئ وانتظر التفويض</p>
+                <p className="text-xs !text-slate-500">أدخل البطاقة في القارئ وانتظر التفويض</p>
               </div>
             )}
             {pay === "credit" && (
@@ -1997,8 +2009,8 @@ ${filtered.length > 0 ? `
               </div>
             )}
             {splitMode && (
-              <div className="border border-border rounded-xl overflow-hidden">
-                <div className="px-3 py-2.5 bg-muted/40 border-b border-border flex items-center justify-between">
+              <div className="border !border-slate-200 rounded-xl overflow-hidden">
+                <div className="px-3 py-2.5 bg-muted/40 border-b !border-slate-200 flex items-center justify-between">
                   <p className="text-sm font-bold">الدفع المختلط</p>
                   <span className={`text-xs font-black px-2 py-0.5 rounded-full ${splitRemaining <= 0 ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : "bg-amber-100 text-amber-700 border border-amber-200"}`}>
                     {splitRemaining <= 0 ? "✓ مغطى" : `متبقي: ${splitRemaining.toFixed(3)} JOD`}
@@ -2008,16 +2020,16 @@ ${filtered.length > 0 ? `
                   {splitRows.map((row, i) => (
                     <div key={i} className="flex gap-2 items-center">
                       <select value={row.method} onChange={e => setSplitRows(prev => prev.map((r,j) => j===i ? {...r, method: e.target.value as SplitRow["method"]} : r))}
-                        className="h-9 rounded-xl border border-border bg-background text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring/25 shrink-0 w-24">
+                        className="h-9 rounded-xl border !border-slate-200 !bg-white text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring/25 shrink-0 w-24">
                         <option value="cash">نقدي</option><option value="cliq">كليك</option><option value="card">بطاقة</option>
                       </select>
                       <input type="number" value={row.amount} onChange={e => setSplitRows(prev => prev.map((r,j) => j===i ? {...r, amount: e.target.value} : r))}
-                        placeholder="0.000" className="flex-1 h-9 text-sm rounded-xl border border-border bg-background px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
-                      {splitRows.length > 2 && <button onClick={() => setSplitRows(prev => prev.filter((_,j)=>j!==i))} className="w-9 h-9 flex items-center justify-center rounded-xl text-red-400 hover:text-red-600 hover:bg-red-50 border border-border transition-all">✕</button>}
+                        placeholder="0.000" className="flex-1 h-9 text-sm rounded-xl border !border-slate-200 !bg-white px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+                      {splitRows.length > 2 && <button onClick={() => setSplitRows(prev => prev.filter((_,j)=>j!==i))} className="w-9 h-9 flex items-center justify-center rounded-xl text-red-400 hover:text-red-600 hover:bg-red-50 border !border-slate-200 transition-all">✕</button>}
                     </div>
                   ))}
-                  {splitRows.length < 4 && <button onClick={() => setSplitRows(prev => [...prev, {method:"cash",amount:""}])} className="w-full h-8 border border-dashed border-border rounded-xl text-xs font-bold text-muted-foreground hover:border-primary hover:text-primary transition-all">+ إضافة طريقة دفع</button>}
-                  {splitRemaining > 0.005 && <button onClick={() => setSplitRows(prev => { const cp = [...prev]; cp[0] = {...cp[0], amount: (parseFloat(cp[0].amount||"0") + splitRemaining).toFixed(3)}; return cp; })} className="w-full h-8 bg-primary/10 text-primary rounded-xl text-xs font-bold hover:bg-primary/20 transition-all">إضافة المتبقي ({splitRemaining.toFixed(3)} JOD) للأول</button>}
+                  {splitRows.length < 4 && <button onClick={() => setSplitRows(prev => [...prev, {method:"cash",amount:""}])} className="w-full h-8 border border-dashed !border-slate-200 rounded-xl text-xs font-bold !text-slate-500 hover:border-primary hover:text-emerald-900 transition-all">+ إضافة طريقة دفع</button>}
+                  {splitRemaining > 0.005 && <button onClick={() => setSplitRows(prev => { const cp = [...prev]; cp[0] = {...cp[0], amount: (parseFloat(cp[0].amount||"0") + splitRemaining).toFixed(3)}; return cp; })} className="w-full h-8 bg-primary/10 text-emerald-900 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all">إضافة المتبقي ({splitRemaining.toFixed(3)} JOD) للأول</button>}
                 </div>
               </div>
             )}
@@ -2055,14 +2067,14 @@ ${filtered.length > 0 ? `
         return (
           <Modal title="الآلة الحاسبة" onClose={() => setShowCalc(false)} size="sm">
             <div className="space-y-3">
-              <div className="bg-muted/50 rounded-xl p-4 text-right">
-                {calcExpr && <p className="text-xs text-muted-foreground mb-1 font-mono">{calcExpr}</p>}
+              <div className="bg-slate-50 rounded-xl p-4 text-right">
+                {calcExpr && <p className="text-xs !text-slate-500 mb-1 font-mono">{calcExpr}</p>}
                 <p className="text-3xl font-black font-mono">{calcDisplay}</p>
               </div>
               <div className="grid grid-cols-4 gap-1.5">
                 {keys.map((k, i) => k ? (
                   <button key={i} onClick={() => calcPress(k)}
-                    className={`h-12 rounded-xl font-bold text-lg transition-all active:scale-90 ${k === "=" ? "bg-primary text-white" : k === "C" ? "bg-red-100 text-red-600" : ["+","-","×","÷"].includes(k) ? "bg-primary/10 text-primary" : "bg-muted hover:bg-muted/80"}`}>
+                    className={`h-12 rounded-xl font-bold text-lg transition-all active:scale-90 ${k === "=" ? "bg-primary text-white" : k === "C" ? "bg-red-100 text-red-600" : ["+","-","×","÷"].includes(k) ? "bg-primary/10 text-emerald-900" : "bg-muted hover:bg-muted/80"}`}>
                     {k}
                   </button>
                 ) : <div key={i} />)}
@@ -2102,39 +2114,39 @@ ${filtered.length > 0 ? `
           <Modal title="مبيعات الشفت الحالي" sub={session ? `${posUserName ? posUserName + " · " : ""}فُتح: ${new Date(session.openedAt).toLocaleString("ar-JO")}` : ""} onClose={() => setShowShift(false)} size="xl">
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-card border border-border rounded-xl p-3 text-center"><p className="text-xs text-muted-foreground mb-1">فواتير</p><p className="font-black text-xl">{shiftTotals.count}</p></div>
-                <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#22C55E"}}><p className="text-xs text-muted-foreground mb-1">إجمالي المبيعات</p><p className="font-black text-xl text-emerald-600">{shiftTotals.gross.toFixed(3)} JOD</p></div>
-                <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#4F46E5"}}><p className="text-xs text-muted-foreground mb-1">نقدي</p><p className="font-black text-xl text-primary">{shiftTotals.cash.toFixed(3)} JOD</p></div>
-                <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#8B5CF6"}}><p className="text-xs text-muted-foreground mb-1">كليك + بطاقة</p><p className="font-black text-xl" style={{color:"#8B5CF6"}}>{(shiftTotals.cliq + shiftTotals.card).toFixed(3)} JOD</p></div>
+                <div className="bg-card border !border-slate-200 rounded-xl p-3 text-center"><p className="text-xs !text-slate-500 mb-1">فواتير</p><p className="font-black text-xl">{shiftTotals.count}</p></div>
+                <div className="bg-card border !border-slate-200 rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#22C55E"}}><p className="text-xs !text-slate-500 mb-1">إجمالي المبيعات</p><p className="font-black text-xl text-emerald-600">{shiftTotals.gross.toFixed(3)} JOD</p></div>
+                <div className="bg-card border !border-slate-200 rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#4F46E5"}}><p className="text-xs !text-slate-500 mb-1">نقدي</p><p className="font-black text-xl text-emerald-900">{shiftTotals.cash.toFixed(3)} JOD</p></div>
+                <div className="bg-card border !border-slate-200 rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#8B5CF6"}}><p className="text-xs !text-slate-500 mb-1">كليك + بطاقة</p><p className="font-black text-xl" style={{color:"#8B5CF6"}}>{(shiftTotals.cliq + shiftTotals.card).toFixed(3)} JOD</p></div>
                 {shiftTotals.credit > 0 && <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center"><p className="text-xs text-amber-600 mb-1">ذمم غير محصّلة</p><p className="font-black text-xl text-amber-600">{shiftTotals.credit.toFixed(3)} JOD</p></div>}
               </div>
               {shiftProducts.length > 0 && (
                 <div>
-                  <p className="text-xs font-bold text-muted-foreground mb-2 flex items-center gap-1"><Package size={12} /> المنتجات المباعة ({shiftProducts.length} صنف · {shiftTotals.items} قطعة)</p>
-                  <div className="border border-border rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+                  <p className="text-xs font-bold !text-slate-500 mb-2 flex items-center gap-1"><Package size={12} /> المنتجات المباعة ({shiftProducts.length} صنف · {shiftTotals.items} قطعة)</p>
+                  <div className="border !border-slate-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
                     <table className="w-full text-xs">
-                      <thead className="bg-muted/50 sticky top-0"><tr><th className="px-3 py-2 text-right font-bold text-muted-foreground">المنتج</th><th className="px-3 py-2 text-center font-bold text-muted-foreground">الكمية</th><th className="px-3 py-2 text-left font-bold text-muted-foreground">المبلغ</th></tr></thead>
-                      <tbody className="divide-y divide-border/60">
-                        {shiftProducts.map(p => (<tr key={p.nameAr} className="hover:bg-muted/20"><td className="px-3 py-2">{p.nameAr}</td><td className="px-3 py-2 text-center font-bold text-emerald-600">{p.qty}</td><td className="px-3 py-2 text-left font-mono">{p.total.toFixed(3)}</td></tr>))}
+                      <thead className="bg-slate-50 sticky top-0"><tr><th className="px-3 py-2 text-right font-bold !text-slate-500">المنتج</th><th className="px-3 py-2 text-center font-bold !text-slate-500">الكمية</th><th className="px-3 py-2 text-left font-bold !text-slate-500">المبلغ</th></tr></thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {shiftProducts.map(p => (<tr key={p.nameAr} className="hover:bg-slate-50"><td className="px-3 py-2">{p.nameAr}</td><td className="px-3 py-2 text-center font-bold text-emerald-600">{p.qty}</td><td className="px-3 py-2 text-left font-mono">{p.total.toFixed(3)}</td></tr>))}
                       </tbody>
                     </table>
                   </div>
                 </div>
               )}
               <div>
-                <p className="text-xs font-bold text-muted-foreground mb-2">الفواتير</p>
-                <div className="border border-border rounded-xl overflow-hidden max-h-48 overflow-y-auto">
-                  {shiftSalesList.length === 0 ? <p className="text-center py-6 text-sm text-muted-foreground">لا توجد مبيعات في هذا الشفت</p> : (
+                <p className="text-xs font-bold !text-slate-500 mb-2">الفواتير</p>
+                <div className="border !border-slate-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+                  {shiftSalesList.length === 0 ? <p className="text-center py-6 text-sm !text-slate-500">لا توجد مبيعات في هذا الشفت</p> : (
                     <table className="w-full text-xs">
-                      <thead className="bg-muted/50 sticky top-0"><tr>{["الفاتورة","العميل","المبلغ","الدفع","الوقت"].map(h => <th key={h} className="px-3 py-2 text-right font-bold text-muted-foreground">{h}</th>)}</tr></thead>
-                      <tbody className="divide-y divide-border/60">
+                      <thead className="bg-slate-50 sticky top-0"><tr>{["الفاتورة","العميل","المبلغ","الدفع","الوقت"].map(h => <th key={h} className="px-3 py-2 text-right font-bold !text-slate-500">{h}</th>)}</tr></thead>
+                      <tbody className="divide-y divide-slate-100">
                         {shiftSalesList.map(s => (
-                          <tr key={s.id} className="hover:bg-muted/20">
+                          <tr key={s.id} className="hover:bg-slate-50">
                             <td className="px-3 py-2 font-mono">{s.invoiceNo}</td>
                             <td className="px-3 py-2">{s.customerName || "نقدي"}</td>
                             <td className="px-3 py-2 font-bold">{s.total.toFixed(3)} JOD</td>
                             <td className="px-3 py-2">{s.payMethod === "cash" ? "نقدي" : s.payMethod === "cliq" ? "كليك" : s.payMethod === "card" ? "بطاقة" : "ذمة"}</td>
-                            <td className="px-3 py-2 text-muted-foreground">{new Date(s.createdAt).toLocaleTimeString("ar-JO",{hour:"2-digit",minute:"2-digit"})}</td>
+                            <td className="px-3 py-2 !text-slate-500">{new Date(s.createdAt).toLocaleTimeString("ar-JO",{hour:"2-digit",minute:"2-digit"})}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -2182,12 +2194,12 @@ ${filtered.length > 0 ? `
         <Modal title="إغلاق الجلسة النقدية" sub={`فُتحت: ${new Date(session?.openedAt || Date.now()).toLocaleString("ar-JO")}`} onClose={() => setShowCloseSession(false)} size="sm">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-card border border-border rounded-xl p-3 text-center">
-                <p className="text-xs text-muted-foreground mb-1">الرصيد الافتتاحي</p>
-                <p className="font-black text-lg text-foreground">{session?.openingBalance?.toFixed(3)} JOD</p>
+              <div className="bg-card border !border-slate-200 rounded-xl p-3 text-center">
+                <p className="text-xs !text-slate-500 mb-1">الرصيد الافتتاحي</p>
+                <p className="font-black text-lg !text-slate-800">{session?.openingBalance?.toFixed(3)} JOD</p>
               </div>
-              <div className="bg-card border border-border rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#22C55E"}}>
-                <p className="text-xs text-muted-foreground mb-1">إجمالي المبيعات</p>
+              <div className="bg-card border !border-slate-200 rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#22C55E"}}>
+                <p className="text-xs !text-slate-500 mb-1">إجمالي المبيعات</p>
                 <p className="font-black text-lg text-emerald-600">{total.toFixed(3)} JOD</p>
               </div>
             </div>
@@ -2196,7 +2208,7 @@ ${filtered.length > 0 ? `
             </F>
             {closingBal && (
               <div className={`p-3 rounded-xl border-2 text-center ${parseFloat(closingBal) >= (session?.openingBalance || 0) ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
-                <p className="text-xs text-muted-foreground mb-1">الفرق</p>
+                <p className="text-xs !text-slate-500 mb-1">الفرق</p>
                 <p className={`font-black text-lg ${parseFloat(closingBal) >= (session?.openingBalance || 0) ? "text-emerald-700" : "text-red-700"}`}>
                   {(parseFloat(closingBal) - (session?.openingBalance || 0)).toFixed(3)} JOD
                 </p>
@@ -2279,6 +2291,7 @@ ${filtered.length > 0 ? `
         </Modal>
       )}
     </main>
+    </div>
   );
 }
 
