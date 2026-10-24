@@ -509,12 +509,8 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
                 <div className={screen === "pos" ? "h-full" : "hidden"}><POSTerm store={store} /></div>
               )}
               {screen === "sales"     && <SalesScreen store={store} />}
-              {visitedScreens.includes("products") && (
-                <div className={screen === "products" ? "h-full" : "hidden"}><ProductsMgr /></div>
-              )}
-              {visitedScreens.includes("inventory") && (
-                <div className={screen === "inventory" ? "h-full" : "hidden"}><InvScreen /></div>
-              )}
+              {screen === "products" && <ProductsMgr />}
+              {screen === "inventory" && <InvScreen />}
               {screen === "customers" && <CustScreen />}
               {screen === "suppliers" && <SuppScreen />}
               {screen === "purchases"      && <PurchScreen />}
@@ -1397,7 +1393,7 @@ ${filtered.length > 0 ? `
 
   /* ─── MAIN 3-COLUMN POS LAYOUT ───────────────────────────────────────────── */
   return (
-    <div dir="rtl" className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-800" style={{colorScheme:"light",fontFamily:"'Cairo','Inter',sans-serif",background:"#F4F7F5",color:"#24352f"}}>
+    <div dir="rtl" className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-800" style={{colorScheme:"light",fontFamily:"'Cairo','Inter',sans-serif",background:"#F4F6FB",color:"#24352f"}}>
       <header className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-900 text-white shadow-sm"><ShoppingCart size={21}/></div>
@@ -1409,18 +1405,18 @@ ${filtered.length > 0 ? `
           <button onClick={() => { setQ(""); setCat("الكل"); setPosTab("all"); searchRef.current?.focus(); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"><Search size={13} className="ml-1 inline"/> بحث جديد</button>
         </div>
       </header>
-      <main dir="rtl" className="flex min-h-0 flex-1 overflow-hidden gap-3 p-3 sm:gap-4 sm:p-4" style={{background:"#F4F7F5",fontFamily:"'Cairo','Inter',sans-serif"}} aria-label="نقطة البيع">
+      <main dir="rtl" className="flex min-h-0 flex-1 overflow-hidden gap-3 p-3 sm:gap-4 sm:p-4" style={{background:"#F4F6FB",fontFamily:"'Cairo','Inter',sans-serif"}} aria-label="نقطة البيع">
 
       {/* ══ LEFT PANEL — Cart ══════════════════════════════════════════════════ */}
       <div className="order-2 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md shrink-0" style={{width:340,minWidth:300,background:"#FFFFFF",color:"#24352f"}}>
 
         {/* Cart header */}
-        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b !border-slate-200" style={{background:"#173A34"}}>
+        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b !border-slate-200" style={{background:"#29356F"}}>
           <div className="flex items-center gap-2">
             <ShoppingCart size={16} className="text-white" />
             <span className="font-black text-white text-sm">الفاتورة</span>
             {cart.length > 0 && (
-              <span className="text-xs font-black px-2 py-0.5 rounded-full" style={{background:"#C8A45C",color:"#173A34"}}>
+              <span className="text-xs font-black px-2 py-0.5 rounded-full" style={{background:"#F28C45",color:"#29356F"}}>
                 {cart.reduce((a,i)=>a+i.qty,0)}
               </span>
             )}
@@ -1458,12 +1454,12 @@ ${filtered.length > 0 ? `
               {posCustomers.filter(c => c.name.includes(customerQ) || (c.phone||"").includes(customerQ)).slice(0,8).map(c => (
                 <button key={c.id} className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 transition-all text-right"
                   onClick={() => { setSelectedCustomer(c); setCustomerQ(""); setShowCustSearch(false); }}>
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-black" style={{background:"#173A34",color:"white"}}>{c.name.charAt(0)}</div>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-black" style={{background:"#29356F",color:"white"}}>{c.name.charAt(0)}</div>
                   <div className="text-right flex-1">
                     <p className="text-sm font-bold !text-slate-800">{c.name}</p>
                     <p className="text-xs !text-slate-500">{c.phone}</p>
                   </div>
-                  {(c.loyaltyPoints||0) > 0 && <span className="text-xs font-black" style={{color:"#C8A45C"}}>{c.loyaltyPoints} نقطة</span>}
+                  {(c.loyaltyPoints||0) > 0 && <span className="text-xs font-black" style={{color:"#F28C45"}}>{c.loyaltyPoints} نقطة</span>}
                 </button>
               ))}
               {posCustomers.filter(c => c.name.includes(customerQ) || (c.phone||"").includes(customerQ)).length === 0 && (
@@ -1474,13 +1470,13 @@ ${filtered.length > 0 ? `
           {selectedCustomer && (
             <div className="flex items-center justify-between mt-1.5 px-1">
               <div className="flex items-center gap-1.5">
-                <CheckCircle size={12} style={{color:"#173A34"}} />
-                <span className="text-xs font-bold" style={{color:"#173A34"}}>{selectedCustomer.name}</span>
+                <CheckCircle size={12} style={{color:"#29356F"}} />
+                <span className="text-xs font-bold" style={{color:"#29356F"}}>{selectedCustomer.name}</span>
               </div>
               {(selectedCustomer.loyaltyPoints||0) > 0 && (
                 <div className="flex items-center gap-1">
-                  <Star size={11} style={{color:"#C8A45C"}} />
-                  <span className="text-xs font-black" style={{color:"#C8A45C"}}>{selectedCustomer.loyaltyPoints} نقطة</span>
+                  <Star size={11} style={{color:"#F28C45"}} />
+                  <span className="text-xs font-black" style={{color:"#F28C45"}}>{selectedCustomer.loyaltyPoints} نقطة</span>
                 </div>
               )}
             </div>
@@ -1492,7 +1488,7 @@ ${filtered.length > 0 ? `
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-10 px-4">
               <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3" style={{background:"#F0EEE9"}}>
-                <ShoppingCart size={28} style={{color:"#C8A45C"}} />
+                <ShoppingCart size={28} style={{color:"#F28C45"}} />
               </div>
               <p className="text-sm font-bold !text-slate-500">السلة فارغة</p>
               <p className="text-xs !text-slate-500 mt-1">اضغط على منتج لإضافته</p>
@@ -1505,10 +1501,10 @@ ${filtered.length > 0 ? `
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold !text-slate-800 truncate leading-tight">{item.product.nameAr}</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-xs font-black" style={{color:"#173A34"}}>{(item.product.sellPrice * (1 - item.discount/100)).toFixed(3)}</span>
+                        <span className="text-xs font-black" style={{color:"#29356F"}}>{(item.product.sellPrice * (1 - item.discount/100)).toFixed(3)}</span>
                         <span className="text-xs !text-slate-500">JOD</span>
                         {item.discount > 0 && <span className="text-xs line-through !text-slate-500">{item.product.sellPrice.toFixed(3)}</span>}
-                        {item.promoApplied && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{background:"#173A34",color:"#C8A45C"}}>{item.promoApplied}</span>}
+                        {item.promoApplied && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{background:"#29356F",color:"#F28C45"}}>{item.promoApplied}</span>}
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
@@ -1532,7 +1528,7 @@ ${filtered.length > 0 ? `
                       <input type="range" min={0} max={50} step={1} value={item.discount}
                         onChange={e => updd(item.product.id, parseFloat(e.target.value))}
                         className="flex-1 h-1 accent-primary cursor-pointer" />
-                      <span className="text-xs font-black w-8 text-left" style={{color: item.discount > 0 ? "#173A34" : undefined}}>{item.discount}%</span>
+                      <span className="text-xs font-black w-8 text-left" style={{color: item.discount > 0 ? "#29356F" : undefined}}>{item.discount}%</span>
                     </div>
                   )}
                 </div>
@@ -1543,7 +1539,7 @@ ${filtered.length > 0 ? `
 
         {/* Held orders */}
         {holds.length > 0 && (
-          <div className="shrink-0 border-t !border-slate-200/60 px-3 py-2" style={{background:"#FFFBF0"}}>
+          <div className="shrink-0 border-t !border-slate-200/60 px-3 py-2" style={{background:"#FFF5ED"}}>
             <p className="text-xs font-bold text-amber-700 mb-1.5 flex items-center gap-1"><Archive size={11} /> طلبات معلقة ({holds.length})</p>
             <div className="flex gap-1.5 flex-wrap">
               {holds.map((h, i) => (
@@ -1558,7 +1554,7 @@ ${filtered.length > 0 ? `
 
         {/* Cart totals + checkout */}
         {cart.length > 0 && (
-          <div className="shrink-0 border-t !border-slate-200" style={{background:"#F7F5F2"}}>
+          <div className="shrink-0 border-t !border-slate-200" style={{background:"#F5F6FA"}}>
             <div className="px-4 py-3 space-y-1.5">
               <div className="flex justify-between text-sm">
                 <span className="!text-slate-500">المجموع الفرعي</span>
@@ -1568,7 +1564,7 @@ ${filtered.length > 0 ? `
                 <div className="flex items-center gap-2 py-0.5">
                   <span className="text-xs !text-slate-500 shrink-0">خصم الفاتورة</span>
                   <input type="range" min={0} max={50} step={1} value={disc} onChange={e => setDisc(parseFloat(e.target.value))} className="flex-1 h-1 accent-primary cursor-pointer" />
-                  <span className="text-xs font-black w-8 text-left" style={{color: disc > 0 ? "#173A34" : undefined}}>{disc}%</span>
+                  <span className="text-xs font-black w-8 text-left" style={{color: disc > 0 ? "#29356F" : undefined}}>{disc}%</span>
                 </div>
               )}
               {da > 0 && <div className="flex justify-between text-sm"><span className="text-red-500">خصم</span><span className="font-bold text-red-500">-{da.toFixed(3)} JOD</span></div>}
@@ -1578,7 +1574,7 @@ ${filtered.length > 0 ? `
               {couponDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-blue-500">كوبون</span><span className="font-bold text-blue-600">-{couponDiscount.toFixed(3)} JOD</span></div>}
               <div className="flex justify-between pt-1.5 border-t !border-slate-200">
                 <span className="font-black text-base">الإجمالي</span>
-                <span className="font-black text-xl" style={{color:"#173A34"}}>{finalTotal.toFixed(3)} JOD</span>
+                <span className="font-black text-xl" style={{color:"#29356F"}}>{finalTotal.toFixed(3)} JOD</span>
               </div>
             </div>
             <div className="flex gap-1.5 px-3 pb-3">
@@ -1593,7 +1589,7 @@ ${filtered.length > 0 ? `
               </button>
               <button onClick={() => setShowPay(true)}
                 className="flex-1 h-10 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90"
-                style={{background:"#C8A45C",color:"#173A34"}}>
+                style={{background:"#F28C45",color:"#29356F"}}>
                 <CreditCard size={15} />الدفع
               </button>
             </div>
@@ -1604,10 +1600,10 @@ ${filtered.length > 0 ? `
       {/* ══ CENTER PANEL — Products ════════════════════════════════════════════ */}
       <div className="order-1 flex-1 min-w-0 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md" style={{background:"#FFFFFF",color:"#24352f"}}>
         {/* Toolbar */}
-        <div className="shrink-0 px-4 py-3 border-b border-[#e2e9e5] space-y-3" style={{background:"#FFFFFF"}}>
+        <div className="shrink-0 px-4 py-3 border-b border-[#E1E5EF] space-y-3" style={{background:"#FFFFFF"}}>
           <div className="flex items-center justify-between gap-3">
-            <div><h2 className="text-base font-black" style={{color:"#173A34"}}>المنتجات</h2><p className="text-xs mt-0.5 !text-slate-500">اختَر المنتج لإضافته إلى الفاتورة</p></div>
-            <div className="hidden sm:flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1.5" style={{background:"#edf5f1",color:"#23634f"}}><span className="w-2 h-2 rounded-full" style={{background:isOnline?"#2f9e68":"#d97706"}} />{isOnline ? "متصل" : "دون اتصال"} · {prods.length} منتج</div>
+            <div><h2 className="text-base font-black" style={{color:"#29356F"}}>المنتجات</h2><p className="text-xs mt-0.5 !text-slate-500">اختَر المنتج لإضافته إلى الفاتورة</p></div>
+            <div className="hidden sm:flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1.5" style={{background:"#EEF0FF",color:"#384A9A"}}><span className="w-2 h-2 rounded-full" style={{background:isOnline?"#4F46E5":"#d97706"}} />{isOnline ? "متصل" : "دون اتصال"} · {prods.length} منتج</div>
           </div>
           {!isOnline && (
             <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs font-bold text-amber-700">
@@ -1617,10 +1613,10 @@ ${filtered.length > 0 ? `
           <div className="flex gap-2">
             <div className="flex-1 relative">
               {scannerMode ? (
-                <div className="w-full h-10 rounded-xl border-2 border-dashed flex items-center gap-2 px-3" style={{borderColor:"#C8A45C",background:"#FFFBF0"}}>
-                  <Scan size={14} style={{color:"#C8A45C"}} className="shrink-0 animate-pulse" />
+                <div className="w-full h-10 rounded-xl border-2 border-dashed flex items-center gap-2 px-3" style={{borderColor:"#F28C45",background:"#FFF5ED"}}>
+                  <Scan size={14} style={{color:"#F28C45"}} className="shrink-0 animate-pulse" />
                   <input ref={searchRef} type="text" value={q} onChange={e => setQ(e.target.value)} onKeyDown={handleSearchKey}
-                    className="flex-1 bg-transparent outline-none text-sm font-bold" placeholder="امسح الباركود..." autoFocus style={{color:"#173A34"}} />
+                    className="flex-1 bg-transparent outline-none text-sm font-bold" placeholder="امسح الباركود..." autoFocus style={{color:"#29356F"}} />
                 </div>
               ) : (
                 <div className="relative">
@@ -1634,7 +1630,7 @@ ${filtered.length > 0 ? `
             </div>
             <button onClick={() => { setScannerMode(m => !m); setQ(""); setTimeout(() => searchRef.current?.focus(), 50); }}
               className="w-10 h-10 rounded-xl border transition-all flex items-center justify-center shrink-0"
-              style={scannerMode ? {background:"#173A34",borderColor:"#173A34",color:"white"} : {background:"white",borderColor:"#e5e7eb",color:"#6b7280"}}>
+              style={scannerMode ? {background:"#29356F",borderColor:"#29356F",color:"white"} : {background:"white",borderColor:"#E1E5EF",color:"#6b7280"}}>
               <Scan size={15} />
             </button>
             <button onClick={() => setVm(v => v === "grid" ? "list" : "grid")}
@@ -1650,7 +1646,7 @@ ${filtered.length > 0 ? `
               return (
                 <button key={t} onClick={() => setPosTab(t)}
                   className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0"
-                  style={posTab === t ? {background:"#173A34",color:"white"} : {background:"#f0f0f0",color:"#666"}}>
+                  style={posTab === t ? {background:"#29356F",color:"white"} : {background:"#F0F2F8",color:"#666"}}>
                   {labels[i]}
                 </button>
               );
@@ -1661,8 +1657,8 @@ ${filtered.length > 0 ? `
               <button key={c} onClick={() => setCat(cat === c ? "" : c)}
                 className="px-2.5 h-7 rounded-lg text-xs font-bold whitespace-nowrap transition-all shrink-0"
                 style={cat === c
-                  ? {background:"#C8A45C",color:"#173A34",fontWeight:800}
-                  : {background:"#f0f0f0",color:"#555"}}>
+                  ? {background:"#F28C45",color:"#29356F",fontWeight:800}
+                  : {background:"#F0F2F8",color:"#555"}}>
                 {c}
               </button>
             ))}
@@ -1678,7 +1674,7 @@ ${filtered.length > 0 ? `
         </div>
 
         {/* Product catalog */}
-        {true ? (<div className="flex-1 min-h-0 overflow-y-auto p-3" style={{background:"#F5F8F6"}}>
+        {true ? (<div className="flex-1 min-h-0 overflow-y-auto p-3" style={{background:"#F4F6FB"}}>
           {prods.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-16">
               <Package size={40} className="!text-slate-500/30 mb-3" />
@@ -1694,21 +1690,21 @@ ${filtered.length > 0 ? `
                 return (
                   <div key={p.id} className="relative group">
                     <button onClick={() => add(p)} disabled={outOfStock}
-                      className="w-full flex flex-col rounded-2xl border transition-all text-right overflow-hidden active:scale-[0.98] hover:-translate-y-0.5 hover:shadow-md min-h-[154px]"
+                      className="w-full flex flex-col rounded-2xl border transition-all text-right overflow-hidden active:scale-[0.98] hover:-translate-y-0.5 hover:shadow-md min-h-[176px]"
                       style={outOfStock
-                        ? {opacity:0.55,cursor:"not-allowed",borderColor:"#e5e7eb",background:"#fafafa"}
+                        ? {opacity:0.55,cursor:"not-allowed",borderColor:"#E1E5EF",background:"#F7F8FC"}
                         : inCart
-                        ? {borderColor:"#173A34",background:"#f0f7f5",boxShadow:"0 0 0 3px rgba(23,58,52,0.08)"}
-                        : {borderColor:"#e8e8e8",background:"white"}}>
+                        ? {borderColor:"#29356F",background:"#EEF0FF",boxShadow:"0 0 0 3px rgba(23,58,52,0.08)"}
+                        : {borderColor:"#E1E5EF",background:"white"}}>
                       {/* Image — fixed 68px height, letter fallback when no image */}
                       <div className="w-full relative overflow-hidden shrink-0"
-                        style={{height:82, background: inCart ? "#d6ede7" : "#f2f5f3"}}>
-                        <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover"
+                        style={{height:94, background: inCart ? "#DDE3FF" : "#F0F2F8"}}>
+                        <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover" loading="lazy"
                           style={{display: p.image ? undefined : "none"}}
                           onError={e => { (e.target as HTMLImageElement).style.display="none"; }} />
                         {!p.image && (
                           <span className="absolute inset-0 flex items-center justify-center text-3xl font-black select-none"
-                            style={{color:"#173A34",opacity:0.18}}>{p.nameAr?.charAt(0)||"؟"}</span>
+                            style={{color:"#29356F",opacity:0.18}}>{p.nameAr?.charAt(0)||"؟"}</span>
                         )}
                         {outOfStock && (
                           <div className="absolute inset-0 flex items-center justify-center" style={{background:"rgba(0,0,0,0.52)"}}>
@@ -1717,7 +1713,7 @@ ${filtered.length > 0 ? `
                         )}
                         {inCart && (
                           <span className="absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shadow"
-                            style={{background:"#173A34",color:"#C8A45C"}}>{inCart.qty}</span>
+                            style={{background:"#29356F",color:"#F28C45"}}>{inCart.qty}</span>
                         )}
                         {low && !outOfStock && !inCart && (
                           <span className="absolute top-1 left-1 text-[9px] font-black px-1 py-0.5 rounded shadow"
@@ -1730,7 +1726,7 @@ ${filtered.length > 0 ? `
                           {p.nameAr}
                         </p>
                         <div className="flex items-baseline gap-1 mt-1">
-                          <span className="text-sm font-black" style={{color:"#173A34"}}>{p.sellPrice.toFixed(3)}</span>
+                          <span className="text-sm font-black" style={{color:"#29356F"}}>{p.sellPrice.toFixed(3)}</span>
                           <span className="text-[9px] font-medium" style={{color:"#aaa"}}>JOD</span>
                         </div>
                       </div>
@@ -1754,20 +1750,20 @@ ${filtered.length > 0 ? `
                   <button key={p.id} onClick={() => add(p)} disabled={outOfStock}
                     className="w-full flex items-center gap-2.5 rounded-xl border px-3 py-2 transition-all text-right active:scale-[0.99]"
                     style={outOfStock
-                      ? {opacity:0.55,cursor:"not-allowed",borderColor:"#e5e7eb",background:"#fafafa"}
+                      ? {opacity:0.55,cursor:"not-allowed",borderColor:"#E1E5EF",background:"#F7F8FC"}
                       : inCart
-                      ? {borderColor:"#173A34",background:"#f0f7f5"}
-                      : {borderColor:"#e8e8e8",background:"white"}}>
+                      ? {borderColor:"#29356F",background:"#EEF0FF"}
+                      : {borderColor:"#E1E5EF",background:"white"}}>
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden text-xl font-black"
-                      style={{background: inCart ? "#d6ede7" : "#eeece8", color:"#173A34"}}>
+                      style={{background: inCart ? "#DDE3FF" : "#E8EBF5", color:"#29356F"}}>
                       {p.image
-                        ? <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display="none"; }} />
+                        ? <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover" loading="lazy" onError={e => { (e.target as HTMLImageElement).style.display="none"; }} />
                         : <span style={{opacity:0.28}}>{p.nameAr?.charAt(0)||"؟"}</span>
                       }
                     </div>
                     <div className="flex-1 text-right min-w-0">
                       <p className="text-sm font-bold truncate !text-slate-800">{p.nameAr}</p>
-                      <p className="text-xs" style={{color:"#9ca3af"}}>
+                      <p className="text-xs" style={{color:"#7B849A"}}>
                         {p.category}{p.category ? " · " : ""}
                         <span className={outOfStock ? "text-red-500 font-bold" : lowStock ? "text-amber-500 font-bold" : "text-emerald-600 font-medium"}>
                           {outOfStock ? "نفد المخزون" : `${p.stock} ${p.unit||"قطعة"}`}
@@ -1776,12 +1772,12 @@ ${filtered.length > 0 ? `
                     </div>
                     <div className="shrink-0 flex items-center gap-1.5">
                       <div className="text-left">
-                        <p className="text-sm font-black" style={{color:"#173A34"}}>{p.sellPrice.toFixed(3)}</p>
+                        <p className="text-sm font-black" style={{color:"#29356F"}}>{p.sellPrice.toFixed(3)}</p>
                         <p className="text-[10px]" style={{color:"#aaa"}}>JOD</p>
                       </div>
                       {inCart && (
                         <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black"
-                          style={{background:"#173A34",color:"#C8A45C"}}>{inCart.qty}</span>
+                          style={{background:"#29356F",color:"#F28C45"}}>{inCart.qty}</span>
                       )}
                     </div>
                   </button>
@@ -1791,9 +1787,9 @@ ${filtered.length > 0 ? `
           )}
           <div ref={loadMoreRef} className="h-4" />
         </div>) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center" style={{background:"#fafaf8"}}>
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{background:"#e8f0ed",color:"#173A34"}}><Scan size={30} /></div>
-            <p className="font-black text-base" style={{color:"#173A34"}}>لا توجد منتجات مطابقة</p>
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center" style={{background:"#F7F8FC"}}>
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{background:"#E1E6FF",color:"#29356F"}}><Scan size={30} /></div>
+            <p className="font-black text-base" style={{color:"#29356F"}}>لا توجد منتجات مطابقة</p>
             <p className="text-sm !text-slate-500 mt-2 max-w-xs">جرّب البحث باسم المنتج أو امسح الباركود، أو غيّر التصنيف المحدد.</p>
           </div>
         )}
@@ -1803,9 +1799,9 @@ ${filtered.length > 0 ? `
       <div className="flex flex-col overflow-hidden border-r !border-slate-200" style={{width:268,minWidth:268,background:"white"}}>
 
         {/* Header */}
-        <div className="shrink-0 px-4 py-3 border-b !border-slate-200" style={{background:"#173A34"}}>
+        <div className="shrink-0 px-4 py-3 border-b !border-slate-200" style={{background:"#29356F"}}>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm shrink-0" style={{background:"#C8A45C",color:"#173A34"}}>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm shrink-0" style={{background:"#F28C45",color:"#29356F"}}>
               {posUserName ? posUserName.charAt(0) : "P"}
             </div>
             <div className="flex-1 min-w-0">
@@ -1833,7 +1829,7 @@ ${filtered.length > 0 ? `
                   className="flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all font-bold text-xs"
                   style={pay === m.id
                     ? {background:m.color,borderColor:m.color,color:"white"}
-                    : {background:"#f9f9f9",borderColor:"#e5e7eb",color:"#6b7280"}}>
+                    : {background:"#f9f9f9",borderColor:"#E1E5EF",color:"#6b7280"}}>
                   {m.icon}{m.label}
                 </button>
               ))}
@@ -1886,8 +1882,8 @@ ${filtered.length > 0 ? `
             {selectedCustomer && maxRedeemable > 0 && (
               <button onClick={() => setRedeemPoints(v => !v)}
                 className="w-full flex items-center justify-between px-3 py-2 rounded-xl border-2 transition-all text-xs font-bold"
-                style={redeemPoints ? {background:"#FFF8E7",borderColor:"#C8A45C",color:"#92600A"} : {background:"#f9f9f9",borderColor:"#e5e7eb",color:"#6b7280"}}>
-                <div className="flex items-center gap-1.5"><Star size={11} style={{color:"#C8A45C"}} />نقاط الولاء</div>
+                style={redeemPoints ? {background:"#FFF8E7",borderColor:"#F28C45",color:"#92600A"} : {background:"#f9f9f9",borderColor:"#E1E5EF",color:"#6b7280"}}>
+                <div className="flex items-center gap-1.5"><Star size={11} style={{color:"#F28C45"}} />نقاط الولاء</div>
                 <span>{maxRedeemable} → {(maxRedeemable*loyaltyPV).toFixed(3)}</span>
               </button>
             )}
@@ -1897,7 +1893,7 @@ ${filtered.length > 0 ? `
           <div className="px-3 pb-3">
             <button onClick={() => cart.length > 0 && setShowPay(true)} disabled={cart.length===0}
               className="w-full rounded-xl font-black py-4 flex flex-col items-center gap-0.5 transition-all hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
-              style={{background: cart.length > 0 ? "linear-gradient(135deg,#173A34,#1e4a3f)" : "#e5e7eb", color: cart.length > 0 ? "#F7F5F2" : "#9ca3af"}}>
+              style={{background: cart.length > 0 ? "linear-gradient(135deg,#29356F,#1e4a3f)" : "#E1E5EF", color: cart.length > 0 ? "#F5F6FA" : "#7B849A"}}>
               <span className="text-lg font-black">{finalTotal > 0 ? `${finalTotal.toFixed(3)} JOD` : "0.000 JOD"}</span>
               <span className="text-xs font-bold opacity-80">اضغط للدفع</span>
             </button>
@@ -1935,7 +1931,7 @@ ${filtered.length > 0 ? `
           </button>
           <button onClick={() => { setClosingBal(""); setShowCloseSession(true); }}
             className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border-2 text-xs font-bold transition-all hover:opacity-80"
-            style={{borderColor:"#173A34",color:"#173A34"}}>
+            style={{borderColor:"#29356F",color:"#29356F"}}>
             <Power size={13} />إغلاق الجلسة
           </button>
         </div>
@@ -1954,7 +1950,7 @@ ${filtered.length > 0 ? `
               ]).map(m => (
                 <button key={m.id} onClick={() => setPay(m.id)}
                   className="flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 transition-all text-xs font-bold"
-                  style={pay === m.id ? {background:"#173A34",borderColor:"#173A34",color:"white"} : {background:"#f9f9f9",borderColor:"#e5e7eb",color:"#6b7280"}}>
+                  style={pay === m.id ? {background:"#29356F",borderColor:"#29356F",color:"white"} : {background:"#f9f9f9",borderColor:"#E1E5EF",color:"#6b7280"}}>
                   {m.icon}{m.label}
                 </button>
               ))}
