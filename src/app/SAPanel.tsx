@@ -714,22 +714,27 @@ function SAStores() {
 
   const toggle = async (id: string) => {
     const store = stores.find(s => s.id === id);
-    const newStatus = store?.status === "active" ? "suspended" : "active";
+    if (!store) return;
+    const newStatus = store.status === "active" ? "suspended" : "active";
     try {
-      await apiUpdateStore(id, { status: newStatus });
-    } catch { /* fallback */ }
-    setStores(p => p.map(s => s.id === id ? { ...s, status: newStatus as StoreData["status"] } : s));
-    showToast(store?.status === "active" ? `تم إيقاف "${store?.nameAr}"` : `تم تفعيل "${store?.nameAr}"`, store?.status === "active" ? "warning" : "success");
+      const saved = await apiUpdateStore(id, { status: newStatus }) as StoreData;
+      setStores(p => p.map(s => s.id === id ? { ...s, ...saved, id } : s));
+      showToast(store.status === "active" ? "تم إيقاف " + store.nameAr : "تم تفعيل " + store.nameAr, store.status === "active" ? "warning" : "success");
+    } catch (e) {
+      showToast((e as { error?: string })?.error || "تعذّر تغيير حالة المتجر؛ لم يتم حفظ التغيير.", "error");
+    }
   };
 
   const doDelete = async (id: string) => {
     const store = stores.find(s => s.id === id);
     try {
       await apiDeleteStore(id);
-    } catch { /* fallback */ }
-    setStores(p => p.filter(s => s.id !== id));
-    setDeleteConfirm(null); setDetail(null);
-    showToast(`تم حذف متجر "${store?.nameAr}"`, "warning");
+      setStores(p => p.filter(s => s.id !== id));
+      setDeleteConfirm(null); setDetail(null);
+      showToast("تم حذف متجر " + (store?.nameAr || ""), "warning");
+    } catch (e) {
+      showToast((e as { error?: string })?.error || "تعذّر حذف المتجر؛ لم يتم حذف البيانات.", "error");
+    }
   };
 
   // إنشاء متجر — يُحفظ في MongoDB فقط
@@ -760,19 +765,21 @@ function SAStores() {
   const doEdit = async () => {
     if (!editStore) return;
     try {
-      await apiUpdateStore(editStore.id, {
+      const saved = await apiUpdateStore(editStore.id, {
         nameAr: editStore.nameAr, nameEn: editStore.nameEn, owner: editStore.owner,
         phone: editStore.phone, city: editStore.city, plan: editStore.plan,
         status: editStore.status, expiresAt: editStore.expiresAt, taxNo: editStore.taxNo,
         sidebarFeatures: editStore.sidebarFeatures,
-      });
-    } catch { /* fallback */ }
-    setStores(p => p.map(s => s.id === editStore.id ? editStore : s));
-    if (detail?.id === editStore.id) setDetail(editStore);
-    // تحديث localStorage حتى تُطبَّق التغييرات فوراً في واجهة المتجر
-    try { localStorage.setItem(`sowwanjo_storeinfo_${editStore.id}`, JSON.stringify(editStore)); } catch {}
-    showToast(`تم تحديث بيانات "${editStore.nameAr}" بنجاح`);
-    setEditStore(null);
+      }) as StoreData & { _id?: string };
+      const updated = { ...editStore, ...saved, id: editStore.id };
+      setStores(p => p.map(s => s.id === editStore.id ? updated : s));
+      if (detail?.id === editStore.id) setDetail(updated);
+      try { localStorage.setItem("sowwanjo_storeinfo_" + editStore.id, JSON.stringify(updated)); } catch {}
+      showToast("تم تحديث بيانات " + editStore.nameAr + " بنجاح", "success");
+      setEditStore(null);
+    } catch (e) {
+      showToast((e as { error?: string })?.error || "فشل حفظ التعديلات في قاعدة البيانات؛ لم يتم اعتماد التغيير.", "error");
+    }
   };
 
   const openResetStorePass = (store: StoreData) => {
