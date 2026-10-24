@@ -606,7 +606,18 @@ function StoreDash({ store }: { store: StoreData }) {
 
   return (
     <div className="store-dashboard p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 overflow-y-auto h-full">
-      <section className="dashboard-welcome flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-4 sm:px-5 sm:py-5">\n        <div className="min-w-0">\n          <p className="text-xs font-bold text-primary mb-1">مساحة العمل</p>\n          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">نظرة عامة على المتجر</h1>\n          <p className="text-sm text-muted-foreground mt-1">{store.nameAr || "متجرك"} · ملخص الأداء والنشاط</p>\n        </div>\n        <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-muted-foreground rounded-xl bg-muted/60 border border-border px-3 py-2.5 self-start sm:self-auto">\n          <Clock size={15} />\n          {new Date().toLocaleDateString("ar-JO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}\n        </div>\n      </section>\n      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="dashboard-welcome flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-4 sm:px-5 sm:py-5">
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-primary mb-1">مساحة العمل</p>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">نظرة عامة على المتجر</h1>
+          <p className="text-sm text-muted-foreground mt-1">{store.nameAr || "متجرك"} · ملخص الأداء والنشاط</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-muted-foreground rounded-xl bg-muted/60 border border-border px-3 py-2.5 self-start sm:self-auto">
+          <Clock size={15} />
+          {new Date().toLocaleDateString("ar-JO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        </div>
+      </section>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI icon={<ShoppingCart size={16} />} label="مبيعات اليوم"
           value={sumLoading ? "..." : `${(summary.today?.total || 0).toFixed(3)} JOD`}
           sub={`${summary.today?.count || 0} فاتورة`} color="#2563EB" />
