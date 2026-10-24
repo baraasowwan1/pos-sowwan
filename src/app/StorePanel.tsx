@@ -1919,7 +1919,7 @@ ${filtered.length > 0 ? `
             </button>
             <div className="flex items-center justify-between px-3 py-2 rounded-xl border !border-slate-200/60 bg-slate-50">
               <span className="text-xs !text-slate-500">فتح الدرج تلقائياً</span>
-              <Toggle value={drawerAuto} onChange={setDrawerAuto} />
+              <Toggle value={drawerAuto} onChange={async (enabled: boolean) => { if (!enabled) { setDrawerAuto(false); return; } try { const { prepareCashDrawer } = await import("./cashDrawer"); const result = await prepareCashDrawer(); if (result === "ready") { setDrawerAuto(true); showToast("تم منح الإذن للمنفذ التسلسلي فقط. هذا لا يضمن توافق درجك قبل الاختبار.", "warning"); } else if (result === "no_serial") showToast("هذا المتصفح لا يدعم الاتصال التسلسلي المباشر. قد تحتاج برنامج ربط للطابعة.", "warning"); else if (result === "cancelled") showToast("لم يتم اختيار منفذ؛ بقي الفتح التلقائي معطلاً.", "warning"); else showToast("تعذر إعداد المنفذ؛ بقي الفتح التلقائي معطلاً.", "error"); } catch { showToast("تعذر إعداد اتصال الدرج؛ بقي الفتح التلقائي معطلاً.", "error"); } }} />
             </div>
           </div>
         </div>
