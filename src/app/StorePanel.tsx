@@ -149,6 +149,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
     } catch { return ["dashboard"]; }
   });
   const navTo = (s: string) => {
+    if (typeof visibleNav !== "undefined" && !visibleNav.some(n => n.id === s)) return;
     setScreen(s);
     setVisitedScreens(prev => prev.includes(s) ? prev : [...prev, s]);
     try { localStorage.setItem(`sowwanjo_store_screen_${storeId}`, s); } catch {}
