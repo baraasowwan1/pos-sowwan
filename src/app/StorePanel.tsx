@@ -1421,7 +1421,7 @@ ${filtered.length > 0 ? `
 
   /* ─── MAIN 3-COLUMN POS LAYOUT ───────────────────────────────────────────── */
   return (
-    <div dir="rtl" className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-800" style={{colorScheme:"light",fontFamily:"'Cairo','Inter',sans-serif",background:"#F4F6FB",color:"#24352f"}}>
+    <div dir="rtl" className="pos-terminal flex h-full min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-800" style={{colorScheme:"light",fontFamily:"'Cairo','Inter',sans-serif",background:"#F4F6FB",color:"#24352f"}}>
       <header className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-950 text-white shadow-sm"><ShoppingCart size={21}/></div>
@@ -1433,10 +1433,10 @@ ${filtered.length > 0 ? `
           <button onClick={() => { setQ(""); setCat("الكل"); setPosTab("all"); searchRef.current?.focus(); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"><Search size={13} className="ml-1 inline"/> بحث جديد</button>
         </div>
       </header>
-      <main dir="rtl" className="flex min-h-0 flex-1 overflow-hidden gap-3 p-3 sm:gap-4 sm:p-4" style={{background:"#F4F6FB",fontFamily:"'Cairo','Inter',sans-serif"}} aria-label="نقطة البيع">
+      <main dir="rtl" className="pos-workspace flex min-h-0 flex-1 overflow-hidden gap-3 p-3 sm:gap-4 sm:p-4" style={{background:"#F4F6FB",fontFamily:"'Cairo','Inter',sans-serif"}} aria-label="نقطة البيع">
 
       {/* ══ LEFT PANEL — Cart ══════════════════════════════════════════════════ */}
-      <div className="order-2 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md shrink-0" style={{width:340,minWidth:300,background:"#FFFFFF",color:"#24352f"}}>
+      <div className="pos-cart-panel order-2 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md shrink-0" style={{width:340,minWidth:300,background:"#FFFFFF",color:"#24352f"}}>
 
         {/* Cart header */}
         <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b !border-slate-200" style={{background:"#29356F"}}>
@@ -1626,7 +1626,7 @@ ${filtered.length > 0 ? `
       </div>
 
       {/* ══ CENTER PANEL — Products ════════════════════════════════════════════ */}
-      <div className="order-1 flex-1 min-w-0 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md" style={{background:"#FFFFFF",color:"#24352f"}}>
+      <div className="pos-products-panel order-1 flex-1 min-w-0 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md" style={{background:"#FFFFFF",color:"#24352f"}}>
         {/* Toolbar */}
         <div className="shrink-0 px-4 py-3 border-b border-[#E1E5EF] space-y-3" style={{background:"#FFFFFF"}}>
           <div className="flex items-center justify-between gap-3">
