@@ -1454,6 +1454,7 @@ function StoreSetts({ store }: { store: StoreData }) {
         localStorage.setItem(`sowwanjo_storeinfo_${sid}`, JSON.stringify(info));
       } catch {}
       await refreshSettings();
+      window.dispatchEvent(new Event("sowwan:store-updated"));
       showToast("تم حفظ إعدادات المتجر في قاعدة البيانات ✅", "success");
     } catch { showToast("خطأ في حفظ الإعدادات", "error"); }
   };
