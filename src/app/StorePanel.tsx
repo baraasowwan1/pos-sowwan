@@ -1436,7 +1436,7 @@ ${filtered.length > 0 ? `
   /* ─── MAIN 3-COLUMN POS LAYOUT ───────────────────────────────────────────── */
   return (
     <div dir="rtl" className="pos-terminal flex h-full min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-800" style={{colorScheme:"light",fontFamily:"'Cairo','Inter',sans-serif",background:"#F4F6FB",color:"#24352f"}}>
-      <header className="pos-command-bar shrink-0">
+      <header className="pos-command-bar pos-command-bar-v2 shrink-0">
         <div className="pos-brand-lockup">
           <div className="pos-brand-mark"><ShoppingCart size={22}/></div>
           <div className="min-w-0"><h1>{store.nameAr || "نقطة البيع"}</h1><p>مساحة البيع السريع <span>•</span> فاتورة جديدة</p></div>
@@ -1447,199 +1447,9 @@ ${filtered.length > 0 ? `
           <button onClick={() => { setShowCatalog(true); setQ(""); setCat("الكل"); setPosTab("all"); searchRef.current?.focus(); }} className="pos-new-search"><Search size={15}/> بحث جديد <kbd>⌕</kbd></button>
         </div>
       </header>
-      <main dir="rtl" className="pos-workspace pos-checkout-first min-h-0 flex-1 overflow-hidden" style={{background:"#F4F6FB",fontFamily:"'Cairo','Inter',sans-serif"}} aria-label="نقطة البيع">
-
-      {/* ══ LEFT PANEL — Cart ══════════════════════════════════════════════════ */}
-      <div className="pos-cart-panel flex flex-col overflow-hidden shrink-0" style={{width:390,minWidth:340,background:"#FFFFFF",color:"#24352f"}}>
-
-        {/* Cart header */}
-        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b !border-slate-200" style={{background:"#29356F"}}>
-          <div className="flex items-center gap-2">
-            <ShoppingCart size={16} className="text-white" />
-            <span className="font-black text-white text-sm">الفاتورة</span>
-            {cart.length > 0 && (
-              <span className="text-xs font-black px-2 py-0.5 rounded-full" style={{background:"#F28C45",color:"#29356F"}}>
-                {cart.reduce((a,i)=>a+i.qty,0)}
-              </span>
-            )}
-          </div>
-          {cart.length > 0 && (
-            <button onClick={() => setCart([])} className="text-xs font-bold px-2 py-1 rounded-lg transition-all hover:bg-white/10" style={{color:"rgba(255,255,255,0.6)"}}>
-              مسح الكل
-            </button>
-          )}
-        </div>
-
-        {/* Customer selector */}
-        <div className="shrink-0 px-3 py-2.5 border-b !border-slate-200/60 relative">
-          <div className="flex gap-1.5">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                placeholder="اختر عميل (اختياري)..."
-                value={selectedCustomer ? selectedCustomer.name : customerQ}
-                onChange={e => { setCustomerQ(e.target.value); setShowCustSearch(true); setSelectedCustomer(null); }}
-                onFocus={() => setShowCustSearch(true)}
-                className="w-full h-9 rounded-xl border !border-slate-200 !bg-white text-sm px-3 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-300/60"
-              />
-              <Users size={13} className="absolute right-2.5 top-2.5 !text-slate-500 pointer-events-none" />
-              {selectedCustomer && (
-                <button onClick={() => { setSelectedCustomer(null); setCustomerQ(""); }} className="absolute left-2.5 top-2.5 !text-slate-500 hover:!text-slate-800"><X size={13} /></button>
-              )}
-            </div>
-            <button onClick={() => setShowAddCust(true)} className="w-9 h-9 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all shrink-0">
-              <Plus size={14} className="!text-slate-500" />
-            </button>
-          </div>
-          {showCustSearch && customerQ && (
-            <div className="absolute right-3 left-3 top-full mt-1 bg-card border !border-slate-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
-              {posCustomers.filter(c => c.name.includes(customerQ) || (c.phone||"").includes(customerQ)).slice(0,8).map(c => (
-                <button key={c.id} className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 transition-all text-right"
-                  onClick={() => { setSelectedCustomer(c); setCustomerQ(""); setShowCustSearch(false); }}>
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-black" style={{background:"#29356F",color:"white"}}>{c.name.charAt(0)}</div>
-                  <div className="text-right flex-1">
-                    <p className="text-sm font-bold !text-slate-800">{c.name}</p>
-                    <p className="text-xs !text-slate-500">{c.phone}</p>
-                  </div>
-                  {(c.loyaltyPoints||0) > 0 && <span className="text-xs font-black" style={{color:"#F28C45"}}>{c.loyaltyPoints} نقطة</span>}
-                </button>
-              ))}
-              {posCustomers.filter(c => c.name.includes(customerQ) || (c.phone||"").includes(customerQ)).length === 0 && (
-                <p className="text-center py-3 text-sm !text-slate-500">لا نتائج — <button className="text-indigo-900 font-bold" onClick={()=>{setShowCustSearch(false);setShowAddCust(true);}}>إضافة عميل جديد</button></p>
-              )}
-            </div>
-          )}
-          {selectedCustomer && (
-            <div className="flex items-center justify-between mt-1.5 px-1">
-              <div className="flex items-center gap-1.5">
-                <CheckCircle size={12} style={{color:"#29356F"}} />
-                <span className="text-xs font-bold" style={{color:"#29356F"}}>{selectedCustomer.name}</span>
-              </div>
-              {(selectedCustomer.loyaltyPoints||0) > 0 && (
-                <div className="flex items-center gap-1">
-                  <Star size={11} style={{color:"#F28C45"}} />
-                  <span className="text-xs font-black" style={{color:"#F28C45"}}>{selectedCustomer.loyaltyPoints} نقطة</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Cart items */}
-        <div className="flex-1 overflow-y-auto overscroll-contain" onClick={() => showCustSearch && setShowCustSearch(false)}>
-          {cart.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full py-10 px-4">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3" style={{background:"#F0EEE9"}}>
-                <ShoppingCart size={28} style={{color:"#F28C45"}} />
-              </div>
-              <p className="text-sm font-bold !text-slate-500">السلة فارغة</p>
-              <p className="text-xs !text-slate-500 mt-1">اضغط على منتج لإضافته</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {cart.map((item) => (
-                <div key={item.product.id} className="px-3 py-2.5 hover:bg-slate-50 transition-all">
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold !text-slate-800 truncate leading-tight">{item.product.nameAr}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-xs font-black" style={{color:"#29356F"}}>{(item.product.sellPrice * (1 - item.discount/100)).toFixed(3)}</span>
-                        <span className="text-xs !text-slate-500">JOD</span>
-                        {item.discount > 0 && <span className="text-xs line-through !text-slate-500">{item.product.sellPrice.toFixed(3)}</span>}
-                        {item.promoApplied && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{background:"#29356F",color:"#F28C45"}}>{item.promoApplied}</span>}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => item.qty === 1 ? rm(item.product.id) : upd(item.product.id, -1)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border !border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-500">
-                        {item.qty === 1 ? <Trash2 size={11} /> : <Minus size={11} />}
-                      </button>
-                      <span className="w-7 text-center text-sm font-black">{item.qty}</span>
-                      <button onClick={() => upd(item.product.id, 1)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border !border-slate-200 hover:border-indigo-400 hover:text-indigo-900">
-                        <Plus size={11} />
-                      </button>
-                    </div>
-                    <div className="text-right shrink-0 w-16">
-                      <p className="text-sm font-black">{(item.product.sellPrice * item.qty * (1-item.discount/100)).toFixed(3)}</p>
-                    </div>
-                  </div>
-                  {isOwnerOrMgr && (
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <Percent size={10} className="!text-slate-500 shrink-0" />
-                      <input type="range" min={0} max={50} step={1} value={item.discount}
-                        onChange={e => updd(item.product.id, parseFloat(e.target.value))}
-                        className="flex-1 h-1 accent-indigo-600 cursor-pointer" />
-                      <span className="text-xs font-black w-8 text-left" style={{color: item.discount > 0 ? "#29356F" : undefined}}>{item.discount}%</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Held orders */}
-        {holds.length > 0 && (
-          <div className="shrink-0 border-t !border-slate-200/60 px-3 py-2" style={{background:"#FFF5ED"}}>
-            <p className="text-xs font-bold text-orange-700 mb-1.5 flex items-center gap-1"><Archive size={11} /> طلبات معلقة ({holds.length})</p>
-            <div className="flex gap-1.5 flex-wrap">
-              {holds.map((h, i) => (
-                <button key={i} onClick={() => resume(i)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-bold border border-orange-200 bg-white text-orange-700 hover:bg-orange-100 transition-all">
-                  طلب {i+1} ({h.reduce((a,x)=>a+x.qty,0)} قطعة)
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Cart totals + checkout */}
-        {cart.length > 0 && (
-          <div className="shrink-0 border-t !border-slate-200" style={{background:"#F5F6FA"}}>
-            <div className="px-4 py-3 space-y-1.5">
-              <div className="flex justify-between text-sm">
-                <span className="!text-slate-500">المجموع الفرعي</span>
-                <span className="font-bold">{sub.toFixed(3)} JOD</span>
-              </div>
-              {isOwnerOrMgr && (
-                <div className="flex items-center gap-2 py-0.5">
-                  <span className="text-xs !text-slate-500 shrink-0">خصم الفاتورة</span>
-                  <input type="range" min={0} max={50} step={1} value={disc} onChange={e => setDisc(parseFloat(e.target.value))} className="flex-1 h-1 accent-indigo-600 cursor-pointer" />
-                  <span className="text-xs font-black w-8 text-left" style={{color: disc > 0 ? "#29356F" : undefined}}>{disc}%</span>
-                </div>
-              )}
-              {da > 0 && <div className="flex justify-between text-sm"><span className="text-red-500">خصم</span><span className="font-bold text-red-500">-{da.toFixed(3)} JOD</span></div>}
-              {ta > 0 && <div className="flex justify-between text-sm"><span className="!text-slate-500">ضريبة</span><span className="font-bold">+{ta.toFixed(3)} JOD</span></div>}
-              {pointsDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-orange-500">نقاط الولاء</span><span className="font-bold text-orange-600">-{pointsDiscount.toFixed(3)} JOD</span></div>}
-              {giftDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-emerald-500">بطاقة هدية</span><span className="font-bold text-indigo-600">-{giftDiscount.toFixed(3)} JOD</span></div>}
-              {couponDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-blue-500">كوبون</span><span className="font-bold text-blue-600">-{couponDiscount.toFixed(3)} JOD</span></div>}
-              <div className="flex justify-between pt-1.5 border-t !border-slate-200">
-                <span className="font-black text-base">الإجمالي</span>
-                <span className="font-black text-xl" style={{color:"#29356F"}}>{finalTotal.toFixed(3)} JOD</span>
-              </div>
-            </div>
-            <div className="flex gap-1.5 px-3 pb-3">
-              <button onClick={hold} title="تعليق الطلب" className="w-10 h-10 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-orange-50 hover:border-orange-200 transition-all shrink-0">
-                <Archive size={15} className="!text-slate-500" />
-              </button>
-              <button onClick={doPrint} title="طباعة" className="w-10 h-10 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all shrink-0">
-                <Printer size={15} className="!text-slate-500" />
-              </button>
-              <button onClick={() => setCart([])} title="مسح" className="w-10 h-10 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all shrink-0">
-                <X size={15} className="!text-slate-500" />
-              </button>
-              <button onClick={() => setShowPay(true)}
-                className="flex-1 h-10 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90"
-                style={{background:"#F28C45",color:"#29356F"}}>
-                <CreditCard size={15} />الدفع
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ══ CENTER PANEL — Products ════════════════════════════════════════════ */}
+      <main dir="rtl" className="pos-workspace-v2 min-h-0 flex-1 overflow-hidden" aria-label="نقطة البيع">
+        <section className="pos-discovery-column" aria-label="البحث عن المنتجات">
+      {/* ══ DISCOVERY — PRODUCT CATALOG ════════════════════════════════════════════ */}
       <div className="pos-products-panel min-w-0 flex flex-col overflow-hidden" style={{background:"#FFFFFF",color:"#24352f"}}>
         {/* Toolbar */}
         <div className="shrink-0 px-4 py-3 border-b border-[#E1E5EF] space-y-3" style={{background:"#FFFFFF"}}>
@@ -1837,7 +1647,204 @@ ${filtered.length > 0 ? `
         )}
       </div>
 
-      {/* ══ RIGHT PANEL — Quick Actions ═══════════════════════════════════════ */}
+
+        </section>
+        <section className="pos-checkout-column" aria-label="الفاتورة والدفع">
+          <div className="pos-invoice-zone">
+      {/* ══ CHECKOUT — INVOICE ══════════════════════════════════════════════════ */}
+      <div className="pos-cart-panel flex flex-col overflow-hidden shrink-0" style={{width:390,minWidth:340,background:"#FFFFFF",color:"#24352f"}}>
+
+        {/* Cart header */}
+        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b !border-slate-200" style={{background:"#29356F"}}>
+          <div className="flex items-center gap-2">
+            <ShoppingCart size={16} className="text-white" />
+            <span className="font-black text-white text-sm">الفاتورة</span>
+            {cart.length > 0 && (
+              <span className="text-xs font-black px-2 py-0.5 rounded-full" style={{background:"#F28C45",color:"#29356F"}}>
+                {cart.reduce((a,i)=>a+i.qty,0)}
+              </span>
+            )}
+          </div>
+          {cart.length > 0 && (
+            <button onClick={() => setCart([])} className="text-xs font-bold px-2 py-1 rounded-lg transition-all hover:bg-white/10" style={{color:"rgba(255,255,255,0.6)"}}>
+              مسح الكل
+            </button>
+          )}
+        </div>
+
+        {/* Customer selector */}
+        <div className="shrink-0 px-3 py-2.5 border-b !border-slate-200/60 relative">
+          <div className="flex gap-1.5">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                placeholder="اختر عميل (اختياري)..."
+                value={selectedCustomer ? selectedCustomer.name : customerQ}
+                onChange={e => { setCustomerQ(e.target.value); setShowCustSearch(true); setSelectedCustomer(null); }}
+                onFocus={() => setShowCustSearch(true)}
+                className="w-full h-9 rounded-xl border !border-slate-200 !bg-white text-sm px-3 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-300/60"
+              />
+              <Users size={13} className="absolute right-2.5 top-2.5 !text-slate-500 pointer-events-none" />
+              {selectedCustomer && (
+                <button onClick={() => { setSelectedCustomer(null); setCustomerQ(""); }} className="absolute left-2.5 top-2.5 !text-slate-500 hover:!text-slate-800"><X size={13} /></button>
+              )}
+            </div>
+            <button onClick={() => setShowAddCust(true)} className="w-9 h-9 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all shrink-0">
+              <Plus size={14} className="!text-slate-500" />
+            </button>
+          </div>
+          {showCustSearch && customerQ && (
+            <div className="absolute right-3 left-3 top-full mt-1 bg-card border !border-slate-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
+              {posCustomers.filter(c => c.name.includes(customerQ) || (c.phone||"").includes(customerQ)).slice(0,8).map(c => (
+                <button key={c.id} className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 transition-all text-right"
+                  onClick={() => { setSelectedCustomer(c); setCustomerQ(""); setShowCustSearch(false); }}>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-black" style={{background:"#29356F",color:"white"}}>{c.name.charAt(0)}</div>
+                  <div className="text-right flex-1">
+                    <p className="text-sm font-bold !text-slate-800">{c.name}</p>
+                    <p className="text-xs !text-slate-500">{c.phone}</p>
+                  </div>
+                  {(c.loyaltyPoints||0) > 0 && <span className="text-xs font-black" style={{color:"#F28C45"}}>{c.loyaltyPoints} نقطة</span>}
+                </button>
+              ))}
+              {posCustomers.filter(c => c.name.includes(customerQ) || (c.phone||"").includes(customerQ)).length === 0 && (
+                <p className="text-center py-3 text-sm !text-slate-500">لا نتائج — <button className="text-indigo-900 font-bold" onClick={()=>{setShowCustSearch(false);setShowAddCust(true);}}>إضافة عميل جديد</button></p>
+              )}
+            </div>
+          )}
+          {selectedCustomer && (
+            <div className="flex items-center justify-between mt-1.5 px-1">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle size={12} style={{color:"#29356F"}} />
+                <span className="text-xs font-bold" style={{color:"#29356F"}}>{selectedCustomer.name}</span>
+              </div>
+              {(selectedCustomer.loyaltyPoints||0) > 0 && (
+                <div className="flex items-center gap-1">
+                  <Star size={11} style={{color:"#F28C45"}} />
+                  <span className="text-xs font-black" style={{color:"#F28C45"}}>{selectedCustomer.loyaltyPoints} نقطة</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Cart items */}
+        <div className="flex-1 overflow-y-auto overscroll-contain" onClick={() => showCustSearch && setShowCustSearch(false)}>
+          {cart.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full py-10 px-4">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3" style={{background:"#F0EEE9"}}>
+                <ShoppingCart size={28} style={{color:"#F28C45"}} />
+              </div>
+              <p className="text-sm font-bold !text-slate-500">السلة فارغة</p>
+              <p className="text-xs !text-slate-500 mt-1">اضغط على منتج لإضافته</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {cart.map((item) => (
+                <div key={item.product.id} className="px-3 py-2.5 hover:bg-slate-50 transition-all">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold !text-slate-800 truncate leading-tight">{item.product.nameAr}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-xs font-black" style={{color:"#29356F"}}>{(item.product.sellPrice * (1 - item.discount/100)).toFixed(3)}</span>
+                        <span className="text-xs !text-slate-500">JOD</span>
+                        {item.discount > 0 && <span className="text-xs line-through !text-slate-500">{item.product.sellPrice.toFixed(3)}</span>}
+                        {item.promoApplied && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{background:"#29356F",color:"#F28C45"}}>{item.promoApplied}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => item.qty === 1 ? rm(item.product.id) : upd(item.product.id, -1)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border !border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-500">
+                        {item.qty === 1 ? <Trash2 size={11} /> : <Minus size={11} />}
+                      </button>
+                      <span className="w-7 text-center text-sm font-black">{item.qty}</span>
+                      <button onClick={() => upd(item.product.id, 1)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border !border-slate-200 hover:border-indigo-400 hover:text-indigo-900">
+                        <Plus size={11} />
+                      </button>
+                    </div>
+                    <div className="text-right shrink-0 w-16">
+                      <p className="text-sm font-black">{(item.product.sellPrice * item.qty * (1-item.discount/100)).toFixed(3)}</p>
+                    </div>
+                  </div>
+                  {isOwnerOrMgr && (
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <Percent size={10} className="!text-slate-500 shrink-0" />
+                      <input type="range" min={0} max={50} step={1} value={item.discount}
+                        onChange={e => updd(item.product.id, parseFloat(e.target.value))}
+                        className="flex-1 h-1 accent-indigo-600 cursor-pointer" />
+                      <span className="text-xs font-black w-8 text-left" style={{color: item.discount > 0 ? "#29356F" : undefined}}>{item.discount}%</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Held orders */}
+        {holds.length > 0 && (
+          <div className="shrink-0 border-t !border-slate-200/60 px-3 py-2" style={{background:"#FFF5ED"}}>
+            <p className="text-xs font-bold text-orange-700 mb-1.5 flex items-center gap-1"><Archive size={11} /> طلبات معلقة ({holds.length})</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {holds.map((h, i) => (
+                <button key={i} onClick={() => resume(i)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-bold border border-orange-200 bg-white text-orange-700 hover:bg-orange-100 transition-all">
+                  طلب {i+1} ({h.reduce((a,x)=>a+x.qty,0)} قطعة)
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Cart totals + checkout */}
+        {cart.length > 0 && (
+          <div className="shrink-0 border-t !border-slate-200" style={{background:"#F5F6FA"}}>
+            <div className="px-4 py-3 space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="!text-slate-500">المجموع الفرعي</span>
+                <span className="font-bold">{sub.toFixed(3)} JOD</span>
+              </div>
+              {isOwnerOrMgr && (
+                <div className="flex items-center gap-2 py-0.5">
+                  <span className="text-xs !text-slate-500 shrink-0">خصم الفاتورة</span>
+                  <input type="range" min={0} max={50} step={1} value={disc} onChange={e => setDisc(parseFloat(e.target.value))} className="flex-1 h-1 accent-indigo-600 cursor-pointer" />
+                  <span className="text-xs font-black w-8 text-left" style={{color: disc > 0 ? "#29356F" : undefined}}>{disc}%</span>
+                </div>
+              )}
+              {da > 0 && <div className="flex justify-between text-sm"><span className="text-red-500">خصم</span><span className="font-bold text-red-500">-{da.toFixed(3)} JOD</span></div>}
+              {ta > 0 && <div className="flex justify-between text-sm"><span className="!text-slate-500">ضريبة</span><span className="font-bold">+{ta.toFixed(3)} JOD</span></div>}
+              {pointsDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-orange-500">نقاط الولاء</span><span className="font-bold text-orange-600">-{pointsDiscount.toFixed(3)} JOD</span></div>}
+              {giftDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-emerald-500">بطاقة هدية</span><span className="font-bold text-indigo-600">-{giftDiscount.toFixed(3)} JOD</span></div>}
+              {couponDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-blue-500">كوبون</span><span className="font-bold text-blue-600">-{couponDiscount.toFixed(3)} JOD</span></div>}
+              <div className="flex justify-between pt-1.5 border-t !border-slate-200">
+                <span className="font-black text-base">الإجمالي</span>
+                <span className="font-black text-xl" style={{color:"#29356F"}}>{finalTotal.toFixed(3)} JOD</span>
+              </div>
+            </div>
+            <div className="flex gap-1.5 px-3 pb-3">
+              <button onClick={hold} title="تعليق الطلب" className="w-10 h-10 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-orange-50 hover:border-orange-200 transition-all shrink-0">
+                <Archive size={15} className="!text-slate-500" />
+              </button>
+              <button onClick={doPrint} title="طباعة" className="w-10 h-10 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all shrink-0">
+                <Printer size={15} className="!text-slate-500" />
+              </button>
+              <button onClick={() => setCart([])} title="مسح" className="w-10 h-10 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all shrink-0">
+                <X size={15} className="!text-slate-500" />
+              </button>
+              <button onClick={() => setShowPay(true)}
+                className="flex-1 h-10 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90"
+                style={{background:"#F28C45",color:"#29356F"}}>
+                <CreditCard size={15} />الدفع
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+
+          </div>
+          <div className="pos-payment-zone">
+      {/* ══ CHECKOUT — PAYMENT AND TOOLS ═══════════════════════════════════════ */}
       <div className="pos-actions-panel flex flex-col overflow-hidden" style={{width:228,minWidth:228,background:"white"}}>
 
         {/* Header */}
@@ -1978,6 +1985,11 @@ ${filtered.length > 0 ? `
           </button>
         </div>
       </div>
+
+
+          </div>
+        </section>
+      </main>
 
       {/* Payment Modal */}
       {showPay && (
@@ -2383,7 +2395,6 @@ ${filtered.length > 0 ? `
           </div>
         </Modal>
       )}
-    </main>
     </div>
   );
 }

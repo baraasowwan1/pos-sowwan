@@ -370,3 +370,108 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+
+
+/* POS Workstation v2 — rebuilt two-zone checkout composition */
+.pos-terminal > header.pos-command-bar-v2 {
+  min-height:76px; padding:14px 22px; background:#102a43; border-bottom:0;
+  box-shadow:0 5px 20px rgba(16,42,67,.16);
+}
+.pos-terminal > header.pos-command-bar-v2 .pos-brand-mark {
+  width:48px;height:48px;flex-basis:48px;border-radius:15px;color:#fff;background:#1769aa;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);
+}
+.pos-terminal > header.pos-command-bar-v2 .pos-brand-lockup h1 {font-size:18px;letter-spacing:-.2px}
+.pos-terminal > header.pos-command-bar-v2 .pos-brand-lockup p {color:#c4d7e8}
+.pos-terminal > header.pos-command-bar-v2 .pos-connection-pill,
+.pos-terminal > header.pos-command-bar-v2 .pos-product-count {
+  min-height:38px;border-radius:999px;padding-inline:13px;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15);
+}
+.pos-terminal > header.pos-command-bar-v2 .pos-new-search {
+  min-height:40px;padding-inline:15px;border-radius:12px;color:#fff;background:#1769aa;border-color:#1769aa;
+}
+.pos-terminal .pos-workspace-v2 {
+  display:grid!important;grid-template-columns:minmax(0,1fr) minmax(390px,43%);
+  grid-template-areas:"catalog checkout";grid-template-rows:minmax(0,1fr);
+  gap:16px;padding:16px!important;min-height:0;overflow:hidden;background:#edf3f8!important;
+}
+.pos-terminal .pos-discovery-column {
+  grid-area:catalog;display:flex;min-width:0;min-height:0;overflow:hidden;
+  border:1px solid #d8e4ef;border-radius:20px;background:#fff;box-shadow:0 8px 26px rgba(16,42,67,.055);
+}
+.pos-terminal .pos-checkout-column {
+  grid-area:checkout;display:grid;min-width:0;min-height:0;
+  grid-template-rows:minmax(0,1.2fr) minmax(245px,.9fr);gap:12px;overflow:hidden;
+}
+.pos-terminal .pos-invoice-zone,.pos-terminal .pos-payment-zone {display:flex;min-width:0;min-height:0;overflow:hidden}
+.pos-terminal .pos-workspace-v2 .pos-products-panel,
+.pos-terminal .pos-workspace-v2 .pos-cart-panel,
+.pos-terminal .pos-workspace-v2 .pos-actions-panel {
+  display:flex!important;flex-direction:column;min-width:0!important;min-height:0!important;
+  width:100%!important;height:100%!important;max-height:none!important;flex:1 1 auto!important;
+  overflow:hidden;border:0!important;border-radius:0!important;background:#fff!important;box-shadow:none!important;
+}
+.pos-terminal .pos-workspace-v2 .pos-cart-panel {
+  border:1px solid #d8e4ef!important;border-radius:18px!important;box-shadow:0 6px 22px rgba(16,42,67,.045)!important;
+}
+.pos-terminal .pos-workspace-v2 .pos-actions-panel {
+  border:1px solid #d8e4ef!important;border-radius:18px!important;box-shadow:0 6px 22px rgba(16,42,67,.045)!important;
+}
+.pos-terminal .pos-workspace-v2 .pos-products-panel>div:first-child {
+  padding:20px 20px 16px!important;background:#fff!important;border-bottom:1px solid #e4edf5!important;
+}
+.pos-terminal .pos-workspace-v2 .pos-products-panel h2 {font-size:19px!important;letter-spacing:-.3px;color:#102a43!important}
+.pos-terminal .pos-workspace-v2 .pos-products-panel>div:nth-child(2) {
+  flex:1 1 auto;min-height:0;padding:16px!important;background:#f7fafd!important;
+}
+.pos-terminal .pos-workspace-v2 .pos-catalog-grid {grid-template-columns:repeat(auto-fill,minmax(145px,1fr))!important;gap:12px!important}
+.pos-terminal .pos-workspace-v2 .pos-product-card {
+  height:158px!important;padding:11px!important;border:1px solid #e0eaf3!important;border-radius:16px!important;
+  box-shadow:0 2px 7px rgba(16,42,67,.035)!important;
+}
+.pos-terminal .pos-workspace-v2 .pos-product-card:hover {
+  border-color:#6eb7dc!important;box-shadow:0 10px 24px rgba(23,105,170,.12)!important;transform:translateY(-2px);
+}
+.pos-terminal .pos-workspace-v2 .pos-product-card>div:first-child {height:58px!important}
+.pos-terminal .pos-workspace-v2 .pos-cart-panel>div:first-child,
+.pos-terminal .pos-workspace-v2 .pos-actions-panel>div:first-child {min-height:52px;background:#102a43!important}
+.pos-terminal .pos-workspace-v2 .pos-cart-panel .flex-1.overflow-y-auto,
+.pos-terminal .pos-workspace-v2 .pos-actions-panel .flex-1.overflow-y-auto {
+  min-height:0;overflow-y:auto!important;scrollbar-width:thin;scrollbar-color:#bfd0df transparent;
+}
+.pos-terminal .pos-workspace-v2 .pos-cart-panel .text-xl {color:#102a43!important}
+.pos-terminal .pos-workspace-v2 .pos-actions-panel .p-4 {padding:12px!important}
+.pos-terminal .pos-workspace-v2 .pos-actions-panel .p-3 {padding:10px!important}
+.pos-terminal .pos-workspace-v2 .pos-actions-panel .text-base {font-size:13px!important}
+.pos-terminal .pos-workspace-v2 .pos-actions-panel .text-sm {font-size:12px!important}
+.pos-terminal .pos-workspace-v2 input[type="text"],
+.pos-terminal .pos-workspace-v2 input[type="number"],
+.pos-terminal .pos-workspace-v2 select {border-color:#d7e3ed!important;border-radius:11px!important}
+.pos-terminal .pos-workspace-v2 button {transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+.pos-terminal .pos-workspace-v2 button:focus-visible {outline:3px solid rgba(23,105,170,.3);outline-offset:2px}
+@media(min-width:1500px) {
+ .pos-terminal .pos-workspace-v2 {grid-template-columns:minmax(0,1fr) minmax(430px,40%);gap:18px;padding:18px!important}
+ .pos-terminal .pos-workspace-v2 .pos-catalog-grid {grid-template-columns:repeat(auto-fill,minmax(165px,1fr))!important}
+}
+@media(max-width:1100px) {
+ .pos-terminal .pos-workspace-v2 {grid-template-columns:minmax(0,1fr) minmax(340px,44%);gap:10px;padding:10px!important}
+ .pos-terminal .pos-checkout-column {grid-template-rows:minmax(0,1fr) minmax(245px,.9fr);gap:10px}
+ .pos-terminal .pos-workspace-v2 .pos-catalog-grid {grid-template-columns:repeat(auto-fill,minmax(120px,1fr))!important}
+}
+@media(max-width:760px) {
+ .pos-terminal>header.pos-command-bar-v2 {padding:12px;gap:10px}
+ .pos-terminal>header.pos-command-bar-v2 .pos-brand-lockup h1 {font-size:16px}
+ .pos-terminal .pos-workspace-v2 {
+  display:flex!important;flex-direction:column!important;gap:10px;padding:10px!important;
+  overflow-y:auto!important;overflow-x:hidden!important;
+ }
+ .pos-terminal .pos-discovery-column {order:1;flex:0 0 390px;min-height:390px}
+ .pos-terminal .pos-checkout-column {order:0;display:flex;flex-direction:column;flex:0 0 auto;overflow:visible}
+ .pos-terminal .pos-invoice-zone {flex:0 0 360px;min-height:360px}
+ .pos-terminal .pos-payment-zone {flex:0 0 auto;min-height:280px}
+ .pos-terminal .pos-workspace-v2 .pos-cart-panel {min-height:360px!important}
+ .pos-terminal .pos-workspace-v2 .pos-actions-panel {min-height:280px!important}
+ .pos-terminal .pos-workspace-v2 .pos-catalog-grid {grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .pos-terminal .pos-workspace-v2 .pos-product-card {height:132px!important}
+}
