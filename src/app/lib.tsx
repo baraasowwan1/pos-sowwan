@@ -111,6 +111,26 @@ export function useApiCached<T>(path: string, initial: T, ttlMs = 60_000): { dat
   }, [path, key, token, ttlMs]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Revalidate cached server data when a background browser tab becomes active.
+  // Guard against focus + visibility events firing together and duplicating requests.
+  const lastFocusRefresh = useRef(0);
+  useEffect(() => {
+    const refreshWhenActive = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastFocusRefresh.current < 1500) return;
+      lastFocusRefresh.current = now;
+      void load(true);
+    };
+    window.addEventListener("focus", refreshWhenActive);
+    document.addEventListener("visibilitychange", refreshWhenActive);
+    return () => {
+      window.removeEventListener("focus", refreshWhenActive);
+      document.removeEventListener("visibilitychange", refreshWhenActive);
+    };
+  }, [load]);
+
   const refresh = useCallback(() => load(true), [load]);
   return { data, loading, error, refresh };
 }
