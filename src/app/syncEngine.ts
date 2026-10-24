@@ -278,7 +278,8 @@ export async function runSync(storeId: string, opts: { silent?: boolean } = {}):
     // 3. Get all pending operations for this store
     const pending = await db.syncQueue
       .where("storeId").equals(storeId)
-      .filter(q => q.syncStatus === "pending" || q.syncStatus === "syncing")
+      // Retry failed operations too so temporary failures do not strand local sales.
+      .filter(q => q.syncStatus === "pending" || q.syncStatus === "syncing" || q.syncStatus === "failed")
       .sortBy("localCreatedAt");
 
     let failed = 0;
