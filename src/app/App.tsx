@@ -759,6 +759,29 @@ export default function App() {
     document.title = "Sowwanjo POS";
   }, []);
 
+  // Keep merchant branding synchronized after settings are saved.
+  useEffect(() => {
+    const refreshMerchantBranding = async () => {
+      try {
+        const { apiFetch, getToken } = await import("./lib");
+        const result = await apiFetch("/auth/me", {}, getToken()) as {
+          store?: { nameAr?: string; appName?: string; primaryColor?: string; logoUrl?: string; iconUrl?: string };
+        };
+        const s = result?.store;
+        if (s?.nameAr) applyStoreBranding({
+          app_name: s.appName || s.nameAr,
+          primary_color: s.primaryColor,
+          logo_url: s.logoUrl,
+          icon_url: s.iconUrl,
+        });
+      } catch {
+        // Keep the current branding if the refresh is temporarily unavailable.
+      }
+    };
+    window.addEventListener("sowwan:store-updated", refreshMerchantBranding);
+    return () => window.removeEventListener("sowwan:store-updated", refreshMerchantBranding);
+  }, []);
+
   // Three-state auth
   const [authState, setAuthState] = useState<AuthState>("loading");
   const [view,      setView]      = useState<View>("login");
