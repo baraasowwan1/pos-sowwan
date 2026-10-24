@@ -147,14 +147,27 @@ export function useStoreModules(): Record<string, boolean> {
 export function StoreModulesProvider({ children, storeId }: { children: React.ReactNode; storeId: string }) {
   const [modules, setModules] = useState<Record<string, boolean>>({});
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(`sowwanjo_sa_modules`);
-      const all: { id: string; enabled: boolean }[] = raw ? JSON.parse(raw) : [];
-      const map: Record<string, boolean> = {};
-      all.forEach(m => { map[m.id] = m.enabled; });
-      setModules(map);
-    } catch {}
-    void storeId;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const token = getToken();
+        if (!token) return;
+        const result = await apiFetch("/auth/me", { method: "GET" }, token) as { store?: { id?: string; sidebarFeatures?: Record<string, boolean> } };
+        if (cancelled || !result?.store || String(result.store.id || "") !== String(storeId)) return;
+        setModules(result.store.sidebarFeatures || {});
+      } catch {
+        // Keep last server-confirmed state if the network is temporarily unavailable.
+      }
+    };
+    void load();
+    const refresh = () => { void load(); };
+    window.addEventListener("sowwan:store-updated", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("sowwan:store-updated", refresh);
+      window.removeEventListener("focus", refresh);
+    };
   }, [storeId]);
   return React.createElement(StoreModulesCtx.Provider, { value: modules }, children);
 }
