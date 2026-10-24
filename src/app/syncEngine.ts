@@ -204,8 +204,24 @@ async function processItem(item: SyncQueueItem): Promise<void> {
   }
 }
 
+// ── Validate that local offline data belongs to the authenticated store ───────
+async function assertStoreSession(storeId: string): Promise<void> {
+  const res = await syncFetch("/auth/me", { signal: AbortSignal.timeout(10000) });
+  if (!res.ok) {
+    throw new Error("تعذّر التحقق من جلسة المتجر. سجّل الدخول مجددًا قبل المزامنة.");
+  }
+  const body = await res.json() as { store?: { id?: string; _id?: string } };
+  const authenticatedStoreId = String(body.store?.id || body.store?._id || "");
+  if (!authenticatedStoreId || authenticatedStoreId !== String(storeId)) {
+    throw new Error("معرّف المتجر المحلي لا يطابق جلسة الدخول؛ أوقفنا المزامنة لحماية بيانات المتجر.");
+  }
+}
+
 // ── Pull fresh data from backend ──────────────────────────────────────────────
 async function pullData(storeId: string): Promise<void> {
+  // The API scopes records by JWT, not by the query-string storeId. Validate first
+  // so data from another authenticated store can never be cached under this ID.
+  await assertStoreSession(storeId);
   try {
     const res = await syncFetch(`/products?storeId=${storeId}&limit=2000`, {
       signal: AbortSignal.timeout(20000),
