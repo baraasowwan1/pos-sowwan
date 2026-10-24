@@ -913,6 +913,8 @@ function POSTerm({ store }: { store: StoreData }) {
   const [recentIds, setRecentIds] = useLS<string[]>(sk(sid,"pos_recent"), []);
   const toggleFav = (id: string) => setFavorites(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [id,...prev].slice(0,50));
   const [posTab, setPosTab] = useLS<"all"|"fav"|"recent">(sk(sid,"pos_tab"), "all");
+  // Start in checkout mode: keep the catalog empty until the cashier searches or chooses a filter.
+  const [showCatalog, setShowCatalog] = useState(false);
   const [showPay, setShowPay] = useState(false);
   const [ok, setOk] = useState(false);
   // Customer selection
@@ -989,6 +991,7 @@ function POSTerm({ store }: { store: StoreData }) {
 
   // Filtered products (memoized) — includes posTab filter (all/fav/recent)
   const prods = useMemo(() => {
+    if (!showCatalog && !q.trim()) return [];
     const tabFiltered = posTab === "fav"
       ? sortedProds.filter(p => favorites.includes(p.id))
       : posTab === "recent"
@@ -998,7 +1001,7 @@ function POSTerm({ store }: { store: StoreData }) {
       (!q || p.nameAr.includes(q) || (p.barcode || "").includes(q) || (p.sku || "").toLowerCase().includes(q.toLowerCase())) &&
       (cat === "الكل" || p.category === cat)
     );
-  }, [sortedProds, q, cat, posTab, favorites, recentIds]);
+  }, [sortedProds, q, cat, posTab, favorites, recentIds, showCatalog]);
 
   // Reset display count when filter changes
   useEffect(() => setDisplayCount(DISPLAY_LIMIT), [q, cat, posTab]);
@@ -1441,7 +1444,7 @@ ${filtered.length > 0 ? `
         <div className="pos-command-meta">
           <span className={`pos-connection-pill ${isOnline ? "is-online" : "is-offline"}`}><i />{isOnline ? "متصل بالنظام" : "وضع دون اتصال"}</span>
           <span className="pos-product-count"><Package size={15}/>{prods.length} منتج متاح</span>
-          <button onClick={() => { setQ(""); setCat("الكل"); setPosTab("all"); searchRef.current?.focus(); }} className="pos-new-search"><Search size={15}/> بحث جديد <kbd>⌕</kbd></button>
+          <button onClick={() => { setShowCatalog(true); setQ(""); setCat("الكل"); setPosTab("all"); searchRef.current?.focus(); }} className="pos-new-search"><Search size={15}/> بحث جديد <kbd>⌕</kbd></button>
         </div>
       </header>
       <main dir="rtl" className="pos-workspace pos-checkout-first min-h-0 flex-1 overflow-hidden" style={{background:"#F4F6FB",fontFamily:"'Cairo','Inter',sans-serif"}} aria-label="نقطة البيع">
@@ -1654,7 +1657,7 @@ ${filtered.length > 0 ? `
               {scannerMode ? (
                 <div className="w-full h-10 rounded-xl border-2 border-dashed flex items-center gap-2 px-3" style={{borderColor:"#F28C45",background:"#FFF5ED"}}>
                   <Scan size={14} style={{color:"#F28C45"}} className="shrink-0 animate-pulse" />
-                  <input ref={searchRef} type="text" value={q} onChange={e => setQ(e.target.value)} onKeyDown={handleSearchKey}
+                  <input ref={searchRef} type="text" value={q} onChange={e => { setQ(e.target.value); setShowCatalog(true); }} onKeyDown={handleSearchKey}
                     className="flex-1 bg-transparent outline-none text-sm font-bold" placeholder="امسح الباركود..." autoFocus style={{color:"#29356F"}} />
                 </div>
               ) : (
@@ -1683,7 +1686,7 @@ ${filtered.length > 0 ? `
             {(["all","fav","recent"] as const).map((t, i) => {
               const labels = ["الكل","★ مفضلة","⏱ أخيرة"];
               return (
-                <button key={t} onClick={() => setPosTab(t)}
+                <button key={t} onClick={() => { setShowCatalog(true); setPosTab(t); }}
                   className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0"
                   style={posTab === t ? {background:"#29356F",color:"white"} : {background:"#F0F2F8",color:"#666"}}>
                   {labels[i]}
@@ -1693,7 +1696,7 @@ ${filtered.length > 0 ? `
             {cats.length > 0 && <div className="w-px h-4 bg-border/60 shrink-0 mx-0.5" />}
             {/* Category chips */}
             {cats.map(c => (
-              <button key={c} onClick={() => setCat(cat === c ? "" : c)}
+              <button key={c} onClick={() => { setShowCatalog(true); setCat(cat === c ? "" : c); }}
                 className="px-2.5 h-7 rounded-lg text-xs font-bold whitespace-nowrap transition-all shrink-0"
                 style={cat === c
                   ? {background:"#F28C45",color:"#29356F",fontWeight:800}
@@ -1717,7 +1720,7 @@ ${filtered.length > 0 ? `
           {prods.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-16">
               <Package size={40} className="!text-slate-500/30 mb-3" />
-              <p className="!text-slate-500 text-sm font-bold">{posTab === "fav" ? "لا توجد مفضلات" : posTab === "recent" ? "لا يوجد سجل حديث" : "لا توجد منتجات"}</p>
+              <p className="!text-slate-500 text-sm font-bold">{!showCatalog && !q.trim() ? "امسح الباركود أو ابحث عن منتج لعرض النتائج" : posTab === "fav" ? "لا توجد مفضلات" : posTab === "recent" ? "لا يوجد سجل حديث" : "لا توجد منتجات مطابقة"}</p>
               {q && <button onClick={() => setQ("")} className="mt-2 text-xs text-indigo-900 hover:underline">مسح البحث</button>}
             </div>
           ) : vm === "grid" ? (
