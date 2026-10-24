@@ -1396,11 +1396,11 @@ ${filtered.length > 0 ? `
     <div dir="rtl" className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-800" style={{colorScheme:"light",fontFamily:"'Cairo','Inter',sans-serif",background:"#F4F6FB",color:"#24352f"}}>
       <header className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-900 text-white shadow-sm"><ShoppingCart size={21}/></div>
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-950 text-white shadow-sm"><ShoppingCart size={21}/></div>
           <div><h1 className="text-lg font-black text-slate-900">{store.nameAr || "نقطة البيع"}</h1><p className="text-xs font-medium text-slate-500">نقطة البيع · فاتورة جديدة</p></div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold ${isOnline ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}><span className={`h-2 w-2 rounded-full ${isOnline ? "bg-emerald-500" : "bg-amber-500"}`}/>{isOnline ? "متصل بالنظام" : "وضع دون اتصال"}</span>
+          <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold ${isOnline ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-orange-200 bg-orange-50 text-orange-700"}`}><span className={`h-2 w-2 rounded-full ${isOnline ? "bg-indigo-500" : "bg-orange-500"}`}/>{isOnline ? "متصل بالنظام" : "وضع دون اتصال"}</span>
           <span className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600"><Package size={13} className="ml-1 inline"/> {prods.length} منتج</span>
           <button onClick={() => { setQ(""); setCat("الكل"); setPosTab("all"); searchRef.current?.focus(); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"><Search size={13} className="ml-1 inline"/> بحث جديد</button>
         </div>
@@ -1438,7 +1438,7 @@ ${filtered.length > 0 ? `
                 value={selectedCustomer ? selectedCustomer.name : customerQ}
                 onChange={e => { setCustomerQ(e.target.value); setShowCustSearch(true); setSelectedCustomer(null); }}
                 onFocus={() => setShowCustSearch(true)}
-                className="w-full h-9 rounded-xl border !border-slate-200 !bg-white text-sm px-3 pr-8 focus:outline-none focus:ring-2 focus:ring-ring/25"
+                className="w-full h-9 rounded-xl border !border-slate-200 !bg-white text-sm px-3 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-300/60"
               />
               <Users size={13} className="absolute right-2.5 top-2.5 !text-slate-500 pointer-events-none" />
               {selectedCustomer && (
@@ -1463,7 +1463,7 @@ ${filtered.length > 0 ? `
                 </button>
               ))}
               {posCustomers.filter(c => c.name.includes(customerQ) || (c.phone||"").includes(customerQ)).length === 0 && (
-                <p className="text-center py-3 text-sm !text-slate-500">لا نتائج — <button className="text-emerald-900 font-bold" onClick={()=>{setShowCustSearch(false);setShowAddCust(true);}}>إضافة عميل جديد</button></p>
+                <p className="text-center py-3 text-sm !text-slate-500">لا نتائج — <button className="text-indigo-900 font-bold" onClick={()=>{setShowCustSearch(false);setShowAddCust(true);}}>إضافة عميل جديد</button></p>
               )}
             </div>
           )}
@@ -1484,7 +1484,7 @@ ${filtered.length > 0 ? `
         </div>
 
         {/* Cart items */}
-        <div className="flex-1 overflow-y-auto" onClick={() => showCustSearch && setShowCustSearch(false)}>
+        <div className="flex-1 overflow-y-auto overscroll-contain" onClick={() => showCustSearch && setShowCustSearch(false)}>
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-10 px-4">
               <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3" style={{background:"#F0EEE9"}}>
@@ -1514,7 +1514,7 @@ ${filtered.length > 0 ? `
                       </button>
                       <span className="w-7 text-center text-sm font-black">{item.qty}</span>
                       <button onClick={() => upd(item.product.id, 1)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border !border-slate-200 hover:border-primary hover:text-emerald-900">
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border !border-slate-200 hover:border-indigo-400 hover:text-indigo-900">
                         <Plus size={11} />
                       </button>
                     </div>
@@ -1527,7 +1527,7 @@ ${filtered.length > 0 ? `
                       <Percent size={10} className="!text-slate-500 shrink-0" />
                       <input type="range" min={0} max={50} step={1} value={item.discount}
                         onChange={e => updd(item.product.id, parseFloat(e.target.value))}
-                        className="flex-1 h-1 accent-primary cursor-pointer" />
+                        className="flex-1 h-1 accent-indigo-600 cursor-pointer" />
                       <span className="text-xs font-black w-8 text-left" style={{color: item.discount > 0 ? "#29356F" : undefined}}>{item.discount}%</span>
                     </div>
                   )}
@@ -1540,11 +1540,11 @@ ${filtered.length > 0 ? `
         {/* Held orders */}
         {holds.length > 0 && (
           <div className="shrink-0 border-t !border-slate-200/60 px-3 py-2" style={{background:"#FFF5ED"}}>
-            <p className="text-xs font-bold text-amber-700 mb-1.5 flex items-center gap-1"><Archive size={11} /> طلبات معلقة ({holds.length})</p>
+            <p className="text-xs font-bold text-orange-700 mb-1.5 flex items-center gap-1"><Archive size={11} /> طلبات معلقة ({holds.length})</p>
             <div className="flex gap-1.5 flex-wrap">
               {holds.map((h, i) => (
                 <button key={i} onClick={() => resume(i)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-bold border border-amber-200 bg-white text-amber-700 hover:bg-amber-100 transition-all">
+                  className="px-2.5 py-1 rounded-lg text-xs font-bold border border-orange-200 bg-white text-orange-700 hover:bg-orange-100 transition-all">
                   طلب {i+1} ({h.reduce((a,x)=>a+x.qty,0)} قطعة)
                 </button>
               ))}
@@ -1563,14 +1563,14 @@ ${filtered.length > 0 ? `
               {isOwnerOrMgr && (
                 <div className="flex items-center gap-2 py-0.5">
                   <span className="text-xs !text-slate-500 shrink-0">خصم الفاتورة</span>
-                  <input type="range" min={0} max={50} step={1} value={disc} onChange={e => setDisc(parseFloat(e.target.value))} className="flex-1 h-1 accent-primary cursor-pointer" />
+                  <input type="range" min={0} max={50} step={1} value={disc} onChange={e => setDisc(parseFloat(e.target.value))} className="flex-1 h-1 accent-indigo-600 cursor-pointer" />
                   <span className="text-xs font-black w-8 text-left" style={{color: disc > 0 ? "#29356F" : undefined}}>{disc}%</span>
                 </div>
               )}
               {da > 0 && <div className="flex justify-between text-sm"><span className="text-red-500">خصم</span><span className="font-bold text-red-500">-{da.toFixed(3)} JOD</span></div>}
               {ta > 0 && <div className="flex justify-between text-sm"><span className="!text-slate-500">ضريبة</span><span className="font-bold">+{ta.toFixed(3)} JOD</span></div>}
-              {pointsDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-amber-500">نقاط الولاء</span><span className="font-bold text-amber-600">-{pointsDiscount.toFixed(3)} JOD</span></div>}
-              {giftDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-emerald-500">بطاقة هدية</span><span className="font-bold text-emerald-600">-{giftDiscount.toFixed(3)} JOD</span></div>}
+              {pointsDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-orange-500">نقاط الولاء</span><span className="font-bold text-orange-600">-{pointsDiscount.toFixed(3)} JOD</span></div>}
+              {giftDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-emerald-500">بطاقة هدية</span><span className="font-bold text-indigo-600">-{giftDiscount.toFixed(3)} JOD</span></div>}
               {couponDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-blue-500">كوبون</span><span className="font-bold text-blue-600">-{couponDiscount.toFixed(3)} JOD</span></div>}
               <div className="flex justify-between pt-1.5 border-t !border-slate-200">
                 <span className="font-black text-base">الإجمالي</span>
@@ -1578,7 +1578,7 @@ ${filtered.length > 0 ? `
               </div>
             </div>
             <div className="flex gap-1.5 px-3 pb-3">
-              <button onClick={hold} title="تعليق الطلب" className="w-10 h-10 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-amber-50 hover:border-amber-200 transition-all shrink-0">
+              <button onClick={hold} title="تعليق الطلب" className="w-10 h-10 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-orange-50 hover:border-orange-200 transition-all shrink-0">
                 <Archive size={15} className="!text-slate-500" />
               </button>
               <button onClick={doPrint} title="طباعة" className="w-10 h-10 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all shrink-0">
@@ -1606,7 +1606,7 @@ ${filtered.length > 0 ? `
             <div className="hidden sm:flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1.5" style={{background:"#EEF0FF",color:"#384A9A"}}><span className="w-2 h-2 rounded-full" style={{background:isOnline?"#4F46E5":"#d97706"}} />{isOnline ? "متصل" : "دون اتصال"} · {prods.length} منتج</div>
           </div>
           {!isOnline && (
-            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs font-bold text-amber-700">
+            <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2 text-xs font-bold text-orange-700">
               <WifiOff size={12} className="shrink-0" /><span>أوف لاين — المبيعات تُحفظ محلياً</span>
             </div>
           )}
@@ -1623,7 +1623,7 @@ ${filtered.length > 0 ? `
                   <Search size={14} className="absolute right-3 top-3 !text-slate-500 pointer-events-none" />
                   <input ref={searchRef} type="text" value={q} onChange={e => setQ(e.target.value)} onKeyDown={handleSearchKey}
                     placeholder="ابحث بالاسم، الباركود، SKU..."
-                    className="w-full h-10 rounded-xl border !border-slate-200 !bg-white text-sm pr-9 pl-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+                    className="w-full h-10 rounded-xl border !border-slate-200 !bg-white text-sm pr-9 pl-3 focus:outline-none focus:ring-2 focus:ring-indigo-300/60" />
                   {q && <button onClick={() => setQ("")} className="absolute left-3 top-3 !text-slate-500 hover:!text-slate-800"><X size={12} /></button>}
                 </div>
               )}
@@ -1679,7 +1679,7 @@ ${filtered.length > 0 ? `
             <div className="flex flex-col items-center justify-center h-full py-16">
               <Package size={40} className="!text-slate-500/30 mb-3" />
               <p className="!text-slate-500 text-sm font-bold">{posTab === "fav" ? "لا توجد مفضلات" : posTab === "recent" ? "لا يوجد سجل حديث" : "لا توجد منتجات"}</p>
-              {q && <button onClick={() => setQ("")} className="mt-2 text-xs text-emerald-900 hover:underline">مسح البحث</button>}
+              {q && <button onClick={() => setQ("")} className="mt-2 text-xs text-indigo-900 hover:underline">مسح البحث</button>}
             </div>
           ) : vm === "grid" ? (
             <div className="grid gap-3 p-1" style={{gridTemplateColumns:"repeat(auto-fill,minmax(155px,1fr))"}}>
@@ -1690,7 +1690,7 @@ ${filtered.length > 0 ? `
                 return (
                   <div key={p.id} className="relative group">
                     <button onClick={() => add(p)} disabled={outOfStock}
-                      className="w-full flex flex-col rounded-2xl border transition-all text-right overflow-hidden active:scale-[0.98] hover:-translate-y-0.5 hover:shadow-md min-h-[176px]"
+                      className="w-full flex flex-col rounded-[20px] border transition-all text-right overflow-hidden active:scale-[0.98] hover:-translate-y-1 hover:shadow-lg min-h-[176px]"
                       style={outOfStock
                         ? {opacity:0.55,cursor:"not-allowed",borderColor:"#E1E5EF",background:"#F7F8FC"}
                         : inCart
@@ -1765,7 +1765,7 @@ ${filtered.length > 0 ? `
                       <p className="text-sm font-bold truncate !text-slate-800">{p.nameAr}</p>
                       <p className="text-xs" style={{color:"#7B849A"}}>
                         {p.category}{p.category ? " · " : ""}
-                        <span className={outOfStock ? "text-red-500 font-bold" : lowStock ? "text-amber-500 font-bold" : "text-emerald-600 font-medium"}>
+                        <span className={outOfStock ? "text-red-500 font-bold" : lowStock ? "text-orange-500 font-bold" : "text-indigo-600 font-medium"}>
                           {outOfStock ? "نفد المخزون" : `${p.stock} ${p.unit||"قطعة"}`}
                         </span>
                       </p>
@@ -1839,20 +1839,20 @@ ${filtered.length > 0 ? `
           {/* Extra fields for cliq/card */}
           {pay === "cliq" && (
             <div className="px-3 pb-2 space-y-1.5">
-              <input type="text" value={cliqRef} onChange={e => setCliqRef(e.target.value)} placeholder="رقم مرجع كليك (اختياري)" className="w-full h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
-              <input type="text" value={cliqSender} onChange={e => setCliqSender(e.target.value)} placeholder="اسم المُرسِل (اختياري)" className="w-full h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+              <input type="text" value={cliqRef} onChange={e => setCliqRef(e.target.value)} placeholder="رقم مرجع كليك (اختياري)" className="w-full h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-indigo-300/60" />
+              <input type="text" value={cliqSender} onChange={e => setCliqSender(e.target.value)} placeholder="اسم المُرسِل (اختياري)" className="w-full h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-indigo-300/60" />
             </div>
           )}
           {pay === "card" && (
             <div className="px-3 pb-2">
-              <input type="text" value={cardRef} onChange={e => setCardRef(e.target.value)} placeholder="رقم مرجع البطاقة (اختياري)" className="w-full h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+              <input type="text" value={cardRef} onChange={e => setCardRef(e.target.value)} placeholder="رقم مرجع البطاقة (اختياري)" className="w-full h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-indigo-300/60" />
             </div>
           )}
 
           {/* Gift card + Coupon + Loyalty */}
           <div className="px-3 pb-2 space-y-1.5">
             <div className="flex gap-1.5">
-              <input type="text" value={giftCode} onChange={e => setGiftCode(e.target.value.toUpperCase())} placeholder="كود بطاقة هدية..." className="flex-1 h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+              <input type="text" value={giftCode} onChange={e => setGiftCode(e.target.value.toUpperCase())} placeholder="كود بطاقة هدية..." className="flex-1 h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-indigo-300/60" />
               <button onClick={checkGiftCard} disabled={!giftCode.trim() || giftChecking}
                 className="w-9 h-9 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all shrink-0 disabled:opacity-40">
                 <Gift size={13} className="!text-slate-500" />
@@ -1860,13 +1860,13 @@ ${filtered.length > 0 ? `
             </div>
             {giftCard && (
               <div className="flex items-center justify-between px-2 py-1.5 rounded-lg text-xs" style={{background:"#f0fdf4",border:"1px solid #bbf7d0"}}>
-                <span className="font-bold text-emerald-700">{giftCard.code}</span>
-                <span className="font-black text-emerald-700">-{giftDiscount.toFixed(3)} JOD</span>
+                <span className="font-bold text-indigo-700">{giftCard.code}</span>
+                <span className="font-black text-indigo-700">-{giftDiscount.toFixed(3)} JOD</span>
                 <button onClick={() => { setGiftCard(null); setGiftCode(""); }} className="text-emerald-500 hover:text-red-500 ml-1"><X size={11} /></button>
               </div>
             )}
             <div className="flex gap-1.5">
-              <input type="text" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="كود كوبون خصم..." className="flex-1 h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+              <input type="text" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="كود كوبون خصم..." className="flex-1 h-9 rounded-xl border !border-slate-200 !bg-white text-xs px-3 focus:outline-none focus:ring-2 focus:ring-indigo-300/60" />
               <button onClick={checkCoupon} disabled={!couponCode.trim() || couponChecking}
                 className="w-9 h-9 rounded-xl border !border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all shrink-0 disabled:opacity-40">
                 <Tag size={13} className="!text-slate-500" />
@@ -1904,7 +1904,7 @@ ${filtered.length > 0 ? `
             <p className="text-[10px] font-black !text-slate-500 mb-2 uppercase tracking-wider">إجراءات سريعة</p>
             <div className="grid grid-cols-2 gap-1.5">
               <button onClick={hold} disabled={cart.length===0}
-                className="flex items-center justify-center gap-1.5 h-10 rounded-xl border !border-slate-200 text-xs font-bold hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-all disabled:opacity-40">
+                className="flex items-center justify-center gap-1.5 h-10 rounded-xl border !border-slate-200 text-xs font-bold hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700 transition-all disabled:opacity-40">
                 <Archive size={13} />تعليق
               </button>
               <button onClick={() => setShowCalc(true)}
@@ -1967,38 +1967,38 @@ ${filtered.length > 0 ? `
                 <div className="grid grid-cols-4 gap-1.5">
                   {[finalTotal, Math.ceil(finalTotal), Math.ceil(finalTotal/5)*5, Math.ceil(finalTotal/10)*10].filter((v,i,a) => a.indexOf(v)===i).map(v => (
                     <button key={v} onClick={() => setCash(v.toFixed(3))}
-                      className="h-9 rounded-xl border !border-slate-200 text-xs font-bold hover:bg-primary hover:text-white hover:border-primary transition-all">
+                      className="h-9 rounded-xl border !border-slate-200 text-xs font-bold hover:bg-indigo-700 hover:text-white hover:border-indigo-400 transition-all">
                       {v.toFixed(3)}
                     </button>
                   ))}
                 </div>
                 {parseFloat(cash||"0") >= finalTotal && finalTotal > 0 && (
                   <div className="p-3 rounded-xl text-center" style={{background:"#f0fdf4",border:"2px solid #86efac"}}>
-                    <p className="text-xs text-emerald-600 mb-1">الباقي للعميل</p>
-                    <p className="text-2xl font-black text-emerald-700">{(parseFloat(cash)-finalTotal).toFixed(3)} JOD</p>
+                    <p className="text-xs text-indigo-600 mb-1">الباقي للعميل</p>
+                    <p className="text-2xl font-black text-indigo-700">{(parseFloat(cash)-finalTotal).toFixed(3)} JOD</p>
                   </div>
                 )}
               </div>
             )}
             {pay === "cliq" && (
               <div className="space-y-3 p-4 bg-muted/40 border !border-slate-200 rounded-xl">
-                <div className="flex items-center gap-2 mb-1"><CreditCard size={20} className="text-emerald-900" /><p className="font-bold">دفع عبر كليك</p></div>
+                <div className="flex items-center gap-2 mb-1"><CreditCard size={20} className="text-indigo-900" /><p className="font-bold">دفع عبر كليك</p></div>
                 <F label="رقم مرجع المعاملة (اختياري)"><TInput value={cliqRef} onChange={setCliqRef} placeholder="مثال: TX-123456" /></F>
                 <F label="اسم المُرسِل (اختياري)"><TInput value={cliqSender} onChange={setCliqSender} placeholder="اسم العميل المُرسِل" /></F>
               </div>
             )}
             {pay === "card" && (
               <div className="space-y-3 p-4 bg-muted/40 border !border-slate-200 rounded-xl">
-                <div className="flex items-center gap-2 mb-1"><CreditCard size={20} className="text-emerald-900" /><p className="font-bold">دفع بالبطاقة</p></div>
+                <div className="flex items-center gap-2 mb-1"><CreditCard size={20} className="text-indigo-900" /><p className="font-bold">دفع بالبطاقة</p></div>
                 <F label="رقم المرجع / التفويض (اختياري)"><TInput value={cardRef} onChange={setCardRef} placeholder="مثال: AUTH-789012" /></F>
                 <p className="text-xs !text-slate-500">أدخل البطاقة في القارئ وانتظر التفويض</p>
               </div>
             )}
             {pay === "credit" && (
-              <div className="space-y-2 p-4 bg-amber-50 border-2 border-amber-200 rounded-xl">
-                <div className="flex items-center gap-2"><FileText size={20} className="text-amber-600" /><p className="font-bold text-amber-800">بيع على الذمة</p></div>
+              <div className="space-y-2 p-4 bg-orange-50 border-2 border-orange-200 rounded-xl">
+                <div className="flex items-center gap-2"><FileText size={20} className="text-orange-600" /><p className="font-bold text-amber-800">بيع على الذمة</p></div>
                 {selectedCustomer ? (
-                  <p className="text-sm text-amber-700">سيُضاف مبلغ <strong>{total.toFixed(3)} JOD</strong> على ذمة <strong>{selectedCustomer.name}</strong></p>
+                  <p className="text-sm text-orange-700">سيُضاف مبلغ <strong>{total.toFixed(3)} JOD</strong> على ذمة <strong>{selectedCustomer.name}</strong></p>
                 ) : (
                   <p className="text-sm text-red-600 font-bold">⚠️ يجب اختيار عميل للبيع على الذمة</p>
                 )}
@@ -2008,7 +2008,7 @@ ${filtered.length > 0 ? `
               <div className="border !border-slate-200 rounded-xl overflow-hidden">
                 <div className="px-3 py-2.5 bg-muted/40 border-b !border-slate-200 flex items-center justify-between">
                   <p className="text-sm font-bold">الدفع المختلط</p>
-                  <span className={`text-xs font-black px-2 py-0.5 rounded-full ${splitRemaining <= 0 ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : "bg-amber-100 text-amber-700 border border-amber-200"}`}>
+                  <span className={`text-xs font-black px-2 py-0.5 rounded-full ${splitRemaining <= 0 ? "bg-emerald-100 text-indigo-700 border border-indigo-200" : "bg-orange-100 text-orange-700 border border-orange-200"}`}>
                     {splitRemaining <= 0 ? "✓ مغطى" : `متبقي: ${splitRemaining.toFixed(3)} JOD`}
                   </span>
                 </div>
@@ -2016,16 +2016,16 @@ ${filtered.length > 0 ? `
                   {splitRows.map((row, i) => (
                     <div key={i} className="flex gap-2 items-center">
                       <select value={row.method} onChange={e => setSplitRows(prev => prev.map((r,j) => j===i ? {...r, method: e.target.value as SplitRow["method"]} : r))}
-                        className="h-9 rounded-xl border !border-slate-200 !bg-white text-sm px-2 focus:outline-none focus:ring-2 focus:ring-ring/25 shrink-0 w-24">
+                        className="h-9 rounded-xl border !border-slate-200 !bg-white text-sm px-2 focus:outline-none focus:ring-2 focus:ring-indigo-300/60 shrink-0 w-24">
                         <option value="cash">نقدي</option><option value="cliq">كليك</option><option value="card">بطاقة</option>
                       </select>
                       <input type="number" value={row.amount} onChange={e => setSplitRows(prev => prev.map((r,j) => j===i ? {...r, amount: e.target.value} : r))}
-                        placeholder="0.000" className="flex-1 h-9 text-sm rounded-xl border !border-slate-200 !bg-white px-3 focus:outline-none focus:ring-2 focus:ring-ring/25" />
+                        placeholder="0.000" className="flex-1 h-9 text-sm rounded-xl border !border-slate-200 !bg-white px-3 focus:outline-none focus:ring-2 focus:ring-indigo-300/60" />
                       {splitRows.length > 2 && <button onClick={() => setSplitRows(prev => prev.filter((_,j)=>j!==i))} className="w-9 h-9 flex items-center justify-center rounded-xl text-red-400 hover:text-red-600 hover:bg-red-50 border !border-slate-200 transition-all">✕</button>}
                     </div>
                   ))}
-                  {splitRows.length < 4 && <button onClick={() => setSplitRows(prev => [...prev, {method:"cash",amount:""}])} className="w-full h-8 border border-dashed !border-slate-200 rounded-xl text-xs font-bold !text-slate-500 hover:border-primary hover:text-emerald-900 transition-all">+ إضافة طريقة دفع</button>}
-                  {splitRemaining > 0.005 && <button onClick={() => setSplitRows(prev => { const cp = [...prev]; cp[0] = {...cp[0], amount: (parseFloat(cp[0].amount||"0") + splitRemaining).toFixed(3)}; return cp; })} className="w-full h-8 bg-primary/10 text-emerald-900 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all">إضافة المتبقي ({splitRemaining.toFixed(3)} JOD) للأول</button>}
+                  {splitRows.length < 4 && <button onClick={() => setSplitRows(prev => [...prev, {method:"cash",amount:""}])} className="w-full h-8 border border-dashed !border-slate-200 rounded-xl text-xs font-bold !text-slate-500 hover:border-indigo-400 hover:text-indigo-900 transition-all">+ إضافة طريقة دفع</button>}
+                  {splitRemaining > 0.005 && <button onClick={() => setSplitRows(prev => { const cp = [...prev]; cp[0] = {...cp[0], amount: (parseFloat(cp[0].amount||"0") + splitRemaining).toFixed(3)}; return cp; })} className="w-full h-8 bg-indigo-100 text-indigo-900 rounded-xl text-xs font-bold hover:bg-indigo-700/20 transition-all">إضافة المتبقي ({splitRemaining.toFixed(3)} JOD) للأول</button>}
                 </div>
               </div>
             )}
@@ -2070,7 +2070,7 @@ ${filtered.length > 0 ? `
               <div className="grid grid-cols-4 gap-1.5">
                 {keys.map((k, i) => k ? (
                   <button key={i} onClick={() => calcPress(k)}
-                    className={`h-12 rounded-xl font-bold text-lg transition-all active:scale-90 ${k === "=" ? "bg-primary text-white" : k === "C" ? "bg-red-100 text-red-600" : ["+","-","×","÷"].includes(k) ? "bg-primary/10 text-emerald-900" : "bg-muted hover:bg-muted/80"}`}>
+                    className={`h-12 rounded-xl font-bold text-lg transition-all active:scale-90 ${k === "=" ? "bg-indigo-700 text-white" : k === "C" ? "bg-red-100 text-red-600" : ["+","-","×","÷"].includes(k) ? "bg-indigo-100 text-indigo-900" : "bg-muted hover:bg-muted/80"}`}>
                     {k}
                   </button>
                 ) : <div key={i} />)}
@@ -2111,10 +2111,10 @@ ${filtered.length > 0 ? `
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-card border !border-slate-200 rounded-xl p-3 text-center"><p className="text-xs !text-slate-500 mb-1">فواتير</p><p className="font-black text-xl">{shiftTotals.count}</p></div>
-                <div className="bg-card border !border-slate-200 rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#22C55E"}}><p className="text-xs !text-slate-500 mb-1">إجمالي المبيعات</p><p className="font-black text-xl text-emerald-600">{shiftTotals.gross.toFixed(3)} JOD</p></div>
-                <div className="bg-card border !border-slate-200 rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#4F46E5"}}><p className="text-xs !text-slate-500 mb-1">نقدي</p><p className="font-black text-xl text-emerald-900">{shiftTotals.cash.toFixed(3)} JOD</p></div>
+                <div className="bg-card border !border-slate-200 rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#22C55E"}}><p className="text-xs !text-slate-500 mb-1">إجمالي المبيعات</p><p className="font-black text-xl text-indigo-600">{shiftTotals.gross.toFixed(3)} JOD</p></div>
+                <div className="bg-card border !border-slate-200 rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#4F46E5"}}><p className="text-xs !text-slate-500 mb-1">نقدي</p><p className="font-black text-xl text-indigo-900">{shiftTotals.cash.toFixed(3)} JOD</p></div>
                 <div className="bg-card border !border-slate-200 rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#8B5CF6"}}><p className="text-xs !text-slate-500 mb-1">كليك + بطاقة</p><p className="font-black text-xl" style={{color:"#8B5CF6"}}>{(shiftTotals.cliq + shiftTotals.card).toFixed(3)} JOD</p></div>
-                {shiftTotals.credit > 0 && <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center"><p className="text-xs text-amber-600 mb-1">ذمم غير محصّلة</p><p className="font-black text-xl text-amber-600">{shiftTotals.credit.toFixed(3)} JOD</p></div>}
+                {shiftTotals.credit > 0 && <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-center"><p className="text-xs text-orange-600 mb-1">ذمم غير محصّلة</p><p className="font-black text-xl text-orange-600">{shiftTotals.credit.toFixed(3)} JOD</p></div>}
               </div>
               {shiftProducts.length > 0 && (
                 <div>
@@ -2123,7 +2123,7 @@ ${filtered.length > 0 ? `
                     <table className="w-full text-xs">
                       <thead className="bg-slate-50 sticky top-0"><tr><th className="px-3 py-2 text-right font-bold !text-slate-500">المنتج</th><th className="px-3 py-2 text-center font-bold !text-slate-500">الكمية</th><th className="px-3 py-2 text-left font-bold !text-slate-500">المبلغ</th></tr></thead>
                       <tbody className="divide-y divide-slate-100">
-                        {shiftProducts.map(p => (<tr key={p.nameAr} className="hover:bg-slate-50"><td className="px-3 py-2">{p.nameAr}</td><td className="px-3 py-2 text-center font-bold text-emerald-600">{p.qty}</td><td className="px-3 py-2 text-left font-mono">{p.total.toFixed(3)}</td></tr>))}
+                        {shiftProducts.map(p => (<tr key={p.nameAr} className="hover:bg-slate-50"><td className="px-3 py-2">{p.nameAr}</td><td className="px-3 py-2 text-center font-bold text-indigo-600">{p.qty}</td><td className="px-3 py-2 text-left font-mono">{p.total.toFixed(3)}</td></tr>))}
                       </tbody>
                     </table>
                   </div>
@@ -2196,16 +2196,16 @@ ${filtered.length > 0 ? `
               </div>
               <div className="bg-card border !border-slate-200 rounded-xl p-3 text-center" style={{borderRightWidth:3,borderRightColor:"#22C55E"}}>
                 <p className="text-xs !text-slate-500 mb-1">إجمالي المبيعات</p>
-                <p className="font-black text-lg text-emerald-600">{total.toFixed(3)} JOD</p>
+                <p className="font-black text-lg text-indigo-600">{total.toFixed(3)} JOD</p>
               </div>
             </div>
             <F label="الرصيد الختامي الفعلي في الدرج (JOD)">
               <TInput value={closingBal} onChange={setClosingBal} type="number" placeholder="0.000" icon={<Wallet size={13} />} />
             </F>
             {closingBal && (
-              <div className={`p-3 rounded-xl border-2 text-center ${parseFloat(closingBal) >= (session?.openingBalance || 0) ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
+              <div className={`p-3 rounded-xl border-2 text-center ${parseFloat(closingBal) >= (session?.openingBalance || 0) ? "border-indigo-200 bg-indigo-50" : "border-red-200 bg-red-50"}`}>
                 <p className="text-xs !text-slate-500 mb-1">الفرق</p>
-                <p className={`font-black text-lg ${parseFloat(closingBal) >= (session?.openingBalance || 0) ? "text-emerald-700" : "text-red-700"}`}>
+                <p className={`font-black text-lg ${parseFloat(closingBal) >= (session?.openingBalance || 0) ? "text-indigo-700" : "text-red-700"}`}>
                   {(parseFloat(closingBal) - (session?.openingBalance || 0)).toFixed(3)} JOD
                 </p>
               </div>
@@ -2222,7 +2222,7 @@ ${filtered.length > 0 ? `
       {manualEntry && (
         <Modal title="منتج غير مُعرَّف في النظام" sub={`باركود: ${manualEntry.barcode} — أدخل التفاصيل للبيع المؤقت`} onClose={() => setManualEntry(null)} size="sm">
           <div className="space-y-4">
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 flex gap-2">
+            <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl text-xs text-orange-700 flex gap-2">
               <AlertCircle size={13} className="shrink-0 mt-0.5"/>
               <span>الباركود غير مسجل. أدخل الاسم والسعر، ثم اختر الإضافة المؤقتة أو الحفظ الدائم.</span>
             </div>
