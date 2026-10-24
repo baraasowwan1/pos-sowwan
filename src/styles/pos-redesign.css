@@ -370,3 +370,23 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+
+/* Keep scanner mode as one highlighted strip; prevent global input rules
+   from painting a separate white text box over the scanner area. */
+.pos-terminal .pos-products-panel .pos-barcode-scanner input[type="text"] {
+  min-height: 0 !important;
+  height: 100% !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: #29356F !important;
+}
+.pos-terminal .pos-products-panel .pos-barcode-scanner input[type="text"]:focus {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
