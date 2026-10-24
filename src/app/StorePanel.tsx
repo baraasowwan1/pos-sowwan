@@ -140,8 +140,17 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
     } catch { return "dashboard"; }
   });
   const [col, setCol] = useState(false);
+  // Keep data-heavy merchant screens mounted after first visit so navigation
+  // does not reset their local product state and trigger a blank/loading flash.
+  const [visitedScreens, setVisitedScreens] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`sowwanjo_store_screen_${storeId}`) || "dashboard";
+      return [saved];
+    } catch { return ["dashboard"]; }
+  });
   const navTo = (s: string) => {
     setScreen(s);
+    setVisitedScreens(prev => prev.includes(s) ? prev : [...prev, s]);
     try { localStorage.setItem(`sowwanjo_store_screen_${storeId}`, s); } catch {}
   };
   const cat = CAT[store.category as StoreCategory] || CAT["supermarket"];
@@ -496,10 +505,16 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
           ) : (
             <>
               {screen === "dashboard" && <StoreDash store={store} />}
-              {screen === "pos"       && <POSTerm store={store} />}
+              {visitedScreens.includes("pos") && (
+                <div className={screen === "pos" ? "h-full" : "hidden"}><POSTerm store={store} /></div>
+              )}
               {screen === "sales"     && <SalesScreen store={store} />}
-              {screen === "products"  && <ProductsMgr />}
-              {screen === "inventory" && <InvScreen />}
+              {visitedScreens.includes("products") && (
+                <div className={screen === "products" ? "h-full" : "hidden"}><ProductsMgr /></div>
+              )}
+              {visitedScreens.includes("inventory") && (
+                <div className={screen === "inventory" ? "h-full" : "hidden"}><InvScreen /></div>
+              )}
               {screen === "customers" && <CustScreen />}
               {screen === "suppliers" && <SuppScreen />}
               {screen === "purchases"      && <PurchScreen />}
