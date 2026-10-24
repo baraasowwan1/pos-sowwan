@@ -1208,7 +1208,8 @@ function POSTerm({ store }: { store: StoreData }) {
       if (result === "opened") showToast("تم فتح الدرج النقدي ✅");
       else if (result === "no_serial") showToast("المتصفح لا يدعم Web Serial — جرّب Chrome أو Edge", "warning");
       else if (result === "cancelled") showToast("تم إلغاء اختيار المنفذ", "warning");
-      else showToast("تعذّر فتح الدرج — تحقق من التوصيل", "error");
+      else if (result === "needs_permission") showToast("فعّل خيار فتح الدرج التلقائي أولاً واختر منفذ الدرج من نافذة الربط", "warning");
+      else showToast("تعذّر فتح الدرج — تأكد من توصيله بمنفذ USB/Serial مدعوم", "error");
     } catch { showToast("خطأ في فتح الدرج", "error"); }
     finally { setDrawerOpening(false); }
   };
