@@ -234,7 +234,7 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
 
         {/* HEADER */}
         <header className="shrink-0 bg-card border-b border-border z-30" style={{ paddingTop: "env(safe-area-inset-top)" }}>
-          <div className="h-14 flex items-center justify-between px-3 sm:px-5 gap-2">
+          <div className="sa-topbar h-[68px] flex items-center justify-between px-3 sm:px-6 gap-3">
             {/* Mobile hamburger */}
             <button onClick={() => setMobileMenu(true)} className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground shrink-0">
               <Menu size={20} />
