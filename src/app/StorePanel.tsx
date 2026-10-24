@@ -689,9 +689,9 @@ function StoreDash({ store }: { store: StoreData }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ─── Cash Drawer Success Overlay ─────────────────────────────────────────────
-function SuccessOverlay({ invNo, total, pay, change, drawerAuto, setDrawerAuto, onPrint, onDrawer, drawerOpening, onClose }: {
+function SuccessOverlay({ invNo, total, pay, change, drawerAuto, setDrawerAuto, onPrepareDrawer, onPrint, onDrawer, drawerOpening, onClose }: {
   invNo: string; total: number; pay: string; change: number;
-  drawerAuto: boolean; setDrawerAuto: (v: boolean) => void;
+  drawerAuto: boolean; setDrawerAuto: (v: boolean) => void; onPrepareDrawer: () => void;
   onPrint: () => void; onDrawer: () => void; drawerOpening: boolean;
   onClose: () => void;
 }) {
@@ -713,7 +713,7 @@ function SuccessOverlay({ invNo, total, pay, change, drawerAuto, setDrawerAuto, 
             <p className="text-xs font-bold text-muted-foreground">الدرج النقدي (كاش بوكس)</p>
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <span className="text-xs text-muted-foreground">فتح تلقائي</span>
-              <div onClick={() => setDrawerAuto(!drawerAuto)} className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 cursor-pointer ${drawerAuto ? "bg-emerald-500" : "bg-muted-foreground/30"}`}>
+              <div role="switch" aria-checked={drawerAuto} tabIndex={0} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); const next = !drawerAuto; setDrawerAuto(next); if (next) onPrepareDrawer(); } }} onClick={() => { const next = !drawerAuto; setDrawerAuto(next); if (next) onPrepareDrawer(); }} className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 cursor-pointer ${drawerAuto ? "bg-emerald-500" : "bg-muted-foreground/30"}`}>
                 <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${drawerAuto ? "translate-x-4" : "translate-x-0"}`} />
               </div>
             </label>
@@ -2041,7 +2041,7 @@ ${filtered.length > 0 ? `
       )}
       {ok && (
         <SuccessOverlay invNo={invNo} total={total} pay={pay} change={change}
-          drawerAuto={drawerAuto} setDrawerAuto={setDrawerAuto}
+          drawerAuto={drawerAuto} setDrawerAuto={setDrawerAuto} onPrepareDrawer={async () => { try { const { prepareCashDrawer } = await import("./cashDrawer"); const result = await prepareCashDrawer(); if (result === "ready") showToast("تم ربط الدرج للتشغيل التلقائي ✅"); else if (result === "no_serial") showToast("فتح الدرج التلقائي يحتاج Chrome أو Edge واتصال درج مدعوم عبر USB/Serial", "warning"); else if (result === "cancelled") showToast("لم يتم اختيار منفذ الدرج", "warning"); else showToast("تعذر ربط الدرج؛ تحقق من التوصيل", "error"); } catch { showToast("تعذر ربط الدرج", "error"); } }}
           onPrint={doPrint} onDrawer={openDrawer} drawerOpening={drawerOpening} onClose={handleClose} />
       )}
 
