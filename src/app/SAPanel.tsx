@@ -1203,24 +1203,28 @@ function SAStores() {
 
       {/* ── Renew Subscription Modal ── */}
       {renewStore && (
-        <Modal title={`تجديد اشتراك: ${renewStore.nameAr}`} sub={`الانتهاء الحالي: ${renewStore.expiresAt}`} onClose={() => setRenewStore(null)} size="sm">
-          <div className="space-y-4">
-            <F label="الخطة">
-              <SInput value={renewStore.plan || ""} onChange={v => setRenewStore({...renewStore, plan: v})} options={apiPlans.map(p => ({ value: p.nameAr, label: `${p.nameAr} — ${p.price} د.أ/شهر` }))} />
-              {apiPlans.length === 0 && <p className="text-xs text-amber-600 mt-1">لا توجد خطط محمّلة؛ أعد فتح النافذة أو تحقق من صفحة خطط الاشتراك.</p>}
-            </F>
-            <F label="مدة التجديد">
-              <SInput value={renewMonths} onChange={setRenewMonths} options={[{ value: "1", label: "شهر واحد" }, { value: "3", label: "3 أشهر (وفر 5%)" }, { value: "6", label: "6 أشهر (وفر 10%)" }, { value: "12", label: "سنة كاملة (وفر 32%)" }]} />
-            </F>
-            <div className="p-4 bg-card border border-border rounded-xl">
-              <div className="flex justify-between text-sm mb-1"><span className="text-muted-foreground">انتهاء الاشتراك الجديد:</span><span className="font-black text-primary">{new Date(Date.now() + (Number.parseInt(renewMonths, 10) || 1) * 30 * 86400000).toISOString().split("T")[0]}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">المبلغ المستحق:</span>
-                <span className="font-black text-foreground">{((apiPlans.find(p => p.nameAr === renewStore.plan)?.price) || 0) * parseInt(renewMonths)} د.أ</span>
-              </div>
+        <Modal title={`تجديد اشتراك: ${renewStore.nameAr || "المتجر"}`} sub={`الانتهاء الحالي: ${renewStore.expiresAt || "غير محدد"}`} onClose={() => { if (!renewing) setRenewStore(null); }} size="sm">
+          <div className="space-y-4" dir="rtl">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-foreground">الخطة</label>
+              <select aria-label="خطة الاشتراك" value={renewStore.plan || ""} onChange={e => setRenewStore(current => current ? { ...current, plan: e.target.value } : current)} disabled={renewing || apiPlans.length === 0} className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
+                {apiPlans.map(p => <option key={p.nameAr} value={p.nameAr}>{p.nameAr} — {Number(p.price) || 0} د.أ/شهر</option>)}
+              </select>
+              {apiPlans.length === 0 && <p className="text-xs text-amber-600 mt-1">جاري تحميل الخطط أو لا توجد خطط متاحة. أغلق النافذة وأعد المحاولة بعد تحميلها.</p>}
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-foreground">مدة التجديد</label>
+              <select aria-label="مدة التجديد" value={renewMonths} onChange={e => setRenewMonths(e.target.value)} disabled={renewing} className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <option value="1">شهر واحد</option><option value="3">3 أشهر (وفر 5%)</option><option value="6">6 أشهر (وفر 10%)</option><option value="12">سنة كاملة (وفر 32%)</option>
+              </select>
+            </div>
+            <div className="p-4 bg-muted/40 border border-border rounded-xl space-y-2">
+              <div className="flex justify-between gap-3 text-sm"><span className="text-muted-foreground">انتهاء الاشتراك المتوقع:</span><span className="font-black text-primary" dir="ltr">{(() => { const d = new Date(renewStore.expiresAt && new Date(renewStore.expiresAt) > new Date() ? renewStore.expiresAt : Date.now()); d.setMonth(d.getMonth() + (Number.parseInt(renewMonths, 10) || 1)); return Number.isNaN(d.getTime()) ? "—" : d.toISOString().slice(0, 10); })()}</span></div>
+              <div className="flex justify-between gap-3 text-sm"><span className="text-muted-foreground">المبلغ التقديري:</span><span className="font-black text-foreground">{((Number(apiPlans.find(p => p.nameAr === renewStore.plan)?.price) || 0) * (Number.parseInt(renewMonths, 10) || 1)).toFixed(3)} د.أ</span></div>
             </div>
             <div className="flex gap-3 justify-end">
-              <Btn v="secondary" onClick={() => setRenewStore(null)}>إلغاء</Btn>
-              <Btn v="success" onClick={doRenew} disabled={renewing} icon={<CheckCircle size={14} />}>{renewing ? "جاري حفظ التجديد..." : "تأكيد التجديد"}</Btn>
+              <Btn v="secondary" onClick={() => setRenewStore(null)} disabled={renewing}>إلغاء</Btn>
+              <Btn v="success" onClick={doRenew} disabled={renewing || apiPlans.length === 0} icon={<CheckCircle size={14} />}>{renewing ? "جاري حفظ التجديد..." : "تأكيد التجديد"}</Btn>
             </div>
           </div>
         </Modal>
