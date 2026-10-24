@@ -833,15 +833,32 @@ function SAStores() {
 
   const doRenew = async () => {
     if (!renewStore) return;
-    const months = parseInt(renewMonths);
-    const newExpiry = new Date(Date.now() + months * 30 * 86400000).toISOString().split("T")[0];
+    const months = Number.parseInt(renewMonths, 10);
+    if (!renewStore.plan || !apiPlans.some(p => p.nameAr === renewStore.plan)) {
+      showToast("اختر خطة اشتراك صحيحة أولاً", "error");
+      return;
+    }
+    if (![1, 3, 6, 12].includes(months)) {
+      showToast("اختر مدة تجديد صحيحة", "error");
+      return;
+    }
     try {
-      await apiUpdateStore(renewStore.id, { status: "active", expiresAt: newExpiry });
-    } catch { /* fallback */ }
-    setStores(p => p.map(s => s.id === renewStore.id ? { ...s, status: "active" as const, expiresAt: newExpiry } : s));
-    if (detail?.id === renewStore.id) setDetail({ ...detail, status: "active", expiresAt: newExpiry });
-    showToast(`تم تجديد اشتراك "${renewStore.nameAr}" لمدة ${months} شهر حتى ${newExpiry}`, "success");
-    setRenewStore(null);
+      const result = await apiFetch(`/stores/${renewStore.id}/assign-plan`, {
+        method: "PATCH",
+        body: JSON.stringify({ plan: renewStore.plan, months })
+      }, getToken()) as { store?: StoreData & { _id?: string; id?: string } };
+      const saved = result?.store;
+      const newExpiry = saved?.expiresAt
+        ? String(saved.expiresAt).slice(0, 10)
+        : (() => { const d = new Date(renewStore.expiresAt && new Date(renewStore.expiresAt) > new Date() ? renewStore.expiresAt : Date.now()); d.setMonth(d.getMonth() + months); return d.toISOString().slice(0, 10); })();
+      const updated = { ...renewStore, ...(saved || {}), id: renewStore.id, plan: renewStore.plan, status: "active" as const, expiresAt: newExpiry };
+      setStores(p => p.map(s => s.id === renewStore.id ? { ...s, ...updated } : s));
+      if (detail?.id === renewStore.id) setDetail({ ...detail, ...updated });
+      showToast(`تم تجديد اشتراك "${renewStore.nameAr}" على خطة "${renewStore.plan}" حتى ${newExpiry}`, "success");
+      setRenewStore(null);
+    } catch (e) {
+      showToast((e as { error?: string })?.error || "تعذّر حفظ التجديد. لم يتم تغيير الاشتراك.", "error");
+    }
   };
 
   const doExport = (store: StoreData) => {
@@ -1177,7 +1194,10 @@ function SAStores() {
       {renewStore && (
         <Modal title={`تجديد اشتراك: ${renewStore.nameAr}`} sub={`الانتهاء الحالي: ${renewStore.expiresAt}`} onClose={() => setRenewStore(null)} size="sm">
           <div className="space-y-4">
-            <F label="الخطة"><SInput value={renewStore.plan} onChange={v => setRenewStore({...renewStore, plan: v})} options={apiPlans.map(p => ({ value: p.nameAr, label: `${p.nameAr} — ${p.price} JOD/شهر` }))} /></F>
+            <F label="الخطة">
+              <SInput value={renewStore.plan || ""} onChange={v => setRenewStore({...renewStore, plan: v})} options={apiPlans.map(p => ({ value: p.nameAr, label: `${p.nameAr} — ${p.price} د.أ/شهر` }))} />
+              {apiPlans.length === 0 && <p className="text-xs text-amber-600 mt-1">لا توجد خطط محمّلة؛ أعد فتح النافذة أو تحقق من صفحة خطط الاشتراك.</p>}
+            </F>
             <F label="مدة التجديد">
               <SInput value={renewMonths} onChange={setRenewMonths} options={[{ value: "1", label: "شهر واحد" }, { value: "3", label: "3 أشهر (وفر 5%)" }, { value: "6", label: "6 أشهر (وفر 10%)" }, { value: "12", label: "سنة كاملة (وفر 32%)" }]} />
             </F>
