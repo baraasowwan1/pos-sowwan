@@ -180,6 +180,25 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
     }
     return true;
   });
+  // If module permissions change from the server, move away from a disabled screen.
+  useEffect(() => {
+    if (!visibleNav.some(n => n.id === screen)) {
+      const fallback = visibleNav[0]?.id || "dashboard";
+      setScreen(fallback);
+      try { localStorage.setItem(`sowwanjo_store_screen_${storeId}`, fallback); } catch {}
+    }
+  }, [screen, storeId, store.sidebarFeatures]);
+
+  const requestSubscription = async () => {
+    try {
+      const result = await storeApi.post("/subscription-requests/request", { requestType: "renewal" }) as { message?: string; existing?: boolean };
+      showToast(result?.message || (result?.existing ? "طلبك قيد المراجعة بالفعل" : "تم إرسال طلب تجديد الاشتراك للإدارة"));
+    } catch (err) {
+      const e = err as { error?: string };
+      showToast(e?.error || "تعذر إرسال طلب التجديد. تحقق من الاتصال وحاول مجدداً");
+    }
+  };
+
   const [storeMobileMenu, setStoreMobileMenu] = useState(false);
 
   // ── Offline detection ─────────────────────────────────────────────────────
@@ -360,6 +379,13 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
               <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{ROLE_AR[userRole] || userRole}</p>
             </div>
           </div>
+          {userRole === "owner" && (
+            <button onClick={requestSubscription} title="طلب تجديد الاشتراك"
+              className={`w-full flex items-center gap-2 h-8 rounded-md text-xs transition-colors text-amber-300 hover:bg-amber-500/10 justify-center ${col ? "lg:justify-center" : "lg:justify-start lg:px-2.5"} px-2`}>
+              <CreditCard size={13} />
+              <span className={`hidden ${col ? "lg:hidden" : "lg:inline"}`}>طلب تجديد الاشتراك</span>
+            </button>
+          )}
           <button onClick={() => setCol(!col)} className="hidden lg:flex w-full items-center justify-center h-7 rounded-md text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
             {col ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
           </button>
