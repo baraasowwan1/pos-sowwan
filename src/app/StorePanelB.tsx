@@ -285,19 +285,6 @@ function ProductsMgr() {
   const [prods, setProds] = useState<Product[]>([]);
   useEffect(() => { setProds(normList<Product>(prodsRaw)); }, [prodsRaw]);
 
-  // Refresh from the database when returning to this tab/window, so a stale
-  // local cache cannot hide products added from another browser.
-  useEffect(() => {
-    const refreshOnReturn = () => {
-      if (document.visibilityState === "visible") void refreshProds();
-    };
-    window.addEventListener("focus", refreshOnReturn);
-    document.addEventListener("visibilitychange", refreshOnReturn);
-    return () => {
-      window.removeEventListener("focus", refreshOnReturn);
-      document.removeEventListener("visibilitychange", refreshOnReturn);
-    };
-  }, [refreshProds]);
   const [q, setQ] = useState("");
   const [catFilter, setCatFilter] = useState("الكل");
   const [showAdd, setShowAdd] = useState(false);
