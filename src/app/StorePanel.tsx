@@ -300,7 +300,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
 
   return (
     <OfflineCtx.Provider value={{ isOnline, queueOffline }}>
-    <div className="flex flex-col h-screen overflow-hidden bg-background" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
+    <div className="pos-shell flex flex-col h-screen overflow-hidden bg-background" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
 
       {/* ── Offline Banner ───────────────────────────────────────────────────── */}
       {!isOnline && (
@@ -328,7 +328,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
 
       {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
       <aside
-        className={`hidden md:flex shrink-0 flex-col transition-all duration-200 border-l border-sidebar-border md:w-14 ${col ? "lg:w-14" : "lg:w-52"}`}
+        className={`pos-sidebar hidden md:flex shrink-0 flex-col transition-all duration-200 border-l border-sidebar-border md:w-[72px] ${col ? "lg:w-[72px]" : "lg:w-64"}`}
         style={{ background: "var(--sidebar)" }}>
 
         {/* Logo / Store name */}
@@ -353,7 +353,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
               <div key={gi} className={gi > 0 ? "pt-1.5 mt-1.5 border-t border-sidebar-border" : ""}>
                 {groupItems.map(n => (
                   <button key={n.id} onClick={() => navTo(n.id)} title={n.label}
-                    className={`w-full flex items-center gap-2.5 h-8 rounded-lg text-xs font-medium transition-all mb-0.5 relative
+                    className={`w-full flex items-center gap-3 h-10 rounded-xl text-sm font-medium transition-all mb-1 relative
                       justify-center md:justify-center ${col ? "lg:justify-center" : "lg:justify-start lg:px-2.5"} px-2
                       ${screen === n.id
                         ? "bg-sidebar-primary/20 text-sidebar-primary font-semibold"
@@ -456,7 +456,7 @@ function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => v
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* ── Top header ─────────────────────────────────────────────────────── */}
-        <header className="h-13 bg-card border-b border-border flex items-center justify-between px-3 sm:px-4 shrink-0 gap-2" style={{ height: 52, paddingTop: "env(safe-area-inset-top)" }}>
+        <header className="pos-topbar bg-card border-b border-border flex items-center justify-between px-3 sm:px-6 shrink-0 gap-3" style={{ height: 68, paddingTop: "env(safe-area-inset-top)" }}>
           <div className="flex items-center gap-2 min-w-0">
             <button onClick={() => setStoreMobileMenu(true)} className="md:hidden w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground"><Menu size={16} /></button>
             <button onClick={() => setCol(!col)} className="hidden md:flex w-8 h-8 items-center justify-center rounded-md hover:bg-muted text-muted-foreground"><Menu size={15} /></button>
