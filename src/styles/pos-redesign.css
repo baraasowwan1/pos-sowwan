@@ -388,3 +388,171 @@
   .pos-terminal .pos-catalog-grid { gap: 6px; }
   .pos-terminal .pos-product-card { min-height: 145px; }
 }
+
+
+/* Merchant POS v3 — compact cashier-first workstation */
+.pos-terminal {
+  --pos-brand: #172554;
+  --pos-accent: #16a085;
+  --pos-line: #dbe3ee;
+  --pos-canvas: #eef2f7;
+  height: 100% !important;
+  min-height: 0 !important;
+  background: var(--pos-canvas) !important;
+  color: #172033 !important;
+}
+.pos-terminal > header {
+  min-height: 54px !important;
+  height: 54px !important;
+  flex: 0 0 54px !important;
+  flex-wrap: nowrap !important;
+  padding: 6px 14px !important;
+  gap: 10px !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid #dbe3ee !important;
+}
+.pos-terminal > header > div:first-child { gap: 9px !important; min-width: 0; }
+.pos-terminal > header > div:first-child > div:first-child {
+  width: 34px !important; height: 34px !important;
+  border-radius: 9px !important; box-shadow: none !important;
+  background: #172554 !important;
+}
+.pos-terminal > header h1 { font-size: 14px !important; line-height: 1.2 !important; }
+.pos-terminal > header p { font-size: 10px !important; margin-top: 1px !important; }
+.pos-terminal > header > div:last-child { gap: 6px !important; flex-wrap: nowrap !important; }
+.pos-terminal > header > div:last-child > span,
+.pos-terminal > header > div:last-child > button {
+  min-height: 30px !important; padding: 5px 9px !important;
+  border-radius: 8px !important; white-space: nowrap;
+}
+.pos-terminal .pos-workspace {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 340px) 176px !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  align-items: stretch !important;
+  gap: 9px !important;
+  padding: 9px !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+.pos-terminal .pos-products-panel {
+  grid-column: 1; grid-row: 1;
+  order: 0 !important;
+  min-width: 0 !important; min-height: 0 !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--pos-line) !important;
+  box-shadow: 0 1px 3px #1725540a !important;
+}
+.pos-terminal .pos-cart-panel {
+  grid-column: 2; grid-row: 1;
+  order: 0 !important;
+  width: auto !important; min-width: 0 !important;
+  flex: initial !important; min-height: 0 !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--pos-line) !important;
+  box-shadow: 0 1px 3px #1725540a !important;
+}
+.pos-terminal .pos-actions-panel {
+  grid-column: 3; grid-row: 1;
+  order: 0 !important;
+  width: auto !important; min-width: 0 !important;
+  flex: initial !important; min-height: 0 !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--pos-line) !important;
+  box-shadow: 0 1px 3px #1725540a !important;
+}
+.pos-terminal .pos-cart-panel > div:first-child,
+.pos-terminal .pos-actions-panel > div:first-child {
+  min-height: 42px !important;
+  padding: 8px 11px !important;
+  background: #172554 !important;
+}
+.pos-terminal .pos-products-panel > div:first-child {
+  padding: 10px 12px !important;
+}
+.pos-terminal .pos-products-panel h2 { font-size: 14px !important; }
+.pos-terminal .pos-products-panel input[type="text"] {
+  height: 36px !important; min-height: 36px !important;
+  border-radius: 8px !important; font-size: 12px !important;
+  background: #f7f9fc !important;
+}
+.pos-terminal .pos-products-panel .w-10.h-10 {
+  width: 36px !important; height: 36px !important;
+}
+.pos-terminal .pos-products-panel > div:nth-child(2) {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding: 8px !important;
+  background: #f4f7fb !important;
+}
+.pos-terminal .pos-catalog-grid {
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)) !important;
+  gap: 7px !important; padding: 0 !important;
+}
+.pos-terminal .pos-product-card {
+  min-height: 0 !important; height: 118px !important;
+  padding: 8px !important; gap: 5px !important;
+  border-radius: 9px !important;
+  border: 1px solid #e0e7f0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.pos-terminal .pos-product-card > div:first-child { height: 45px !important; min-height: 0 !important; }
+.pos-terminal .pos-product-card p { font-size: 11px !important; line-height: 1.25 !important; }
+.pos-terminal .pos-product-card .text-lg,
+.pos-terminal .pos-product-card .text-xl { font-size: 13px !important; }
+.pos-terminal .pos-cart-panel .px-3.py-2\.5 { padding: 7px 9px !important; }
+.pos-terminal .pos-cart-panel .h-9 { height: 32px !important; min-height: 32px !important; }
+.pos-terminal .pos-cart-panel .flex-1.overflow-y-auto { min-height: 0 !important; }
+.pos-terminal .pos-cart-panel .px-3.py-2\.5.hover\:bg-slate-50 { padding: 7px 9px !important; }
+.pos-terminal .pos-cart-panel .px-4.py-3 { padding: 9px 11px !important; }
+.pos-terminal .pos-cart-panel .space-y-1\.5 > :not([hidden]) ~ :not([hidden]) { margin-top: 4px !important; }
+.pos-terminal .pos-cart-panel .text-xl { font-size: 18px !important; }
+.pos-terminal .pos-cart-panel .h-10 { height: 34px !important; min-height: 34px !important; }
+.pos-terminal .pos-actions-panel .flex-1.overflow-y-auto { min-height: 0 !important; overflow-y: auto !important; padding: 5px !important; }
+.pos-terminal .pos-actions-panel button { border-radius: 8px !important; }
+.pos-terminal .pos-actions-panel .grid { gap: 5px !important; }
+.pos-terminal .pos-actions-panel .p-4 { padding: 8px !important; }
+.pos-terminal .pos-actions-panel .p-3 { padding: 7px !important; }
+.pos-terminal .pos-actions-panel .text-base { font-size: 12px !important; }
+.pos-terminal .pos-actions-panel .text-sm { font-size: 11px !important; }
+.pos-terminal .pos-actions-panel .text-xs { font-size: 10px !important; }
+.pos-terminal .pos-actions-panel input,
+.pos-terminal .pos-actions-panel select { min-height: 30px !important; height: 30px !important; font-size: 11px !important; }
+.pos-terminal .pos-actions-panel .h-11,
+.pos-terminal .pos-actions-panel .h-12 { height: 36px !important; min-height: 36px !important; }
+@media (min-width: 1200px) {
+  .pos-terminal .pos-workspace { grid-template-columns: minmax(0, 1fr) minmax(320px, 350px) 184px !important; }
+}
+@media (max-width: 1050px) and (min-width: 701px) {
+  .pos-terminal .pos-workspace { grid-template-columns: minmax(0, 1fr) minmax(270px, 32vw) !important; }
+  .pos-terminal .pos-actions-panel { grid-column: 1 / -1; grid-row: 2; max-height: 100px; }
+  .pos-terminal .pos-actions-panel .flex-1.overflow-y-auto { display: flex; flex-wrap: wrap; gap: 6px; }
+}
+@media (max-width: 700px) {
+  .pos-terminal { height: 100% !important; }
+  .pos-terminal > header { height: auto !important; min-height: 48px !important; flex-basis: auto !important; padding: 6px 8px !important; }
+  .pos-terminal > header > div:last-child > span:nth-child(2) { display: none !important; }
+  .pos-terminal .pos-workspace {
+    display: flex !important; flex-direction: column !important;
+    gap: 7px !important; padding: 7px !important;
+    overflow-y: auto !important; overflow-x: hidden !important;
+  }
+  .pos-terminal .pos-products-panel {
+    order: 1 !important; flex: 1 0 320px !important;
+    width: 100% !important; min-height: 320px !important;
+  }
+  .pos-terminal .pos-cart-panel {
+    order: 2 !important; flex: 0 0 auto !important;
+    width: 100% !important; min-height: 230px !important;
+    max-height: 48dvh !important;
+  }
+  .pos-terminal .pos-cart-panel .flex-1.overflow-y-auto { max-height: 22dvh !important; }
+  .pos-terminal .pos-actions-panel {
+    order: 3 !important; flex: 0 0 auto !important;
+    width: 100% !important; max-height: 180px !important;
+  }
+  .pos-terminal .pos-catalog-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .pos-terminal .pos-product-card { height: 105px !important; padding: 6px !important; }
+  .pos-terminal .pos-product-card > div:first-child { height: 34px !important; }
+}
