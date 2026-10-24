@@ -71,20 +71,34 @@ const STORE_NAV = [
 ];
 
 function StoreLayout({ storeId, onLogout }: { storeId: string; onLogout: () => void }) {
-  // يقرأ بيانات المتجر — أولاً من Backend JWT ثم من localStorage
+  // بيانات localStorage تُستخدم كعرض أولي فقط؛ قاعدة البيانات هي المصدر الأساسي.
   const storeFromLS: StoreData = (() => {
     try {
-      // بيانات المتجر المحفوظة من JWT login
       const info = localStorage.getItem(`sowwanjo_storeinfo_${storeId}`);
       if (info) return JSON.parse(info);
-      // fallback: البحث في قائمة المتاجر المكاشة
-      const all = localStorage.getItem("sowwanjo_sa_stores");
-      if (all) { const arr = JSON.parse(all); return arr.find((s: StoreData) => s.id === storeId) || null; }
     } catch {}
-    return null;
+    return null as unknown as StoreData;
   })();
+  const [serverStore, setServerStore] = useState<Partial<StoreData> | null>(null);
+  const refreshStoreFromServer = useCallback(async () => {
+    try {
+      const result = await storeApi.get("/auth/me") as { store?: Partial<StoreData> & { _id?: string } };
+      if (!result?.store) return;
+      const fresh = { ...result.store, id: String(result.store.id || result.store._id || storeId) } as Partial<StoreData>;
+      setServerStore(fresh);
+      try { localStorage.setItem(`sowwanjo_storeinfo_${storeId}`, JSON.stringify({ ...(storeFromLS || {}), ...fresh, id: storeId })); } catch {}
+    } catch {
+      // إبقاء الواجهة متاحة عند انقطاع الاتصال، دون اعتبار التخزين المحلي مصدراً موثوقاً.
+    }
+  }, [storeId]);
+  useEffect(() => {
+    void refreshStoreFromServer();
+    const onStoreUpdated = () => { void refreshStoreFromServer(); };
+    window.addEventListener("sowwan:store-updated", onStoreUpdated);
+    return () => window.removeEventListener("sowwan:store-updated", onStoreUpdated);
+  }, [refreshStoreFromServer]);
+  const rawStore = { ...(storeFromLS || {}), ...(serverStore || {}) } as Partial<StoreData>;
   // تطبيع بيانات المتجر — تضمن عدم وجود قيم null تسبب crash
-  const rawStore = storeFromLS || null;
   const store: StoreData = {
     id: storeId,
     nameAr:   rawStore?.nameAr   || "متجري",
