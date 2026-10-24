@@ -281,9 +281,23 @@ function ProductsMgr() {
   const storeCategory = (() => {
     try { return JSON.parse(localStorage.getItem(`sowwanjo_storeinfo_${sid}`) || "{}").category || "supermarket"; } catch { return "supermarket"; }
   })();
-  const { data: prodsRaw, loading: prodsLoading, refresh: refreshProds } = useApiCached<unknown[]>("/products", []);
+  const { data: prodsRaw, loading: prodsLoading, error: prodsError, refresh: refreshProds } = useApiCached<unknown[]>("/products", []);
   const [prods, setProds] = useState<Product[]>([]);
   useEffect(() => { setProds(normList<Product>(prodsRaw)); }, [prodsRaw]);
+
+  // Refresh from the database when returning to this tab/window, so a stale
+  // local cache cannot hide products added from another browser.
+  useEffect(() => {
+    const refreshOnReturn = () => {
+      if (document.visibilityState === "visible") void refreshProds();
+    };
+    window.addEventListener("focus", refreshOnReturn);
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    return () => {
+      window.removeEventListener("focus", refreshOnReturn);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+    };
+  }, [refreshProds]);
   const [q, setQ] = useState("");
   const [catFilter, setCatFilter] = useState("الكل");
   const [showAdd, setShowAdd] = useState(false);
@@ -457,6 +471,16 @@ function ProductsMgr() {
           <Btn v="secondary" s="sm" icon={<Download size={13} />} onClick={exportCSV}>تصدير CSV</Btn>
           <Btn s="sm" icon={<Plus size={13} />} onClick={() => { setShowAdd(true); setF(emptyF); setOfoResult(null); setOfoError(""); }}>منتج جديد</Btn>
         </>} />
+
+      {prodsError && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <span>تعذّر تحميل المنتجات من قاعدة البيانات: {prodsError}</span>
+          <Btn v="secondary" s="sm" onClick={() => { void refreshProds(); }}>إعادة المحاولة</Btn>
+        </div>
+      )}
+      {prodsLoading && prods.length === 0 && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">جارٍ تحميل المنتجات من قاعدة البيانات…</div>
+      )}
 
       {/* ── Barcode / QR quick print bar ── */}
       {filtered.length > 0 && (
