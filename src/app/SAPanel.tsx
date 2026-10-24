@@ -154,11 +154,11 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
   ];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
+    <div className="sa-shell flex h-screen overflow-hidden bg-background" dir="rtl" style={{ fontFamily: "'Cairo',sans-serif" }}>
 
       {/* ── SIDEBAR: mobile=hidden, tablet=icon-only(52px), desktop=full(240px) ── */}
       <aside
-        className={`hidden md:flex shrink-0 flex-col transition-all duration-300 md:w-[52px] ${col ? "lg:w-[52px]" : "lg:w-60"}`}
+        className={`sa-sidebar hidden md:flex shrink-0 flex-col transition-all duration-300 md:w-[72px] ${col ? "lg:w-[72px]" : "lg:w-64"}`}
         style={{ background: "linear-gradient(180deg,#0F172A 0%,#1A2744 100%)" }}>
         <div className="h-14 flex items-center border-b border-white/7 px-2 lg:px-3 gap-3 shrink-0">
           <div className="w-8 h-8 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
@@ -233,7 +233,7 @@ function SuperAdminLayout({ onLogout }: { onLogout: () => void }) {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {/* HEADER */}
-        <header className="shrink-0 bg-card border-b border-border z-30" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+        <header className="sa-topbar shrink-0 bg-card border-b border-border z-30" style={{ paddingTop: "env(safe-area-inset-top)" }}>
           <div className="sa-topbar h-[68px] flex items-center justify-between px-3 sm:px-6 gap-3">
             {/* Mobile hamburger */}
             <button onClick={() => setMobileMenu(true)} className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-muted text-muted-foreground shrink-0">
