@@ -1575,9 +1575,13 @@ ${filtered.length > 0 ? `
       </div>
 
       {/* ══ CENTER PANEL — Products ════════════════════════════════════════════ */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden rounded-2xl border border-[#dbe4df] shadow-sm" style={{background:"#FFFFFF"}}>
         {/* Toolbar */}
-        <div className="shrink-0 px-3 py-2.5 border-b border-border space-y-2" style={{background:"white"}}>
+        <div className="shrink-0 px-4 py-3 border-b border-[#e2e9e5] space-y-3" style={{background:"#FFFFFF"}}>
+          <div className="flex items-center justify-between gap-3">
+            <div><h2 className="text-base font-black" style={{color:"#173A34"}}>المنتجات</h2><p className="text-xs mt-0.5 text-muted-foreground">اختَر المنتج لإضافته إلى الفاتورة</p></div>
+            <div className="hidden sm:flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1.5" style={{background:"#edf5f1",color:"#23634f"}}><span className="w-2 h-2 rounded-full" style={{background:isOnline?"#2f9e68":"#d97706"}} />{isOnline ? "متصل" : "دون اتصال"} · {prods.length} منتج</div>
+          </div>
           {!isOnline && (
             <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs font-bold text-amber-700">
               <WifiOff size={12} className="shrink-0" /><span>أوف لاين — المبيعات تُحفظ محلياً</span>
@@ -1611,8 +1615,8 @@ ${filtered.length > 0 ? `
               {vm === "grid" ? <List size={15} className="text-muted-foreground" /> : <Grid3X3 size={15} className="text-muted-foreground" />}
             </button>
           </div>
-          {/* Catalog filters appear only during search; keep the default cashier view uncluttered. */}
-          {q.trim() && (<div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+          {/* Quick filters remain visible for fast cashier access. */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
             {/* View tabs */}
             {(["all","fav","recent"] as const).map((t, i) => {
               const labels = ["الكل","★ مفضلة","⏱ أخيرة"];
@@ -1643,11 +1647,11 @@ ${filtered.length > 0 ? `
                 <X size={11} />
               </button>
             )}
-          </div>)}
+          </div>
         </div>
 
-        {/* Products grid — hidden until the cashier searches or scans */}
-        {true ? (<div className="flex-1 overflow-y-auto p-2.5">
+        {/* Product catalog */}
+        {true ? (<div className="flex-1 min-h-0 overflow-y-auto p-3" style={{background:"#F5F8F6"}}>
           {prods.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-16">
               <Package size={40} className="text-muted-foreground/30 mb-3" />
@@ -1655,7 +1659,7 @@ ${filtered.length > 0 ? `
               {q && <button onClick={() => setQ("")} className="mt-2 text-xs text-primary hover:underline">مسح البحث</button>}
             </div>
           ) : vm === "grid" ? (
-            <div className="grid gap-3 p-1" style={{gridTemplateColumns:"repeat(auto-fill,minmax(145px,1fr))"}}>
+            <div className="grid gap-3 p-1" style={{gridTemplateColumns:"repeat(auto-fill,minmax(155px,1fr))"}}>
               {displayedProds.map(p => {
                 const inCart = cart.find(i => i.product.id === p.id);
                 const outOfStock = p.stock <= 0;
