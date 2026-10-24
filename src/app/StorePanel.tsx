@@ -18,7 +18,7 @@ import {
   Info, ChevronLeft, Grid3X3, List, Hash, Tag, Ruler, Calculator, FlipHorizontal,
   Flower2, Gift, Bike, Moon, Sun, WifiOff, Wifi, CloudOff, Clock,
 } from "lucide-react";
-import { storeApi, useApi, useApiCached, useLS, norm, normList, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules, useDarkMode } from "./lib";
+import { storeApi, useApi, useApiCached, useLS, norm, normList, invalidateCache, dateAr, timeAr, showToast, KPI, Modal, F, TInput, SInput, Btn, Hdr, Empty, Toggle, useStoreId, sk, PLANS, CAT, ST, printReceipt, PRODUCTS, jod, getToken, useStoreModules, useDarkMode } from "./lib";
 import { SyncCenter, SyncStatusBadge } from "./SyncCenter";
 import type { StoreData, Product, CartItem, StoreCategory } from "./lib";
 import { SalesScreen, ProductsMgr, InvScreen, CustScreen, SuppScreen, PurchScreen, ExpScreen, ReturnScreen, PurchaseOrdersScreen, PromotionsScreen } from "./StorePanelB";
@@ -1587,8 +1587,8 @@ ${filtered.length > 0 ? `
               {vm === "grid" ? <List size={15} className="text-muted-foreground" /> : <Grid3X3 size={15} className="text-muted-foreground" />}
             </button>
           </div>
-          {/* Tabs + categories — single scrollable row */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+          {/* Catalog filters appear only during search; keep the default cashier view uncluttered. */}
+          {q.trim() && (<div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
             {/* View tabs */}
             {(["all","fav","recent"] as const).map((t, i) => {
               const labels = ["الكل","★ مفضلة","⏱ أخيرة"];
@@ -1619,11 +1619,11 @@ ${filtered.length > 0 ? `
                 <X size={11} />
               </button>
             )}
-          </div>
+          </div>)}
         </div>
 
-        {/* Products grid */}
-        <div className="flex-1 overflow-y-auto p-2.5">
+        {/* Products grid — hidden until the cashier searches or scans */}
+        {q.trim() ? (<div className="flex-1 overflow-y-auto p-2.5">
           {prods.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-16">
               <Package size={40} className="text-muted-foreground/30 mb-3" />
@@ -1735,7 +1735,14 @@ ${filtered.length > 0 ? `
             </div>
           )}
           <div ref={loadMoreRef} className="h-4" />
-        </div>
+        </div>) : (
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center" style={{background:"#fafaf8"}}>
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{background:"#e8f0ed",color:"#173A34"}}><Scan size={30} /></div>
+            <p className="font-black text-base" style={{color:"#173A34"}}>جاهز لاستقبال المنتجات</p>
+            <p className="text-sm text-muted-foreground mt-2 max-w-xs">امسح الباركود لإضافة المنتج إلى الفاتورة، أو اكتب اسم المنتج في خانة البحث لعرض النتائج.</p>
+            <button onClick={() => { setScannerMode(true); setQ(""); setTimeout(() => searchRef.current?.focus(), 50); }} className="mt-4 px-4 h-10 rounded-xl text-sm font-black flex items-center gap-2" style={{background:"#173A34",color:"#C8A45C"}}><Scan size={15}/>بدء المسح</button>
+          </div>
+        )}
       </div>
 
       {/* ══ RIGHT PANEL — Quick Actions ═══════════════════════════════════════ */}
@@ -2167,34 +2174,64 @@ ${filtered.length > 0 ? `
           <div className="space-y-4">
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 flex gap-2">
               <AlertCircle size={13} className="shrink-0 mt-0.5"/>
-              <span>المنتج غير موجود في قاعدة البيانات — سيُضاف للفاتورة مؤقتاً. عرّفه لاحقاً في صفحة المنتجات.</span>
+              <span>الباركود غير مسجل. أدخل الاسم والسعر، ثم اختر الإضافة المؤقتة أو الحفظ الدائم.</span>
             </div>
             <F label="اسم المنتج" req><TInput value={manualForm.nameAr} onChange={v => setManualForm(f => ({...f, nameAr: v}))} placeholder="اسم المنتج..." autoFocus /></F>
             <F label="سعر البيع (JOD)" req><TInput value={manualForm.sellPrice} onChange={v => setManualForm(f => ({...f, sellPrice: v}))} type="number" placeholder="0.000" /></F>
-            <F label="الكمية"><TInput value={manualForm.qty} onChange={v => setManualForm(f => ({...f, qty: v}))} type="number" placeholder="1" /></F>
-            <div className="flex gap-3 justify-end">
-              <Btn v="secondary" onClick={() => setManualEntry(null)}>إلغاء</Btn>
-              <Btn disabled={!manualForm.nameAr || !manualForm.sellPrice}
+            <F label="الكمية في الفاتورة"><TInput value={manualForm.qty} onChange={v => setManualForm(f => ({...f, qty: v}))} type="number" placeholder="1" /></F>
+            <div className="flex flex-col gap-2">
+              <Btn disabled={!manualForm.nameAr.trim() || !manualForm.sellPrice || !(parseFloat(manualForm.sellPrice) >= 0) || !(parseInt(manualForm.qty) > 0)}
                 onClick={() => {
+                  const qty = Math.max(1, parseInt(manualForm.qty) || 1);
                   const tempProduct: Product = {
                     id: `manual_${Date.now()}`,
-                    nameAr: manualForm.nameAr, nameEn: manualForm.nameAr,
+                    nameAr: manualForm.nameAr.trim(), nameEn: manualForm.nameAr.trim(),
                     barcode: manualEntry.barcode, barcodes: [],
                     sku: "", category: "يدوي", costPrice: 0,
                     sellPrice: parseFloat(manualForm.sellPrice) || 0,
-                    stock: 999, minStock: 0, image: "", unit: "قطعة",
+                    stock: 999999, minStock: 0, image: "", unit: "قطعة",
                     taxRate: 0, taxable: false,
                   };
-                  const qty = parseInt(manualForm.qty) || 1;
                   setCart(prev => {
                     const ex = prev.find(i => i.product.id === tempProduct.id);
                     if (ex) return prev.map(i => i.product.id === tempProduct.id ? {...i, qty: i.qty + qty} : i);
                     return [...prev, { product: tempProduct, qty, discount: 0 }];
                   });
                   setManualEntry(null);
-                  showToast(`تمت إضافة "${manualForm.nameAr}" مؤقتاً`, "success");
+                  showToast(`تمت إضافة "${tempProduct.nameAr}" للفاتورة مؤقتاً دون حفظه`, "success");
                 }}
-                icon={<Plus size={13}/>}>إضافة للسلة</Btn>
+                icon={<Plus size={13}/>}>إضافة مؤقتة للفاتورة فقط</Btn>
+              <Btn disabled={!manualForm.nameAr.trim() || !manualForm.sellPrice || !(parseFloat(manualForm.sellPrice) >= 0) || !(parseInt(manualForm.qty) > 0)}
+                onClick={async () => {
+                  const qty = Math.max(1, parseInt(manualForm.qty) || 1);
+                  const price = parseFloat(manualForm.sellPrice);
+                  const payload = {
+                    nameAr: manualForm.nameAr.trim(), nameEn: manualForm.nameAr.trim(),
+                    barcode: manualEntry.barcode, barcodes: [],
+                    sku: "", category: "يدوي", costPrice: 0,
+                    sellPrice: price, stock: qty, minStock: 0,
+                    image: "", unit: "قطعة", taxRate: 0, taxable: false,
+                  };
+                  try {
+                    const createdRaw = await storeApi.post("/products", payload);
+                    const created = norm<Product>(createdRaw);
+                    if (!created?.id) throw new Error("تعذر قراءة المنتج المحفوظ");
+                    setAllProds(prev => [created, ...prev.filter(p => p.id !== created.id)]);
+                    invalidateCache("/products");
+                    await refreshPosProds();
+                    setCart(prev => {
+                      const ex = prev.find(i => i.product.id === created.id);
+                      if (ex) return prev.map(i => i.product.id === created.id ? {...i, qty: i.qty + qty} : i);
+                      return [...prev, { product: created, qty, discount: 0 }];
+                    });
+                    setManualEntry(null);
+                    showToast(`تم حفظ "${created.nameAr}" في قاعدة البيانات وإضافته للفاتورة`, "success");
+                  } catch (err) {
+                    showToast((err as {message?:string})?.message || "تعذر حفظ المنتج. تحقق من الصلاحيات والاتصال.", "error");
+                  }
+                }}
+                icon={<Check size={13}/>}>حفظ دائم وإضافة للفاتورة</Btn>
+              <div className="flex justify-end pt-1"><Btn v="secondary" onClick={() => setManualEntry(null)}>إلغاء</Btn></div>
             </div>
           </div>
         </Modal>
