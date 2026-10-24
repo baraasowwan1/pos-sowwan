@@ -2395,7 +2395,6 @@ ${filtered.length > 0 ? `
           </div>
         </Modal>
       )}
-    </main>
     </div>
   );
 }
