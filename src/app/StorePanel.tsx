@@ -1071,10 +1071,31 @@ function POSTerm({ store }: { store: StoreData }) {
   };
   const upd = (id: string, d: number) => setCart(prev => prev.map(i => {
     if (i.product.id !== id) return i;
-    const newQty = Math.max(1, i.qty + d);
-    if (newQty > i.product.stock) { showToast(`الكمية المتاحة ${i.product.stock} وحدة فقط`, "warning"); return i; }
+    const newQty = Math.max(0.001, i.qty + d);
+    if (i.product.category !== "يدوي" && newQty > i.product.stock) { showToast(`الكمية المتاحة ${i.product.stock} وحدة فقط`, "warning"); return i; }
     return { ...i, qty: newQty };
   }));
+  const setQty = (id: string, raw: string) => {
+    if (raw.trim() === "") return;
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value <= 0) return;
+    setCart(prev => prev.map(i => {
+      if (i.product.id !== id) return i;
+      if (i.product.category !== "يدوي" && value > i.product.stock) {
+        showToast(`الكمية المتاحة ${i.product.stock} وحدة فقط`, "warning");
+        return i;
+      }
+      return { ...i, qty: value };
+    }));
+  };
+  const setItemPrice = (id: string, raw: string) => {
+    if (raw.trim() === "") return;
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value < 0) return;
+    setCart(prev => prev.map(i => i.product.id === id && i.product.category === "يدوي"
+      ? { ...i, product: { ...i.product, sellPrice: value } }
+      : i));
+  };
   const updd = (id: string, v: number) => setCart(prev => prev.map(i => i.product.id === id ? { ...i, discount: Math.max(0, Math.min(100, v)) } : i));
   const rm = (id: string) => setCart(prev => prev.filter(i => i.product.id !== id));
   const hold = () => { if (cart.length) { setHolds(h => [...h, cart]); setCart([]); } };
@@ -1550,24 +1571,38 @@ ${filtered.length > 0 ? `
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => item.qty === 1 ? rm(item.product.id) : upd(item.product.id, -1)}
+                      <button onClick={() => item.qty <= 1 ? rm(item.product.id) : upd(item.product.id, -1)}
+                        title={item.qty <= 1 ? "حذف الصنف" : "تقليل الكمية"}
                         className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border !border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-500">
-                        {item.qty === 1 ? <Trash2 size={11} /> : <Minus size={11} />}
+                        {item.qty <= 1 ? <Trash2 size={11} /> : <Minus size={11} />}
                       </button>
-                      <span className="w-7 text-center text-sm font-black">{item.qty}</span>
+                      <input type="number" min="0.001" step="any" inputMode="decimal"
+                        aria-label={`كمية ${item.product.nameAr}`} value={item.qty}
+                        onChange={e => setQty(item.product.id, e.target.value)}
+                        className="w-14 h-8 text-center text-sm font-black rounded-lg border !border-slate-200 !bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300/60"
+                        title="أدخل كمية صحيحة أو كسرية مثل 0.25 أو 1.5" />
                       <button onClick={() => upd(item.product.id, 1)}
                         className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border !border-slate-200 hover:border-indigo-400 hover:text-indigo-900">
                         <Plus size={11} />
                       </button>
                     </div>
-                    <div className="text-right shrink-0 w-16">
+                    <div className="text-right shrink-0 w-20">
+                      {item.product.category === "يدوي" ? (
+                        <input type="number" min="0" step="0.001" inputMode="decimal"
+                          aria-label={`سعر ${item.product.nameAr}`} value={item.product.sellPrice}
+                          onChange={e => setItemPrice(item.product.id, e.target.value)}
+                          className="w-full h-7 text-left text-sm font-black rounded-md border !border-slate-200 !bg-white px-1 focus:outline-none focus:ring-2 focus:ring-indigo-300/60"
+                          title="تعديل سعر الصنف اليدوي" />
+                      ) : (
+                        <p className="text-sm font-black">{item.product.sellPrice.toFixed(3)}</p>
+                      )}
                       <p className="text-sm font-black">{(item.product.sellPrice * item.qty * (1-item.discount/100)).toFixed(3)}</p>
                     </div>
                   </div>
                   {isOwnerOrMgr && (
                     <div className="flex items-center gap-2 mt-1.5">
                       <Percent size={10} className="!text-slate-500 shrink-0" />
-                      <input type="range" min={0} max={50} step={1} value={item.discount}
+                      <input type="range" min={0} max={100} step={0.5} value={item.discount}
                         onChange={e => updd(item.product.id, parseFloat(e.target.value))}
                         className="flex-1 h-1 accent-indigo-600 cursor-pointer" />
                       <span className="text-xs font-black w-8 text-left" style={{color: item.discount > 0 ? "#29356F" : undefined}}>{item.discount}%</span>
@@ -1605,7 +1640,7 @@ ${filtered.length > 0 ? `
               {isOwnerOrMgr && (
                 <div className="flex items-center gap-2 py-0.5">
                   <span className="text-xs !text-slate-500 shrink-0">خصم الفاتورة</span>
-                  <input type="range" min={0} max={50} step={1} value={disc} onChange={e => setDisc(parseFloat(e.target.value))} className="flex-1 h-1 accent-indigo-600 cursor-pointer" />
+                  <input type="range" min={0} max={100} step={0.5} value={disc} onChange={e => setDisc(parseFloat(e.target.value))} className="flex-1 h-1 accent-indigo-600 cursor-pointer" />
                   <span className="text-xs font-black w-8 text-left" style={{color: disc > 0 ? "#29356F" : undefined}}>{disc}%</span>
                 </div>
               )}
