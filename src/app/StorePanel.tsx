@@ -1382,10 +1382,10 @@ ${filtered.length > 0 ? `
 
   /* ─── MAIN 3-COLUMN POS LAYOUT ───────────────────────────────────────────── */
   return (
-    <main dir="rtl" className="flex h-full overflow-hidden" style={{background:"#F0EEE9",fontFamily:"'Cairo','Inter',sans-serif"}} aria-label="نقطة البيع">
+    <main dir="rtl" className="flex h-full min-h-0 overflow-hidden gap-2 p-2" style={{background:"#E9EEEB",fontFamily:"'Cairo','Inter',sans-serif"}} aria-label="نقطة البيع">
 
       {/* ══ LEFT PANEL — Cart ══════════════════════════════════════════════════ */}
-      <div className="flex flex-col overflow-hidden border-l border-border" style={{width:320,minWidth:320,background:"white"}}>
+      <div className="flex flex-col overflow-hidden rounded-2xl border border-[#dbe4df] shadow-sm shrink-0" style={{width:320,minWidth:280,background:"#FFFFFF"}}>
 
         {/* Cart header */}
         <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border" style={{background:"#173A34"}}>
@@ -1655,7 +1655,7 @@ ${filtered.length > 0 ? `
               {q && <button onClick={() => setQ("")} className="mt-2 text-xs text-primary hover:underline">مسح البحث</button>}
             </div>
           ) : vm === "grid" ? (
-            <div className="grid gap-2" style={{gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))"}}>
+            <div className="grid gap-3 p-1" style={{gridTemplateColumns:"repeat(auto-fill,minmax(145px,1fr))"}}>
               {displayedProds.map(p => {
                 const inCart = cart.find(i => i.product.id === p.id);
                 const outOfStock = p.stock <= 0;
@@ -1663,7 +1663,7 @@ ${filtered.length > 0 ? `
                 return (
                   <div key={p.id} className="relative group">
                     <button onClick={() => add(p)} disabled={outOfStock}
-                      className="w-full flex flex-col rounded-xl border-2 transition-all text-right overflow-hidden active:scale-95"
+                      className="w-full flex flex-col rounded-2xl border transition-all text-right overflow-hidden active:scale-[0.98] hover:-translate-y-0.5 hover:shadow-md min-h-[154px]"
                       style={outOfStock
                         ? {opacity:0.55,cursor:"not-allowed",borderColor:"#e5e7eb",background:"#fafafa"}
                         : inCart
@@ -1671,7 +1671,7 @@ ${filtered.length > 0 ? `
                         : {borderColor:"#e8e8e8",background:"white"}}>
                       {/* Image — fixed 68px height, letter fallback when no image */}
                       <div className="w-full relative overflow-hidden shrink-0"
-                        style={{height:68, background: inCart ? "#d6ede7" : "#eeece8"}}>
+                        style={{height:82, background: inCart ? "#d6ede7" : "#f2f5f3"}}>
                         <img src={p.image} alt={p.nameAr} className="w-full h-full object-cover"
                           style={{display: p.image ? undefined : "none"}}
                           onError={e => { (e.target as HTMLImageElement).style.display="none"; }} />
