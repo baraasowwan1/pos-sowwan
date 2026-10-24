@@ -271,6 +271,11 @@ export function SyncCenter({ storeId }: { storeId: string }) {
             <p className="text-sm font-semibold" style={{ color: !online ? "#991b1b" : state.failed > 0 ? "#92400e" : state.pending > 0 ? "#1d4ed8" : "#065f46" }}>
               {!online ? "غير متصل بالإنترنت" : state.failed > 0 ? `${state.failed} عملية فشلت` : state.pending > 0 ? `${state.pending} عملية في الانتظار` : "جميع العمليات مزامنة"}
             </p>
+            {state.lastError && (
+              <p className="text-xs mt-1 leading-relaxed" style={{ color: "#991b1b" }}>
+                تفاصيل الخطأ: {state.lastError}
+              </p>
+            )}
             {state.lastSyncAt && (
               <p className="text-xs text-muted-foreground">
                 آخر مزامنة: {new Date(state.lastSyncAt).toLocaleString("ar-JO")}
