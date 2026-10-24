@@ -831,8 +831,9 @@ function SAStores() {
     } finally { setResetEmpLoading(false); }
   };
 
+  const [renewing, setRenewing] = useState(false);
   const doRenew = async () => {
-    if (!renewStore) return;
+    if (!renewStore || renewing) return;
     const months = Number.parseInt(renewMonths, 10);
     if (!renewStore.plan || !apiPlans.some(p => p.nameAr === renewStore.plan)) {
       showToast("اختر خطة اشتراك صحيحة أولاً", "error");
@@ -842,6 +843,7 @@ function SAStores() {
       showToast("اختر مدة تجديد صحيحة", "error");
       return;
     }
+    setRenewing(true);
     try {
       const result = await apiFetch(`/stores/${renewStore.id}/assign-plan`, {
         method: "PATCH",
@@ -858,6 +860,8 @@ function SAStores() {
       setRenewStore(null);
     } catch (e) {
       showToast((e as { error?: string })?.error || "تعذّر حفظ التجديد. لم يتم تغيير الاشتراك.", "error");
+    } finally {
+      setRenewing(false);
     }
   };
 
@@ -1204,12 +1208,12 @@ function SAStores() {
             <div className="p-4 bg-card border border-border rounded-xl">
               <div className="flex justify-between text-sm mb-1"><span className="text-muted-foreground">انتهاء الاشتراك الجديد:</span><span className="font-black text-primary">{new Date(Date.now() + parseInt(renewMonths) * 30 * 86400000).toISOString().split("T")[0]}</span></div>
               <div className="flex justify-between text-sm"><span className="text-muted-foreground">المبلغ المستحق:</span>
-                <span className="font-black text-foreground">{(PLANS.find(p => p.nameAr === renewStore.plan)?.price || 0) * parseInt(renewMonths)} JOD</span>
+                <span className="font-black text-foreground">{((apiPlans.find(p => p.nameAr === renewStore.plan)?.price) || 0) * parseInt(renewMonths)} د.أ</span>
               </div>
             </div>
             <div className="flex gap-3 justify-end">
               <Btn v="secondary" onClick={() => setRenewStore(null)}>إلغاء</Btn>
-              <Btn v="success" onClick={doRenew} icon={<CheckCircle size={14} />}>تأكيد التجديد</Btn>
+              <Btn v="success" onClick={doRenew} disabled={renewing} icon={<CheckCircle size={14} />}>{renewing ? "جاري حفظ التجديد..." : "تأكيد التجديد"}</Btn>
             </div>
           </div>
         </Modal>
