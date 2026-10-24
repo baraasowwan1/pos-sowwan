@@ -1710,7 +1710,7 @@ ${filtered.length > 0 ? `
               {q && <button onClick={() => setQ("")} className="mt-2 text-xs text-indigo-900 hover:underline">مسح البحث</button>}
             </div>
           ) : vm === "grid" ? (
-            <div className="grid gap-3 p-1" style={{gridTemplateColumns:"repeat(auto-fill,minmax(155px,1fr))"}}>
+            <div className="pos-catalog-grid grid gap-3 p-1" style={{gridTemplateColumns:"repeat(auto-fill,minmax(155px,1fr))"}}>
               {displayedProds.map(p => {
                 const inCart = cart.find(i => i.product.id === p.id);
                 const outOfStock = p.stock <= 0;
@@ -1718,7 +1718,7 @@ ${filtered.length > 0 ? `
                 return (
                   <div key={p.id} className="relative group">
                     <button onClick={() => add(p)} disabled={outOfStock}
-                      className="w-full flex flex-col rounded-[20px] border transition-all text-right overflow-hidden active:scale-[0.98] hover:-translate-y-1 hover:shadow-lg min-h-[176px]"
+                      className="pos-product-card w-full flex flex-col rounded-[20px] border transition-all text-right overflow-hidden active:scale-[0.98] hover:-translate-y-1 hover:shadow-lg min-h-[176px]"
                       style={outOfStock
                         ? {opacity:0.55,cursor:"not-allowed",borderColor:"#E1E5EF",background:"#F7F8FC"}
                         : inCart
@@ -1824,7 +1824,7 @@ ${filtered.length > 0 ? `
       </div>
 
       {/* ══ RIGHT PANEL — Quick Actions ═══════════════════════════════════════ */}
-      <div className="flex flex-col overflow-hidden border-r !border-slate-200" style={{width:268,minWidth:268,background:"white"}}>
+      <div className="pos-actions-panel flex flex-col overflow-hidden border-r !border-slate-200" style={{width:268,minWidth:268,background:"white"}}>
 
         {/* Header */}
         <div className="shrink-0 px-4 py-3 border-b !border-slate-200" style={{background:"#29356F"}}>
